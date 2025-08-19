@@ -1,0 +1,24 @@
+FROM golang:1.18-alpine
+
+RUN apk add --no-cache git ca-certificates tzdata
+
+WORKDIR /workspace
+
+# Create directory structure
+RUN mkdir -p /workspace/chaincode/shared
+RUN mkdir -p /workspace/validators
+
+# Copy the shared module first
+COPY chaincode/shared /workspace/chaincode/shared
+
+# Copy validator module files
+COPY validators/go.mod validators/go.sum /workspace/validators/
+
+# Set up the workspace
+WORKDIR /workspace/validators
+
+# Initialize the Go module and download dependencies
+RUN [ ! -f go.mod ] && go mod init github.com/coffex/validators || true &&     go mod edit -replace github.com/coffex/chaincode/shared=../../chaincode/shared &&     go mod tidy
+
+# Copy the rest of the application code
+COPY validators /workspace/validators

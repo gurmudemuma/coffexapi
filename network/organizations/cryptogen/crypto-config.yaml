@@ -1,0 +1,55 @@
+# ---------------------------------------------------------------------------
+# "PeerOrgs" - Definition of organizations managing peer nodes
+# ---------------------------------------------------------------------------
+PeerOrgs:
+  # ---------------------------------------------------------------------------
+  # National Bank
+  # ---------------------------------------------------------------------------
+  - Name: NationalBank
+    Domain: nationalbank.com
+    EnableNodeOUs: false
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 2
+
+  # ---------------------------------------------------------------------------
+  # Exporter Bank
+  # ---------------------------------------------------------------------------
+  - Name: ExporterBank
+    Domain: exporterbank.com
+    EnableNodeOUs: false
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 2
+
+  # ---------------------------------------------------------------------------
+  # Coffee Authority
+  # ---------------------------------------------------------------------------
+  - Name: CoffeeAuthority
+    Domain: coffeeauthority.com
+    EnableNodeOUs: false
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 2
+
+  # ---------------------------------------------------------------------------
+  # Customs
+  # ---------------------------------------------------------------------------
+  - Name: Customs
+    Domain: customs.com
+    EnableNodeOUs: false
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 2

@@ -1,0 +1,61 @@
+
+name: coffex-network
+version: 1.0.0
+
+client:
+  organization: ExporterBank
+  connection:
+    timeout:
+      peer:
+        endorser: '300'
+
+organizations:
+  ExporterBank:
+    mspid: ExporterBankMSP
+    peers:
+      - peer0.exporterbank.com
+    certificateAuthorities:
+      - ca.exporterbank.com
+
+orderers:
+  orderer.coffee-consortium.com:
+    url: grpc://orderer.coffee-consortium.com:7050
+    grpcOptions:
+      ssl-target-name-override: orderer.coffee-consortium.com
+      keep-alive-time: 0s
+      keep-alive-timeout: 20s
+      keep-alive-permit: false
+      fail-fast: false
+      allow-insecure: true
+
+peers:
+  peer0.nationalbank.com:
+    url: grpc://peer0.nationalbank.com:7051
+    grpcOptions:
+      allow-insecure: true
+  peer0.exporterbank.com:
+    url: grpc://peer0.exporterbank.com:8051
+    grpcOptions:
+      allow-insecure: true
+  peer0.coffeeauthority.com:
+    url: grpc://peer0.coffeeauthority.com:9051
+    grpcOptions:
+      allow-insecure: true
+  peer0.customs.com:
+    url: grpc://peer0.customs.com:10051
+    grpcOptions:
+      allow-insecure: true
+
+certificateAuthorities:
+  ca.nationalbank.com:
+    url: http://ca.nationalbank.com:7054
+    caName: ca-nationalbank
+  ca.exporterbank.com:
+    url: http://ca.exporterbank.com:8054
+    caName: ca-exporterbank
+  ca.coffeeauthority.com:
+    url: http://ca.coffeeauthority.com:9054
+    caName: ca-coffeeauthority
+  ca.customs.com:
+    url: http://ca.customs.com:10054
+    caName: ca-customs

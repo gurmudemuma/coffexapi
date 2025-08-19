@@ -1,0 +1,186 @@
+Organizations:
+    - &OrdererOrg
+        Name: OrdererOrg
+        ID: OrdererMSP
+        MSPDir: organizations/ordererOrganizations/coffee-consortium.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrdererMSP.admin')"
+
+    - &NationalBank
+        Name: NationalBankMSP
+        ID: NationalBankMSP
+        MSPDir: organizations/peerOrganizations/nationalbank.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('NationalBankMSP.admin', 'NationalBankMSP.peer', 'NationalBankMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('NationalBankMSP.admin', 'NationalBankMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('NationalBankMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('NationalBankMSP.peer')"
+        AnchorPeers:
+            - Host: peer0.nationalbank.com
+              Port: 7051
+
+    - &ExporterBank
+        Name: ExporterBankMSP
+        ID: ExporterBankMSP
+        MSPDir: organizations/peerOrganizations/exporterbank.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('ExporterBankMSP.admin', 'ExporterBankMSP.peer', 'ExporterBankMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('ExporterBankMSP.admin', 'ExporterBankMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('ExporterBankMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('ExporterBankMSP.peer')"
+        AnchorPeers:
+            - Host: peer0.exporterbank.com
+              Port: 8051
+
+    - &CoffeeAuthority
+        Name: CoffeeAuthorityMSP
+        ID: CoffeeAuthorityMSP
+        MSPDir: organizations/peerOrganizations/coffeeauthority.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('CoffeeAuthorityMSP.admin', 'CoffeeAuthorityMSP.peer', 'CoffeeAuthorityMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('CoffeeAuthorityMSP.admin', 'CoffeeAuthorityMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('CoffeeAuthorityMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('CoffeeAuthorityMSP.peer')"
+        AnchorPeers:
+            - Host: peer0.coffeeauthority.com
+              Port: 9051
+
+    - &Customs
+        Name: CustomsMSP
+        ID: CustomsMSP
+        MSPDir: organizations/peerOrganizations/customs.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('CustomsMSP.admin', 'CustomsMSP.peer', 'CustomsMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('CustomsMSP.admin', 'CustomsMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('CustomsMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('CustomsMSP.peer')"
+        AnchorPeers:
+            - Host: peer0.customs.com
+              Port: 10051
+
+Application: &ApplicationDefaults
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "ANY Admins"
+        LifecycleEndorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+        Endorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+
+Orderer: &OrdererDefaults
+    OrdererType: solo
+    Addresses:
+        - orderer.coffee-consortium.com:7050
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 99 MB
+        PreferredMaxBytes: 512 KB
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+
+Channel: &ChannelDefaults
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "ANY Admins"
+        LifecycleEndorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+        Endorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+
+Profiles:
+    CoffeeConsortiumOrdererGenesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+        Consortiums:
+            CoffeeConsortium:
+                Organizations:
+                    - *NationalBank
+                    - *ExporterBank
+                    - *CoffeeAuthority
+                    - *Customs
+
+    CoffeeExportChannel:
+        <<: *ChannelDefaults
+        Consortium: CoffeeConsortium
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *NationalBank
+                - *ExporterBank
+                - *CoffeeAuthority
+                - *Customs
