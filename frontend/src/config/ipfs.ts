@@ -1,15 +1,6 @@
-// IPFS Configuration
 export const IPFS_CONFIG = {
-  // Infura IPFS project ID (replace with your own in production)
-  PROJECT_ID:
-    process.env.REACT_APP_INFURA_PROJECT_ID || 'YOUR_INFURA_PROJECT_ID',
-
-  // Infura IPFS project secret (replace with your own in production)
-  PROJECT_SECRET:
-    process.env.REACT_APP_INFURA_PROJECT_SECRET || 'YOUR_INFURA_PROJECT_SECRET',
-
   // IPFS gateway URL for fetching content
-  GATEWAY_URL: 'https://ipfs.io/ipfs',
+  GATEWAY_URL: 'http://localhost:8080/ipfs',
 
   // List of supported file types and their max sizes (in bytes)
   SUPPORTED_TYPES: {
@@ -19,17 +10,6 @@ export const IPFS_CONFIG = {
       5 * 1024 * 1024, // 5MB
     'image/jpeg': 5 * 1024 * 1024, // 5MB
     'image/png': 5 * 1024 * 1024, // 5MB
-  },
-
-  // Maximum number of files that can be uploaded at once
-  MAX_FILES: 10,
-
-  // Encryption settings
-  ENCRYPTION: {
-    // Key length in bytes (32 bytes = 256 bits for AES-256)
-    KEY_LENGTH: 32,
-    // Initialization Vector length in bytes (16 bytes for AES-CBC)
-    IV_LENGTH: 16,
   },
 };
 

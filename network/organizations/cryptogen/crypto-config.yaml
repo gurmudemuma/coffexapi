@@ -7,7 +7,7 @@ PeerOrgs:
   # ---------------------------------------------------------------------------
   - Name: NationalBank
     Domain: nationalbank.com
-    EnableNodeOUs: false
+    EnableNodeOUs: true
     Template:
       Count: 1
       SANS:
@@ -20,7 +20,7 @@ PeerOrgs:
   # ---------------------------------------------------------------------------
   - Name: ExporterBank
     Domain: exporterbank.com
-    EnableNodeOUs: false
+    EnableNodeOUs: true
     Template:
       Count: 1
       SANS:
@@ -33,7 +33,7 @@ PeerOrgs:
   # ---------------------------------------------------------------------------
   - Name: CoffeeAuthority
     Domain: coffeeauthority.com
-    EnableNodeOUs: false
+    EnableNodeOUs: true
     Template:
       Count: 1
       SANS:
@@ -46,7 +46,7 @@ PeerOrgs:
   # ---------------------------------------------------------------------------
   - Name: Customs
     Domain: customs.com
-    EnableNodeOUs: false
+    EnableNodeOUs: true
     Template:
       Count: 1
       SANS:

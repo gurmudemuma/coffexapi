@@ -108,14 +108,24 @@ download_fabric_tools() {
 setup_network() {
     print_status "Setting up consortium network..."
 
-    if [ -d "network" ] && [ -f "network/scripts/network.sh" ]; then
-        cd network
-        ./scripts/network.sh
-        cd ..
+    if [ -f "run-all.sh" ]; then
+        ./run-all.sh
         print_success "Network setup completed"
     else
-        print_warning "Network setup scripts not found. Skipping network setup."
+        print_warning "run-all.sh not found. Skipping network setup."
         print_status "You can set up the network manually later."
+    fi
+}
+
+# Deploy chaincode
+deploy_chaincode() {
+    print_status "Deploying chaincode..."
+
+    if [ -f "network/scripts/deploy-chaincode.sh" ]; then
+        ./network/scripts/deploy-chaincode.sh
+        print_success "Chaincode deployment completed"
+    else
+        print_warning "deploy-chaincode.sh not found. Skipping chaincode deployment."
     fi
 }
 
@@ -275,6 +285,9 @@ main() {
 
     # Setup network (optional)
     setup_network
+
+    # Deploy chaincode
+    deploy_chaincode
 
     # Start validators
     start_validators

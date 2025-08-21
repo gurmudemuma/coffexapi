@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
 import { contract } from '@/lib/fabric';
 import { downloadFromIPFS } from '@/services/ipfsService';
@@ -19,6 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Progress } from './ui/progress';
+import { formatFileSize, getFileIcon } from '@/utils/format';
 
 type VerificationStatus =
   | 'idle'
@@ -91,7 +92,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     };
   }, [previewUrl]);
 
-  const verifyDocument = async () => {
+  const verifyDocument = useCallback(async () => {
     if (!documentMetadata?.cid || !documentMetadata?.hash) return;
 
     setVerificationStatus('verifying');
@@ -127,7 +128,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       );
       toast.error('Failed to verify document');
     }
-  };
+  }, [documentMetadata, onVerificationComplete]);
 
   const handleDownload = async () => {
     if (!documentMetadata?.cid) return;
@@ -232,31 +233,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     }
   };
 
-  const getFileIcon = (type: string) => {
-    if (!type) return <File className="h-4 w-4" />;
+  
 
-    if (type.startsWith('image/')) {
-      return <FileImage className="h-4 w-4" />;
-    }
-
-    switch (type) {
-      case 'application/pdf':
-        return <FileTextIcon className="h-4 w-4" />;
-      case 'text/plain':
-      case 'text/csv':
-        return <FileText className="h-4 w-4" />;
-      default:
-        return <File className="h-4 w-4" />;
-    }
-  };
-
-  const formatFileSize = (bytes: number = 0): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024)
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-  };
+  
 
   const renderVerificationStatus = () => {
     switch (verificationStatus) {

@@ -1,6 +1,6 @@
 import React from 'react';
-import { DocumentInput } from './DocumentInputNew';
-import type { DocumentType, DocumentState } from './DocumentInputNew';
+import { DocumentInput } from './DocumentInput';
+import type { DocumentType, DocumentState } from './DocumentInput';
 
 // Define types for props
 interface DocumentsState {

@@ -1,6 +1,8 @@
 #!/bin/bash
 
-set -x
+export PATH=${PWD}/bin:$PATH
+
+set -ex
 
 export TEST_INVOICE_HASH="dummy_invoice_hash"
 export TEST_QUALITY_HASH="dummy_quality_hash"
@@ -80,7 +82,7 @@ generate_artifacts() {
     # Generate crypto material for all organizations
     print_status "Generating crypto material using 'cryptogen' ભા..."
     cryptogen generate --config=./network/organizations/cryptogen/crypto-config-orderer.yaml --output="./organizations"
-    cryptogen generate --config=./network/organizations/cryptogen/crypto-config.yaml --output="./organizations"
+cryptogen generate --config=./network/organizations/cryptogen/crypto-config.yaml --output="./organizations"
     print_success "Crypto material generated."
     ls -l organizations/peerOrganizations/nationalbank.com/users/Admin@nationalbank.com/msp/admincerts
 
@@ -117,24 +119,56 @@ setup_and_start_network() {
     sleep 10
 
     # Create the channel
-    print_status "Creating channel '$CHANNEL_NAME' ભા..."
-    docker-compose exec cli bash -c "
-export CORE_PEER_TLS_ENABLED=true
-export CORE_PEER_LOCALMSPID=\"NationalBankMSP\"
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/nationalbank.com/peers/peer0.nationalbank.com/tls/ca.crt
-export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/nationalbank.com/users/Admin@nationalbank.com/msp
-export CORE_PEER_ADDRESS=peer0.nationalbank.com:7051
-export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/coffee-consortium.com/orderers/orderer.coffee-consortium.com/msp/tlscacerts/tlsca.coffee-consortium.com-cert.pem
+    print_status "Creating channel '$CHANNEL_NAME'..."
+    # Define the orderer CA path
+    ORDERER_CA="/etc/hyperledger/fabric/organizations/ordererOrganizations/coffee-consortium.com/orderers/orderer.coffee-consortium.com/msp/tlscacerts/tlsca.coffee-consortium.com-cert.pem"
+    
+    # Create the channel using the orderer's TLS CA cert
+    docker-compose exec -T cli bash -c "
+    export CORE_PEER_TLS_ENABLED=true
+    export CORE_PEER_LOCALMSPID=\"NationalBankMSP\"
+    export CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/organizations/peerOrganizations/nationalbank.com/peers/peer0.nationalbank.com/tls/ca.crt
+    export CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/organizations/peerOrganizations/nationalbank.com/users/Admin@nationalbank.com/msp
+    export CORE_PEER_ADDRESS=peer0.nationalbank.com:7051
 
-peer channel create \
-    -o orderer.coffee-consortium.com:7050 \
-    -c $CHANNEL_NAME \
-    -f /opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts/coffeeexport.tx \
-    --outputBlock /opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts/coffeeexport.block \
-    --tls \
-    --cafile \$ORDERER_CA
-"
+    peer channel create \
+        -o orderer.coffee-consortium.com:7050 \
+        -c $CHANNEL_NAME \
+        -f /etc/hyperledger/fabric/channel-artifacts/coffeeexport.tx \
+        --outputBlock /etc/hyperledger/fabric/channel-artifacts/coffeeexport.block \
+        --tls \
+        --cafile $ORDERER_CA
+    "
+    
+    docker-compose exec cli ls -l /etc/hyperledger/fabric/channel-artifacts/
+
     print_success "Channel created."
+}
+
+# Join all peers to the channel
+join_channel() {
+    print_header "Joining Peers to Channel"
+
+    for org in nationalbank exporterbank coffeeauthority customs; do
+        print_status "Joining peer for ${org}..."
+        
+        # Determine port
+        PORT=7051
+        if [ "$org" == "exporterbank" ]; then PORT=8051;
+elif [ "$org" == "coffeeauthority" ]; then PORT=9051;
+elif [ "$org" == "customs" ]; then PORT=10051; fi
+
+        docker-compose exec cli bash -c "
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_LOCALMSPID=\"${org^}MSP\"
+export CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/organizations/peerOrganizations/${org}.com/peers/peer0.${org}.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/organizations/peerOrganizations/${org}.com/users/Admin@${org}.com/msp
+export CORE_PEER_ADDRESS=peer0.${org}.com:${PORT}
+
+peer channel join -b /etc/hyperledger/fabric/channel-artifacts/coffeeexport.block
+"
+        print_success "Peer for ${org} has joined the channel."
+    done
 }
 
 
@@ -150,6 +184,7 @@ main() {
     cleanup_network
     generate_artifacts
     setup_and_start_network
+    join_channel
 }
 
 main "$@"

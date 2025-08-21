@@ -4,6 +4,7 @@
 # This script sets up a complete Hyperledger Fabric consortium network
 
 set -e
+export PATH=$BIN_DIR:$PATH
 
 # Colors for output
 RED='\033[0;31m'
@@ -29,8 +30,17 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Add local bin directory to PATH
-export PATH="$PWD/../../bin:$PATH"
+# Set absolute path to the bin directory
+BIN_DIR="/home/gu-da/coffexapi/bin"
+export PATH=$BIN_DIR:$PATH
+
+# Verify binaries exist
+if [ ! -f "$BIN_DIR/cryptogen" ] || [ ! -f "$BIN_DIR/configtxgen" ]; then
+    print_error "Hyperledger Fabric binaries not found in $BIN_DIR"
+    exit 1
+fi
+
+echo "Using Hyperledger Fabric binaries from: $BIN_DIR"
 
 # Check if required tools are installed
 check_prerequisites() {
@@ -88,16 +98,16 @@ generate_crypto() {
     mkdir -p "$BASE_DIR/organizations/ordererOrganizations"
     
     # Generate crypto for orderer
-    (cd "$BASE_DIR" && \
-     cryptogen generate \
-     --config="$BASE_DIR/organizations/cryptogen/crypto-config-orderer.yaml" \
-     --output="$BASE_DIR/organizations")
+    if ! "$BIN_DIR/cryptogen" generate --config="$BASE_DIR/organizations/cryptogen/crypto-config-orderer.yaml" --output="$BASE_DIR/organizations"; then
+        print_error "Failed to generate crypto material"
+        return 1
+    fi
     
     # Generate crypto for all peer organizations using the main config file
-    (cd "$BASE_DIR" && \
-     cryptogen generate \
-     --config="$BASE_DIR/organizations/cryptogen/crypto-config.yaml" \
-     --output="$BASE_DIR/organizations")
+    if ! "$BIN_DIR/cryptogen" generate --config="$BASE_DIR/organizations/cryptogen/crypto-config.yaml" --output="$BASE_DIR/organizations"; then
+        print_error "Failed to generate crypto material"
+        return 1
+    fi
     
     print_success "Crypto materials generated"
 }
@@ -113,11 +123,11 @@ generate_genesis() {
     mkdir -p "$BASE_DIR/system-genesis-block"
     
     # Run configtxgen with the correct FABRIC_CFG_PATH
-    (cd "$BASE_DIR" && \
-     FABRIC_CFG_PATH="$BASE_DIR" configtxgen \
-     -profile CoffeeConsortiumOrdererGenesis \
-     -channelID system-channel \
-     -outputBlock "$BASE_DIR/system-genesis-block/genesis.block")
+    export FABRIC_CFG_PATH=$BASE_DIR
+    if ! "$BIN_DIR/configtxgen" -profile CoffeeConsortiumOrdererGenesis -channelID system-channel -outputBlock "$BASE_DIR/system-genesis-block/genesis.block"; then
+        print_error "Failed to generate genesis block"
+        return 1
+    fi
     
     print_success "Genesis block generated"
 }
@@ -133,11 +143,11 @@ generate_channel_tx() {
     mkdir -p "$BASE_DIR/channel-artifacts"
     
     # Run configtxgen with the correct FABRIC_CFG_PATH
-    (cd "$BASE_DIR" && \
-     FABRIC_CFG_PATH="$BASE_DIR" configtxgen \
-     -profile CoffeeExportChannel \
-     -outputCreateChannelTx "$BASE_DIR/channel-artifacts/coffeeexport.tx" \
-     -channelID coffeeexport)
+    export FABRIC_CFG_PATH=$BASE_DIR
+    if ! "$BIN_DIR/configtxgen" -profile CoffeeExportChannel -outputCreateChannelTx "$BASE_DIR/channel-artifacts/channel.tx" -channelID coffeeexport; then
+        print_error "Failed to generate channel configuration transaction"
+        return 1
+    fi
     
     print_success "Channel configuration transaction generated"
 }
@@ -153,29 +163,30 @@ generate_anchor_peers() {
     mkdir -p "$BASE_DIR/channel-artifacts"
     
     # Generate anchor peer transactions for each organization
+    export FABRIC_CFG_PATH=$BASE_DIR
     (cd "$BASE_DIR" && \
-     FABRIC_CFG_PATH="$BASE_DIR" configtxgen \
+     FABRIC_CFG_PATH="$BASE_DIR" "$BIN_DIR/configtxgen" \
      -profile CoffeeExportChannel \
      -outputAnchorPeersUpdate "$BASE_DIR/channel-artifacts/NationalBankMSPanchors.tx" \
      -channelID coffeeexport \
      -asOrg NationalBankMSP)
      
     (cd "$BASE_DIR" && \
-     FABRIC_CFG_PATH="$BASE_DIR" configtxgen \
+     FABRIC_CFG_PATH="$BASE_DIR" "$BIN_DIR/configtxgen" \
      -profile CoffeeExportChannel \
      -outputAnchorPeersUpdate "$BASE_DIR/channel-artifacts/ExporterBankMSPanchors.tx" \
      -channelID coffeeexport \
      -asOrg ExporterBankMSP)
      
     (cd "$BASE_DIR" && \
-     FABRIC_CFG_PATH="$BASE_DIR" configtxgen \
+     FABRIC_CFG_PATH="$BASE_DIR" "$BIN_DIR/configtxgen" \
      -profile CoffeeExportChannel \
      -outputAnchorPeersUpdate "$BASE_DIR/channel-artifacts/CoffeeAuthorityMSPanchors.tx" \
      -channelID coffeeexport \
      -asOrg CoffeeAuthorityMSP)
      
     (cd "$BASE_DIR" && \
-     FABRIC_CFG_PATH="$BASE_DIR" configtxgen \
+     FABRIC_CFG_PATH="$BASE_DIR" "$BIN_DIR/configtxgen" \
      -profile CoffeeExportChannel \
      -outputAnchorPeersUpdate "$BASE_DIR/channel-artifacts/CustomsMSPanchors.tx" \
      -channelID coffeeexport \
@@ -191,8 +202,16 @@ start_network() {
     # Define the base directory
     local BASE_DIR="/home/gu-da/coffexapi"
     
+    # Ensure the channel-artifacts directory exists
+    mkdir -p "$BASE_DIR/network/channel-artifacts"
+    
+    # Create a symbolic link from the expected location to the actual location
+    if [ ! -f "$BASE_DIR/network/channel-artifacts/coffeeexport.block" ]; then
+        ln -s "$BASE_DIR/network/system-genesis-block/genesis.block" "$BASE_DIR/network/channel-artifacts/coffeeexport.block"
+    fi
+    
     # Start the network using the docker-compose file in the project root
-    (cd "$BASE_DIR" && docker-compose up -d)
+    (cd "$BASE_DIR" && docker-compose -f docker-compose.yaml up -d)
     
     # Check if the command was successful
     if [ $? -ne 0 ]; then
@@ -233,19 +252,32 @@ create_channel() {
     export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/nationalbank.com/peers/peer0.nationalbank.com/tls/ca.crt
     export CORE_PEER_ADDRESS=localhost:7051
     
-    # Create channel with TLS configuration using the Orderer's TLS CA cert
+    # Define the base directory inside the container
+    local CONTAINER_BASE_DIR="/opt/gopath/src/github.com/hyperledger/fabric/peer"
+    
+    # Create necessary directories in the container
+    docker exec cli mkdir -p $CONTAINER_BASE_DIR/channel-artifacts
+    
+    
+    
+    # Create channel with the updated configuration
     docker exec \
-        -e CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/nationalbank.com/users/Admin@nationalbank.com/msp \
+        -e CORE_PEER_MSPCONFIGPATH=$CONTAINER_BASE_DIR/crypto/peerOrganizations/nationalbank.com/users/Admin@nationalbank.com/msp \
         -e CORE_PEER_LOCALMSPID=NationalBankMSP \
         -e CORE_PEER_TLS_ENABLED=true \
-        -e CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/nationalbank.com/peers/peer0.nationalbank.com/tls/ca.crt \
+        -e CORE_PEER_TLS_ROOTCERT_FILE=$CONTAINER_BASE_DIR/crypto/peerOrganizations/nationalbank.com/peers/peer0.nationalbank.com/tls/ca.crt \
         -e CORE_PEER_ADDRESS=peer0.nationalbank.com:7051 \
+        -e CORE_PEER_ADMIN=true \
         cli peer channel create \
         -o orderer.coffee-consortium.com:7050 \
         -c coffeeexport \
-        -f /opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts/coffeeexport.tx \
+        -f $CONTAINER_BASE_DIR/channel-artifacts/channel.tx \
+        --outputBlock $CONTAINER_BASE_DIR/channel-artifacts/coffeeexport.block \
         --tls \
-        --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/coffee-consortium.com/orderers/orderer.coffee-consortium.com/msp/tlscacerts/tlsca.coffee-consortium.com-cert.pem
+        --cafile $CONTAINER_BASE_DIR/crypto/ordererOrganizations/coffee-consortium.com/orderers/orderer.coffee-consortium.com/msp/tlscacerts/tlsca.coffee-consortium.com-cert.pem \
+        --clientauth \
+        --keyfile $CONTAINER_BASE_DIR/crypto/peerOrganizations/nationalbank.com/users/Admin@nationalbank.com/tls/client.key \
+        --certfile $CONTAINER_BASE_DIR/crypto/peerOrganizations/nationalbank.com/users/Admin@nationalbank.com/tls/client.crt
     
     # Join channel for all organizations with TLS
     for org in nationalbank exporterbank coffeeauthority customs; do
@@ -267,13 +299,13 @@ create_channel() {
 
         # Join channel with TLS
         docker exec \
-            -e CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/${org}.com/users/Admin@${org}.com/msp \
+            -e CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/organizations/peerOrganizations/${org}.com/users/Admin@${org}.com/msp \
             -e CORE_PEER_LOCALMSPID="${org^}MSP" \
             -e CORE_PEER_TLS_ENABLED=true \
-            -e CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/${org}.com/peers/peer0.${org}.com/tls/ca.crt \
+            -e CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/organizations/peerOrganizations/${org}.com/peers/peer0.${org}.com/tls/ca.crt \
             -e CORE_PEER_ADDRESS=peer0.${org}.com:${peer_port} \
-            cli peer channel join -b /opt/gopath/src/github.com/hyperledger/fabric/peer/coffeeexport.block --tls \
-            --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/coffee-consortium.com/orderers/orderer.coffee-consortium.com/msp/tlscacerts/tlsca.coffee-consortium.com-cert.pem
+            cli peer channel join -b /etc/hyperledger/fabric/channel-artifacts/coffeeexport.block --tls \
+            --cafile /etc/hyperledger/fabric/organizations/ordererOrganizations/coffee-consortium.com/orderers/orderer.coffee-consortium.com/msp/tlscacerts/tlsca.coffee-consortium.com-cert.pem
     done
     
     print_success "Channel created and joined successfully"

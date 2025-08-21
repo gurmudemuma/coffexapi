@@ -32,14 +32,45 @@ All validators now use the shared library, reducing code duplication by ~80%:
 - Go 1.18+
 - Node.js 16+
 
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker and Docker Compose
+- Go 1.18+
+- Node.js 16+
+- Hyperledger Fabric binaries (`configtxgen`, `cryptogen`)
+- `jq` (recommended for JSON processing)
+
 ### Running the System
 
-1. **Build and start all services:**
+#### Option 1: Using Docker Compose (Quick Start)
 ```bash
 docker-compose up --build
 ```
 
-2. **Access the services:**
+#### Option 2: Using the Network Manager (Recommended for Development)
+
+1. **Generate cryptographic materials:**
+```bash
+./network/scripts/network_manager.sh generate-crypto
+```
+
+2. **Start the network:**
+```bash
+./network/scripts/network_manager.sh start
+```
+
+3. **Create and join a channel:**
+```bash
+./network/scripts/network_manager.sh channel create
+```
+
+4. **Check network status:**
+```bash
+./network/scripts/network_manager.sh status
+```
+
+### Access the services:
 - National Bank Validator: http://localhost:8080
 - Bank API Validator: http://localhost:5000
 - Quality Authority: http://localhost:8081

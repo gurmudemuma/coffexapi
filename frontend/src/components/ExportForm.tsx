@@ -3,7 +3,7 @@ import { useExport } from '../hooks/useExport';
 import { useExportApprovals } from '../hooks/useExportApprovals';
 import type { ExportDocument } from '../hooks/useExport';
 import { ExportStatus } from './ExportStatus';
-import type { DocumentType, DocumentState } from './DocumentInputNew';
+import type { DocumentType, DocumentState } from './DocumentInput';
 
 const ExporterDetailsTab = lazy(() => import('./ExporterDetailsTab'));
 const TradeDetailsTab = lazy(() => import('./TradeDetailsTab'));
@@ -555,7 +555,12 @@ export default function ExportForm() {
           </div>
         )}
 
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={
+          <div className="flex items-center justify-center p-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            <span className="ml-4 text-muted-foreground">Loading form components...</span>
+          </div>
+        }>
           {activeTab === 'exporter' && (
             <ExporterDetailsTab
               exporterDetails={exporterDetails}

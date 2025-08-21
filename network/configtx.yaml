@@ -184,3 +184,19 @@ Profiles:
                 - *ExporterBank
                 - *CoffeeAuthority
                 - *Customs
+            Policies:
+                Readers:
+                    Type: ImplicitMeta
+                    Rule: "ANY Readers"
+                Writers:
+                    Type: ImplicitMeta
+                    Rule: "ANY Writers"
+                Admins:
+                    Type: ImplicitMeta
+                    Rule: "ANY Admins"
+                LifecycleEndorsement:
+                    Type: ImplicitMeta
+                    Rule: "MAJORITY Endorsement"
+                Endorsement:
+                    Type: ImplicitMeta
+                    Rule: "MAJORITY Endorsement"

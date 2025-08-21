@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { DocumentViewer } from './DocumentViewer';
-import type { DocumentType } from './DocumentInputNew';
+import type { DocumentType } from './DocumentInput';
 import { cn } from '@/lib/utils';
 
 type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'VERIFIED';
@@ -161,7 +161,7 @@ export const ExportStatus: React.FC<ExportStatusProps> = ({
                   documentType={docType}
                   documentMetadata={{
                     cid: doc.cid || '',
-                    url: doc.url || `https://ipfs.io/ipfs/${doc.cid}`,
+                    url: doc.url || `http://localhost:8080/ipfs/${doc.cid}`,
                     iv: doc.iv || '',
                     key: doc.key || '',
                     encrypted: !!doc.encrypted,

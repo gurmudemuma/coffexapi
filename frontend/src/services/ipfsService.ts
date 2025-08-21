@@ -1,36 +1,22 @@
+import { Buffer } from 'buffer';
 import { create } from 'ipfs-http-client';
 import * as aesjs from 'aes-js';
-
 // Configuration
 const IPFS_CONFIG = {
-  // In a production environment, replace these with environment variables
-  PROJECT_ID:
-    process.env.REACT_APP_INFURA_PROJECT_ID || 'YOUR_INFURA_PROJECT_ID',
-  PROJECT_SECRET:
-    process.env.REACT_APP_INFURA_PROJECT_SECRET || 'YOUR_INFURA_PROJECT_SECRET',
-  GATEWAY_URL: 'https://ipfs.io/ipfs',
+  GATEWAY_URL: 'http://localhost:8080/ipfs',
 };
 
-// Initialize IPFS client with authentication
-const auth =
-  'Basic ' +
-  Buffer.from(
-    IPFS_CONFIG.PROJECT_ID + ':' + IPFS_CONFIG.PROJECT_SECRET
-  ).toString('base64');
-
-const ipfs = create({
-  host: 'ipfs.infura.io',
-  port: 5001,
-  protocol: 'https',
-  headers: {
-    authorization: auth,
-  },
-});
+// Initialize IPFS client for local node
+const ipfs = create({ url: 'http://localhost:5001' });
 
 // Types
 export interface IPFSOptions {
   encrypt?: boolean;
   onProgress?: (progress: number) => void;
+  signal?: AbortSignal;
+  chunkSize?: number;
+  timeout?: number;
+  retries?: number;
 }
 
 export interface IPFSFile {
@@ -73,62 +59,133 @@ const encryptFile = async (
 };
 
 /**
- * Uploads a file to IPFS with optional encryption
+ * Uploads a file to IPFS with optional encryption and progress tracking
  */
 export const uploadToIPFS = async (
   file: File,
   options: IPFSOptions = { encrypt: true }
 ): Promise<IPFSFile> => {
-  try {
+  const {
+    encrypt = true,
+    onProgress,
+    signal,
+    chunkSize = 1024 * 1024, // 1MB chunks by default
+    timeout = 30000, // 30 seconds timeout
+    retries = 3
+  } = options;
+
+  // Check if the operation was aborted
+  const throwIfAborted = () => {
+    if (signal?.aborted) {
+      throw new DOMException('Upload aborted by the user', 'AbortError');
+    }
+  };
+
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= retries; attempt++) {
     let fileToUpload: Blob | Uint8Array = file;
     let fileSize = file.size;
     let encryptionKey = '';
     let iv = '';
+    
+    try {
+      throwIfAborted();
 
-    // Encrypt the file if encryption is enabled
-    if (options.encrypt) {
-      encryptionKey = generateEncryptionKey();
-      const encryptionResult = await encryptFile(file, encryptionKey);
-      const encryptedBlob = new Blob(
-        [new Uint8Array(encryptionResult.ciphertext)],
-        { type: 'application/octet-stream' }
-      );
-      fileToUpload = encryptedBlob;
-      fileSize = encryptedBlob.size;
-      iv = Buffer.from(encryptionResult.iv).toString('hex');
-    }
-
-    // Add file to IPFS with progress tracking
-    let uploadedBytes = 0;
-
-    const { cid } = await ipfs.add(
-      { content: fileToUpload },
-      {
-        progress: (bytes: number) => {
-          if (options.onProgress) {
-            uploadedBytes += bytes;
-            const progress = Math.round((uploadedBytes / fileSize) * 100);
-            options.onProgress(progress);
-          }
-        },
+      // Encrypt the file if encryption is enabled
+      if (encrypt) {
+        encryptionKey = generateEncryptionKey();
+        const encryptionResult = await encryptFile(file, encryptionKey);
+        const encryptedBlob = new Blob(
+          [new Uint8Array(encryptionResult.ciphertext)],
+          { type: 'application/octet-stream' }
+        );
+        fileToUpload = encryptedBlob;
+        fileSize = encryptedBlob.size;
+        iv = encryptionResult.iv;
+        
+        // Report progress after encryption
+        if (onProgress) {
+          onProgress(0.1); // 10% for encryption
+        }
       }
-    );
 
-    const url = `${IPFS_CONFIG.GATEWAY_URL}/${cid.toString()}`;
+      // Set up timeout for the upload
+      const uploadPromise = new Promise<IPFSFile>((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error('Upload timed out'));
+        }, timeout);
 
-    return {
-      cid: cid.toString(),
-      url,
-      iv,
-      key: encryptionKey,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-    };
-  } catch (error) {
-    console.error('Error uploading to IPFS:', error);
-    throw error;
+        // Upload to IPFS with progress tracking
+        let uploadedBytes = 0;
+        
+        ipfs.add(fileToUpload, {
+          progress: (bytes: number) => {
+            if (signal?.aborted) {
+              clearTimeout(timeoutId);
+              reject(new DOMException('Upload aborted by the user', 'AbortError'));
+              return;
+            }
+            
+            uploadedBytes = bytes;
+            const progress = uploadedBytes / fileSize;
+            
+            // Report progress (scaled to 10-90% to leave room for final steps)
+            if (onProgress) {
+              onProgress(encrypt ? 0.1 + progress * 0.8 : progress * 0.9);
+            }
+          },
+        })
+          .then((result) => {
+            clearTimeout(timeoutId);
+            
+            // Generate the IPFS URL
+            const url = `${IPFS_CONFIG.GATEWAY_URL}/${result.path}`;
+            
+            // Report completion
+            if (onProgress) {
+              onProgress(1);
+            }
+            
+            resolve({
+              cid: result.path,
+              url,
+              iv,
+              key: encryptionKey,
+              name: file.name,
+              size: fileSize,
+              type: file.type,
+            });
+          })
+          .catch((error) => {
+            clearTimeout(timeoutId);
+            reject(error);
+          });
+      });
+
+      return await uploadPromise;
+    } catch (error) {
+      lastError = error as Error;
+      
+      // Don't retry if the operation was aborted
+      if (signal?.aborted || (error as Error).name === 'AbortError') {
+        throw error;
+      }
+      
+      // Log the error and retry if we have attempts left
+      console.warn(`Upload attempt ${attempt} failed:`, error);
+      
+      if (attempt < retries) {
+        // Exponential backoff
+        await new Promise(resolve => 
+          setTimeout(resolve, 1000 * Math.pow(2, attempt - 1))
+        );
+      }
+    }
   }
+  
+  // If we get here, all retries failed
+  throw lastError || new Error('Failed to upload file after multiple attempts');
 };
 
 /**
@@ -207,39 +264,4 @@ export const generateEncryptionKey = (): string => {
   );
 };
 
-/**
- * Validates a file against supported types and size limits
- */
-export const validateFile = (
-  file: File
-): { valid: boolean; error?: string } => {
-  // List of supported MIME types and their max sizes (in bytes)
-  const SUPPORTED_TYPES: Record<string, number> = {
-    'application/pdf': 10 * 1024 * 1024, // 10MB
-    'application/msword': 5 * 1024 * 1024, // 5MB
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-      5 * 1024 * 1024, // 5MB
-    'image/jpeg': 5 * 1024 * 1024, // 5MB
-    'image/png': 5 * 1024 * 1024, // 5MB
-  };
 
-  // Check file type
-  if (!SUPPORTED_TYPES[file.type]) {
-    return {
-      valid: false,
-      error: 'Unsupported file type',
-    };
-  }
-
-  // Check file size
-  const maxSize = SUPPORTED_TYPES[file.type];
-  if (file.size > maxSize) {
-    const maxSizeMB = Math.round(maxSize / (1024 * 1024));
-    return {
-      valid: false,
-      error: `File too large. Maximum size is ${maxSizeMB}MB`,
-    };
-  }
-
-  return { valid: true };
-};
