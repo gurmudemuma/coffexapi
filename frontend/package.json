@@ -12,7 +12,10 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "setup": "bash setup.sh",
+    "setup:windows": "setup.bat",
+    "diagnose": "bash diagnose-ipfs.sh"
   },
   "dependencies": {
     "@radix-ui/react-progress": "^1.1.7",

@@ -5,41 +5,30 @@ export const useOfflineStatus = () => {
   const [isOffline, setIsOffline] = useState(!isOnline());
   const [pendingOperations, setPendingOperations] = useState(0);
 
-  // Check for pending operations when the hook mounts
+  // Check for pending operations when the hook mounts and set up online/offline event listeners
   useEffect(() => {
-    const checkPendingOperations = async () => {
+    const updatePendingStatus = async () => {
       const hasPending = await getPendingOperations();
       setPendingOperations(hasPending ? 1 : 0);
     };
 
-    checkPendingOperations();
-  }, []);
-
-  // Set up online/offline event listeners
-  useEffect(() => {
     const handleOnline = () => {
       setIsOffline(false);
-      // Check for pending operations when coming back online
-      getPendingOperations().then((hasPending) => {
-        setPendingOperations(hasPending ? 1 : 0);
-      });
+      updatePendingStatus();
     };
 
-    const handleOffline = () => {
-      setIsOffline(true);
-    };
-
-    // Listen for online/offline events
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Initial check
+    // Initial check and setup
+    updatePendingStatus();
     setIsOffline(!isOnline());
+
+    // Set up event listeners
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', () => setIsOffline(true));
 
     // Clean up event listeners
     return () => {
       window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('offline', () => setIsOffline(true));
     };
   }, []);
 

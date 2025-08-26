@@ -1,6 +1,5 @@
 import { ChangeEvent, useRef, useState, useEffect } from 'react';
 import { Upload, FileText, Loader2, Lock, X } from 'lucide-react';
-import { Button } from './ui/button';
 
 // Simple utility for conditional class names
 const cn = (...classes: (string | undefined)[]) =>
@@ -9,7 +8,6 @@ const cn = (...classes: (string | undefined)[]) =>
 import {
   uploadToIPFS,
   generateEncryptionKey,
-  validateFile,
 } from '@/services/ipfsService';
 
 export type DocumentType = 'license' | 'invoice' | 'qualityCert' | 'other';
@@ -156,12 +154,6 @@ export function DocumentInput({
     });
   };
 
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -181,7 +173,7 @@ export function DocumentInput({
     e.stopPropagation();
     setIsDragging(false);
     
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    if (e.dataTransfer.files?.[0]) {
       processFile(e.dataTransfer.files[0]);
     }
   };

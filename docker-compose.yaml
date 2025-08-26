@@ -289,53 +289,44 @@ services:
       - peer0.coffeeauthority.com
       - peer0.customs.com
 
-  # CouchDB instances for each organization
-  couchdb0:
-    container_name: couchdb0
-    image: couchdb:3.3.2
-    environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=password
-    ports:
-      - "5984:5984"
-    networks:
-      - coffee_net
-
-  couchdb1:
-    container_name: couchdb1
-    image: couchdb:3.3.2
-    environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=password
-    ports:
-      - "6984:5984"
-    networks:
-      - coffee_net
-
-  couchdb2:
-    container_name: couchdb2
-    image: couchdb:3.3.2
-    environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=password
-    ports:
-      - "7984:5984"
-    networks:
-      - coffee_net
-
-  couchdb3:
-    container_name: couchdb3
-    image: couchdb:3.3.2
-    environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=password
-    ports:
-      - "8984:5984"
-    networks:
-      - coffee_net
-
   # ============================================================================
-  # VALIDATOR SERVICES
+  # IPFS SERVICE
+  # ============================================================================
+  
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: ipfs
+    ports:
+      - "5001:5001"
+      - "8080:8080"
+    environment:
+      - IPFS_PROFILE=server
+    volumes:
+      - ipfs_data:/data/ipfs
+    command: >
+      sh -c "
+      if [ ! -f /data/ipfs/config ]; then
+        ipfs init
+      fi &&
+      ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '[\"http://localhost:3000\", \"http://127.0.0.1:3000\"]' &&
+      ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '[\"PUT\", \"POST\", \"GET\", \"OPTIONS\"]' &&
+      ipfs config --json API.HTTPHeaders.Access-Control-Allow-Headers '[\"Content-Type\"]' &&
+      ipfs daemon --enable-gc
+      "
+    networks:
+      - coffee_net
+      - validator_net
+    healthcheck:
+      test: ["CMD", "ipfs", "id"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================  # VALIDATOR SERVICES
+  #
+  # The following validator services rely on environment variables to be set
+  # for the valid hashes. For example, TEST_LICENSE_HASH needs to be set in
+  # the environment where docker-compose is run.
   # ============================================================================
   
   # Build base validator image
@@ -348,7 +339,7 @@ services:
       - validator_net
 
   # National Bank License Validator
-  nb-api:
+  national-bank-validator:
     build:
       context: .
       dockerfile: validators/national-bank/Dockerfile
@@ -364,7 +355,7 @@ services:
       - coffee_net
 
   # Bank Invoice Validator
-  bank-api:
+  bank-api-validator:
     build:
       context: .
       dockerfile: chaincode/bank-api/Dockerfile
@@ -380,7 +371,7 @@ services:
       - coffee_net
 
   # Quality Authority Validator
-  quality-api:
+  quality-authority-validator:
     build:
       context: .
       dockerfile: validators/quality-authority/Dockerfile
@@ -396,7 +387,7 @@ services:
       - coffee_net
 
   # Customs Shipping Validator
-  customs-api:
+  customs-validator:
     build:
       context: .
       dockerfile: validators/customs/Dockerfile
@@ -424,10 +415,10 @@ services:
       - coffee_net
       - validator_net
     environment:
-      - LICENSE_VALIDATOR_ENDPOINT=https://nb-api:8080/validate
-      - INVOICE_VALIDATOR_ENDPOINT=https://bank-api:5000/validate
-      - QUALITY_VALIDATOR_ENDPOINT=https://quality-api:8081/validate
-      - SHIPPING_VALIDATOR_ENDPOINT=https://customs-api:8082/validate
+      - LICENSE_VALIDATOR_ENDPOINT=http://national-bank-validator:8080/validate
+      - INVOICE_VALIDATOR_ENDPOINT=http://bank-api-validator:5000/validate
+      - QUALITY_VALIDATOR_ENDPOINT=http://quality-authority-validator:8081/validate
+      - SHIPPING_VALIDATOR_ENDPOINT=http://customs-validator:8082/validate
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/organizations/peerOrganizations/exporterbank.com/peers/peer0.exporterbank.com/tls/ca.crt
       - CORE_PEER_TLS_ENABLED=true
 
@@ -436,3 +427,4 @@ volumes:
   peer0.exporterbank.com:
   peer0.coffeeauthority.com:
   peer0.customs.com:
+  ipfs_data:

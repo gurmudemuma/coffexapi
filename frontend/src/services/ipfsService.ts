@@ -1,13 +1,29 @@
 import { Buffer } from 'buffer';
 import { create } from 'ipfs-http-client';
 import * as aesjs from 'aes-js';
-// Configuration
+// Configuration for local IPFS node
 const IPFS_CONFIG = {
   GATEWAY_URL: 'http://localhost:8080/ipfs',
+  API_URL: 'http://localhost:5001',
+  // Alternative public gateway for fallback
+  PUBLIC_GATEWAY: 'https://ipfs.io/ipfs'
 };
 
-// Initialize IPFS client for local node
-const ipfs = create({ url: 'http://localhost:5001' });
+// Import IPFS HTTP client types
+import type { IPFSHTTPClient } from 'ipfs-http-client';
+
+// Initialize IPFS client with better error handling
+let ipfs: IPFSHTTPClient | null = null;
+
+try {
+  ipfs = create({ 
+    url: IPFS_CONFIG.API_URL,
+    timeout: 10000 // 10 second timeout
+  });
+  console.log('Connected to local IPFS node');
+} catch (error) {
+  console.warn('Failed to connect to local IPFS node. Some features may be limited.', error);
+}
 
 // Types
 export interface IPFSOptions {
@@ -65,6 +81,9 @@ export const uploadToIPFS = async (
   file: File,
   options: IPFSOptions = { encrypt: true }
 ): Promise<IPFSFile> => {
+  if (!ipfs) {
+    throw new Error('IPFS node not available. Please make sure your local IPFS daemon is running.');
+  }
   const {
     encrypt = true,
     onProgress,
@@ -119,6 +138,10 @@ export const uploadToIPFS = async (
         // Upload to IPFS with progress tracking
         let uploadedBytes = 0;
         
+        if (!ipfs) {
+          throw new Error('IPFS client not initialized');
+        }
+        
         ipfs.add(fileToUpload, {
           progress: (bytes: number) => {
             if (signal?.aborted) {
@@ -136,7 +159,7 @@ export const uploadToIPFS = async (
             }
           },
         })
-          .then((result) => {
+          .then((result: { path: string }) => {
             clearTimeout(timeoutId);
             
             // Generate the IPFS URL
@@ -164,7 +187,7 @@ export const uploadToIPFS = async (
       });
 
       return await uploadPromise;
-    } catch (error) {
+    } catch (error: unknown) {
       lastError = error as Error;
       
       // Don't retry if the operation was aborted
@@ -263,5 +286,4 @@ export const generateEncryptionKey = (): string => {
     ''
   );
 };
-
 

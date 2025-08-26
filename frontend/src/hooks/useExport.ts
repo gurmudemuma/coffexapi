@@ -48,7 +48,6 @@ export const useExport = (): UseExportReturn => {
     setError(null);
     const controller = new AbortController();
     abortControllerRef.current = controller;
-
     const results: Record<string, DocumentMetadata> = {};
 
     const uploadWithRetry = async (
@@ -60,7 +59,7 @@ export const useExport = (): UseExportReturn => {
           encrypt: document.metadata.encrypted,
           signal: controller.signal,
           onProgress: (progress) => {
-            setProgress((prev) => ({
+            setProgress(prev => ({
               ...prev!,
               message: `Uploading ${document.type} document (${Math.round(progress * 100)}%)...`,
             }));
@@ -69,7 +68,7 @@ export const useExport = (): UseExportReturn => {
       } catch (err) {
         if (attempt < MAX_RETRIES && !controller.signal.aborted) {
           toast.warning(`Retrying upload (${attempt}/${MAX_RETRIES})...`);
-          await new Promise((resolve) =>
+          await new Promise(resolve => 
             setTimeout(resolve, 1000 * Math.pow(2, attempt))
           );
           return uploadWithRetry(document, attempt + 1);
@@ -91,7 +90,7 @@ export const useExport = (): UseExportReturn => {
           message: `Uploading ${type} document...`,
         });
 
-        const { cid, url, iv, key } = await uploadWithRetry(documents[i]);
+        const { cid, url, iv } = await uploadWithRetry(documents[i]);
 
         results[type] = {
           ...metadata,
@@ -233,25 +232,21 @@ export const useExport = (): UseExportReturn => {
     }
   }, []);
 
-  const getDocument = useCallback(async (exportId: string, docType: string) => {
-    try {
-      return await contract.getDocument(exportId, docType);
-    } catch (err) {
+  const getDocument = useCallback((exportId: string, docType: string) => 
+    contract.getDocument(exportId, docType).catch(err => {
       const error = err instanceof Error ? err : new Error('Failed to get document');
       setError(error);
       throw error;
-    }
-  }, []);
+    })
+  , []);
 
-  const getExportRequest = useCallback(async (exportId: string) => {
-    try {
-      return await contract.getExportRequest(exportId);
-    } catch (err) {
+  const getExportRequest = useCallback((exportId: string) => 
+    contract.getExportRequest(exportId).catch(err => {
       const error = err instanceof Error ? err : new Error('Failed to get export request');
       setError(error);
       throw error;
-    }
-  }, []);
+    })
+  , []);
 
   return {
     submitExport,
