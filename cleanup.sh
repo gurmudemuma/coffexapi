@@ -18,11 +18,7 @@ if [ -f "configtx.yaml" ] && [ -f "configtx.reconstructed.yaml" ]; then
     # rm -f configtx.reconstructed.yaml
 fi
 
-if [ -f "docker-compose.yaml" ] && [ -f "docker-compose.reconstructed.yaml" ]; then
-    echo "Found both docker-compose.yaml and docker-compose.reconstructed.yaml"
-    echo "Please review and keep only the correct version"
-    # Uncomment the following lines after review
-    # rm -f docker-compose.reconstructed.yaml
-fi
+# Note: Using single docker-compose.yaml for complete Coffee Export System
+# This provides full functionality with all 4 organizations and validator services
 
 echo "Cleanup complete!"
