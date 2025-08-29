@@ -3,21 +3,21 @@
  */
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE_URL) ||
+  'http://localhost:3001/api';
 
 function setAuthToken(token: string) {
-  document.cookie = `authToken=${token}; path=/; secure; SameSite=Strict`;
+  try {
+    localStorage.setItem('authToken', token);
+  } catch {}
 }
 
 function getAuthToken() {
-  const cookies = document.cookie.split(';');
-  for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === 'authToken') {
-      return value;
-    }
+  try {
+    return localStorage.getItem('authToken');
+  } catch {
+    return null;
   }
-  return null;
 }
 
 /**
@@ -46,7 +46,6 @@ async function request<T = any>(
   const config: RequestInit = {
     ...options,
     headers,
-    credentials: 'include',
   };
 
   try {

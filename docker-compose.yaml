@@ -259,6 +259,60 @@ services:
     depends_on:
       - couchdb.customs.com
 
+  # CouchDB for Exporter
+  couchdb.exporter.com:
+    container_name: couchdb.exporter.com
+    image: couchdb:3.3
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - 15988:5984
+    networks:
+      - coffee_net
+
+  # Exporter Organization
+  peer0.exporter.com:
+    container_name: peer0.exporter.com
+    image: hyperledger/fabric-peer:2.5
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_ATTACHSTDOUT=true
+      - CORE_PEER_ID=peer0.exporter.com
+      - CORE_PEER_ADDRESS=peer0.exporter.com:11051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:11051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.exporter.com:11052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:11052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.exporter.com:11051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.exporter.com:11051
+      - CORE_PEER_LOCALMSPID=ExporterMSP
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/organizations/peerOrganizations/exporter.com/peers/peer0.exporter.com/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/organizations/peerOrganizations/exporter.com/peers/peer0.exporter.com/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/organizations/peerOrganizations/exporter.com/peers/peer0.exporter.com/tls/ca.crt
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/organizations/peerOrganizations/exporter.com/users/Admin@exporter.com/msp
+      - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9447
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.exporter.com:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_MAXRETRIESONSTARTUP=20
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./network/organizations:/etc/hyperledger/fabric/organizations
+      - ./network/channel-artifacts:/etc/hyperledger/fabric/channel-artifacts
+      - peer0.exporter.com:/var/hyperledger/production
+    ports:
+      - 11051:11051
+      - 11052:11052
+      - 9447:9447
+    networks:
+      - coffee_net
+    depends_on:
+      - couchdb.exporter.com
+
   cli:
     container_name: cli
     image: hyperledger/fabric-tools:2.5
@@ -298,6 +352,7 @@ services:
       - peer0.exporterbank.com
       - peer0.coffeeauthority.com
       - peer0.customs.com
+      - peer0.exporter.com
 
   # ============================================================================
   # IPFS SERVICE
@@ -349,7 +404,7 @@ services:
   bank-api-validator:
     build:
       context: .
-      dockerfile: chaincode/bank-api/Dockerfile
+      dockerfile: validators/bank-api/Dockerfile
     ports:
       - "5000:5000"
     environment:
@@ -411,4 +466,5 @@ volumes:
   peer0.exporterbank.com:
   peer0.coffeeauthority.com:
   peer0.customs.com:
+  peer0.exporter.com:
   ipfs_data:

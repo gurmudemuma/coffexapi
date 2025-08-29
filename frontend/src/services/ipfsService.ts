@@ -1,6 +1,7 @@
 import { Buffer } from 'buffer';
-import { create } from 'ipfs-http-client';
+import { create, IPFSHTTPClient } from 'ipfs-http-client';
 import * as aesjs from 'aes-js';
+
 // Configuration for local IPFS node
 const IPFS_CONFIG = {
   GATEWAY_URL: 'http://localhost:8080/ipfs',
@@ -8,9 +9,6 @@ const IPFS_CONFIG = {
   // Alternative public gateway for fallback
   PUBLIC_GATEWAY: 'https://ipfs.io/ipfs'
 };
-
-// Import IPFS HTTP client types
-import type { IPFSHTTPClient } from 'ipfs-http-client';
 
 // Initialize IPFS client with better error handling
 let ipfs: IPFSHTTPClient | null = null;

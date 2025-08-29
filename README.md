@@ -21,16 +21,9 @@ The system has been refactored to eliminate code duplication and improve maintai
 All validators now use the shared library, reducing code duplication by ~80%:
 
 - **National Bank** (`validators/national-bank/`): License validation
-- **Bank API** (`chaincode/bank-api/`): Invoice validation  
+- **Bank API** (`validators/bank-api/`): Invoice validation  
 - **Quality Authority** (`validators/quality-authority/`): Quality certificate validation
 - **Customs** (`validators/customs/`): Shipping document validation
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Docker and Docker Compose
-- Go 1.18+
-- Node.js 16+
 
 ## 🚀 Quick Start
 
@@ -111,6 +104,27 @@ coffexapi/
 ├── frontend/                   # React frontend
 └── docker-compose.yaml         # Consolidated services (network + validators)
 ```
+
+## 📚 Documentation Index
+
+- Architecture & Setup
+  - Deployment: `deploy/DEPLOYMENT_GUIDE.md`
+  - Configuration: `CONFIGURATION_GUIDE.md`
+  - Production Compose: `PRODUCTION_DOCKER_COMPOSE_GUIDE.md`
+- Frontend
+  - Development: `frontend/DEVELOPMENT_GUIDE.md`
+  - Component Standards: `frontend/FRONTEND_STANDARDIZATION_GUIDE.md`
+  - Components Doc: `frontend/COMPONENT_DOCUMENTATION.md`
+- Security & Access Control
+  - Organization Access: `ORGANIZATION_ACCESS_CONTROL_GUIDE.md`
+  - Data Isolation: `ORGANIZATION_DATA_ISOLATION_IMPLEMENTATION.md`
+- Workflows
+  - Approver Flow: `APPROVERS_WORKFLOW_GUIDE.md`
+  - Approver Data Flow: `APPROVER_DATA_FLOW_GUIDE.md`
+  - Exporter User Guide: `EXPORTER_USER_GUIDE.md`
+- Operations
+  - Testing: `TESTING_GUIDE.md`
+  - Logging & Monitoring: `LOGGING_AND_MONITORING_GUIDE.md`
 
 ## 🔧 Adding New Validators
 

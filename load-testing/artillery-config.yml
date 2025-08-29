@@ -1,0 +1,202 @@
+# Artillery Load Testing Configuration
+# Tests the backend API under various load conditions
+
+config:
+  target: "http://localhost:3000"  # Adjust to your API server URL
+  phases:
+    # Warm-up phase
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm-up"
+    
+    # Gradual ramp-up
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 50
+      name: "Ramp-up"
+    
+    # Sustained load
+    - duration: 120
+      arrivalRate: 50
+      name: "Sustained load"
+    
+    # Peak load
+    - duration: 60
+      arrivalRate: 100
+      name: "Peak load"
+    
+    # Spike test
+    - duration: 30
+      arrivalRate: 200
+      name: "Spike test"
+    
+    # Cool down
+    - duration: 30
+      arrivalRate: 10
+      name: "Cool down"
+
+  payload:
+    path: "./load-test-data.csv"
+    fields:
+      - "username"
+      - "password"
+      - "organization"
+      - "role"
+
+  plugins:
+    expect: {}
+    metrics-by-endpoint: {}
+
+scenarios:
+  # Authentication Load Test
+  - name: "Authentication Flow"
+    weight: 40
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "{{ username }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+            - json: "$.user.id"
+              as: "userId"
+            - json: "$.user.organization"
+              as: "userOrg"
+          expect:
+            - statusCode: 200
+            - hasProperty: "token"
+      
+      # Test dashboard access
+      - get:
+          url: "/api/dashboard/{{ userOrg | lowercase | replace(' ', '-') }}"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+      
+      # Test cross-organization access (should fail)
+      - get:
+          url: "/api/dashboard/other-org"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 403
+
+  # Route Protection Load Test
+  - name: "Route Protection"
+    weight: 30
+    flow:
+      # Login first
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "{{ username }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+            - json: "$.user.role"
+              as: "userRole"
+      
+      # Test various protected routes
+      - get:
+          url: "/api/users"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 403]  # Depends on user role
+      
+      - get:
+          url: "/api/audit"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200  # All authenticated users should access audit
+      
+      - get:
+          url: "/api/compliance"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 403]  # Depends on organization
+
+  # Concurrent User Sessions
+  - name: "Concurrent Sessions"
+    weight: 20
+    flow:
+      # Create session
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "{{ username }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+      
+      # Multiple concurrent requests with same token
+      - parallel:
+          - get:
+              url: "/api/profile"
+              headers:
+                Authorization: "Bearer {{ authToken }}"
+          - get:
+              url: "/api/dashboard"
+              headers:
+                Authorization: "Bearer {{ authToken }}"
+          - get:
+              url: "/api/audit"
+              headers:
+                Authorization: "Bearer {{ authToken }}"
+          - get:
+              url: "/api/notifications"
+              headers:
+                Authorization: "Bearer {{ authToken }}"
+
+  # Audit Logging Load Test
+  - name: "Audit Logging"
+    weight: 10
+    flow:
+      # Login
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "{{ username }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+      
+      # Generate audit events by accessing various resources
+      - loop:
+          - get:
+              url: "/api/restricted-resource-{{ $loopCount }}"
+              headers:
+                Authorization: "Bearer {{ authToken }}"
+              expect:
+                - statusCode: [200, 403, 404]
+        count: 10
+      
+      # Check audit log
+      - get:
+          url: "/api/audit/events"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+
+# Performance thresholds
+expect:
+  # Response time expectations
+  - statusCode: 200
+  - responseTime: 500  # Max 500ms response time
+  
+  # Success rate expectations
+  - statusCode: 
+      - 200
+      - 201
+      - 400  # Client errors are acceptable
+      - 401  # Unauthorized is expected for some tests
+      - 403  # Forbidden is expected for access control tests

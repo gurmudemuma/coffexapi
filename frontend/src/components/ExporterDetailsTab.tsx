@@ -1,4 +1,5 @@
 import React from 'react';
+import { Input } from './ui/FormComponents';
 
 // Define types for props
 interface ExporterDetails {
@@ -35,158 +36,99 @@ const ExporterDetailsTab: React.FC<ExporterDetailsTabProps> = ({
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <label htmlFor="companyName" className="block text-sm font-medium">
-            Company Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="companyName"
-            name="companyName"
-            value={exporterDetails.companyName}
-            onChange={handleExporterDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Company Name"
+          name="companyName"
+          value={exporterDetails.companyName}
+          onChange={handleExporterDetailsChange}
+          required
+          placeholder="Enter your company name"
+        />
 
-        <div className="space-y-2">
-          <label
-            htmlFor="registrationNumber"
-            className="block text-sm font-medium"
-          >
-            Registration Number <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="registrationNumber"
-            name="registrationNumber"
-            value={exporterDetails.registrationNumber}
-            onChange={handleExporterDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Registration Number"
+          name="registrationNumber"
+          value={exporterDetails.registrationNumber}
+          onChange={handleExporterDetailsChange}
+          required
+          placeholder="Enter registration number"
+        />
 
-        <div className="space-y-2">
-          <label htmlFor="taxId" className="block text-sm font-medium">
-            Tax ID <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="taxId"
-            name="taxId"
-            value={exporterDetails.taxId}
-            onChange={handleExporterDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Tax ID"
+          name="taxId"
+          value={exporterDetails.taxId}
+          onChange={handleExporterDetailsChange}
+          required
+          placeholder="Enter tax identification number"
+        />
 
-        <div className="space-y-2">
-          <label htmlFor="contactPerson" className="block text-sm font-medium">
-            Contact Person <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="contactPerson"
-            name="contactPerson"
-            value={exporterDetails.contactPerson}
-            onChange={handleExporterDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Contact Person"
+          name="contactPerson"
+          value={exporterDetails.contactPerson}
+          onChange={handleExporterDetailsChange}
+          required
+          placeholder="Enter contact person name"
+        />
 
-        <div className="space-y-2">
-          <label htmlFor="email" className="block text-sm font-medium">
-            Email <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={exporterDetails.email}
-            onChange={handleExporterDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Email"
+          name="email"
+          type="email"
+          value={exporterDetails.email}
+          onChange={handleExporterDetailsChange}
+          required
+          placeholder="Enter email address"
+        />
 
-        <div className="space-y-2">
-          <label htmlFor="phone" className="block text-sm font-medium">
-            Phone <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            value={exporterDetails.phone}
-            onChange={handleExporterDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Phone"
+          name="phone"
+          type="tel"
+          value={exporterDetails.phone}
+          onChange={handleExporterDetailsChange}
+          required
+          placeholder="Enter phone number"
+        />
 
-        <div className="space-y-2 md:col-span-2">
-          <label htmlFor="address" className="block text-sm font-medium">
-            Street Address <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="address"
+        <div className="md:col-span-2">
+          <Input
+            label="Street Address"
             name="address"
             value={exporterDetails.address}
             onChange={handleExporterDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
             required
+            placeholder="Enter street address"
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="city" className="block text-sm font-medium">
-            City <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="city"
-            name="city"
-            value={exporterDetails.city}
-            onChange={handleExporterDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="City"
+          name="city"
+          value={exporterDetails.city}
+          onChange={handleExporterDetailsChange}
+          required
+          placeholder="Enter city"
+        />
 
-        <div className="space-y-2">
-          <label htmlFor="country" className="block text-sm font-medium">
-            Country <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="country"
-            name="country"
-            value={exporterDetails.country}
-            onChange={handleExporterDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Country"
+          name="country"
+          value={exporterDetails.country}
+          onChange={handleExporterDetailsChange}
+          required
+          placeholder="Enter country"
+        />
 
-        <div className="space-y-2">
-          <label htmlFor="postalCode" className="block text-sm font-medium">
-            Postal Code <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="postalCode"
-            name="postalCode"
-            value={exporterDetails.postalCode}
-            onChange={handleExporterDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Postal Code"
+          name="postalCode"
+          value={exporterDetails.postalCode}
+          onChange={handleExporterDetailsChange}
+          required
+          placeholder="Enter postal code"
+        />
       </div>
     </div>
   );

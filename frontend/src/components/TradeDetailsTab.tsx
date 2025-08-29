@@ -1,4 +1,5 @@
 import React from 'react';
+import { Input, Textarea, Select } from './ui/FormComponents';
 
 // Define types for props
 interface TradeDetails {
@@ -32,6 +33,56 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
   tradeDetails,
   handleTradeDetailsChange,
 }) => {
+  const unitOptions = [
+    { value: 'kg', label: 'kg' },
+    { value: 'g', label: 'g' },
+    { value: 'lb', label: 'lb' },
+    { value: 'oz', label: 'oz' },
+    { value: 'l', label: 'l' },
+    { value: 'ml', label: 'ml' },
+    { value: 'piece', label: 'piece' },
+    { value: 'box', label: 'box' },
+    { value: 'carton', label: 'carton' }
+  ];
+
+  const currencyOptions = [
+    { value: 'USD', label: 'USD' },
+    { value: 'EUR', label: 'EUR' },
+    { value: 'GBP', label: 'GBP' },
+    { value: 'JPY', label: 'JPY' },
+    { value: 'AUD', label: 'AUD' },
+    { value: 'CAD', label: 'CAD' },
+    { value: 'CHF', label: 'CHF' },
+    { value: 'CNY', label: 'CNY' }
+  ];
+
+  const incotermsOptions = [
+    { value: 'EXW', label: 'EXW - Ex Works' },
+    { value: 'FOB', label: 'FOB - Free On Board' },
+    { value: 'CIF', label: 'CIF - Cost, Insurance & Freight' },
+    { value: 'CIP', label: 'CIP - Carriage & Insurance Paid To' },
+    { value: 'DAP', label: 'DAP - Delivered At Place' },
+    { value: 'DPU', label: 'DPU - Delivered at Place Unloaded' },
+    { value: 'DDP', label: 'DDP - Delivered Duty Paid' }
+  ];
+
+  const paymentTermsOptions = [
+    { value: '30 days', label: 'Net 30 days' },
+    { value: '60 days', label: 'Net 60 days' },
+    { value: '90 days', label: 'Net 90 days' },
+    { value: 'advance', label: 'Advance payment' },
+    { value: 'on delivery', label: 'On delivery' },
+    { value: 'custom', label: 'Custom terms' }
+  ];
+
+  const paymentMethodOptions = [
+    { value: 'Bank Transfer', label: 'Bank Transfer' },
+    { value: 'Letter of Credit', label: 'Letter of Credit' },
+    { value: 'Documentary Collection', label: 'Documentary Collection' },
+    { value: 'Cash in Advance', label: 'Cash in Advance' },
+    { value: 'Online Payment', label: 'Online Payment' }
+  ];
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Trade Details</h2>
@@ -40,273 +91,155 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <label htmlFor="productName" className="block text-sm font-medium">
-            Product Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="productName"
-            name="productName"
-            value={tradeDetails.productName}
-            onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Product Name"
+          name="productName"
+          value={tradeDetails.productName}
+          onChange={handleTradeDetailsChange}
+          required
+          placeholder="Enter product name"
+        />
 
-        <div className="space-y-2 md:col-span-2">
-          <label
-            htmlFor="productDescription"
-            className="block text-sm font-medium"
-          >
-            Product Description
-          </label>
-          <textarea
-            id="productDescription"
+        <div className="md:col-span-2">
+          <Textarea
+            label="Product Description"
             name="productDescription"
             value={tradeDetails.productDescription}
             onChange={handleTradeDetailsChange}
             rows={3}
-            className="w-full px-3 py-2 border rounded-md"
+            placeholder="Describe the product details..."
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="quantity" className="block text-sm font-medium">
+          <label className="block text-sm font-medium">
             Quantity <span className="text-red-500">*</span>
           </label>
-          <div className="flex">
-            <input
-              type="number"
-              id="quantity"
-              name="quantity"
-              min="0"
-              step="0.001"
-              value={tradeDetails.quantity}
-              onChange={handleTradeDetailsChange}
-              className="w-3/4 px-3 py-2 border rounded-l-md"
-              required
-            />
-            <select
-              name="unit"
-              value={tradeDetails.unit}
-              onChange={handleTradeDetailsChange}
-              className="w-1/4 px-2 py-2 border-t border-b border-r rounded-r-md bg-gray-50"
-            >
-              <option value="kg">kg</option>
-              <option value="g">g</option>
-              <option value="lb">lb</option>
-              <option value="oz">oz</option>
-              <option value="l">l</option>
-              <option value="ml">ml</option>
-              <option value="piece">piece</option>
-              <option value="box">box</option>
-              <option value="carton">carton</option>
-            </select>
+          <div className="flex space-x-2">
+            <div className="flex-1">
+              <Input
+                type="number"
+                name="quantity"
+                min="0"
+                step="0.001"
+                value={tradeDetails.quantity.toString()}
+                onChange={handleTradeDetailsChange}
+                required
+                placeholder="0"
+              />
+            </div>
+            <div className="w-24">
+              <Select
+                name="unit"
+                value={tradeDetails.unit}
+                onChange={handleTradeDetailsChange}
+                options={unitOptions}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="unitPrice" className="block text-sm font-medium">
-            Unit Price <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-2.5 text-gray-500">$</span>
-            <input
-              type="number"
-              id="unitPrice"
-              name="unitPrice"
-              min="0"
-              step="0.01"
-              value={tradeDetails.unitPrice}
-              onChange={handleTradeDetailsChange}
-              className="w-full pl-8 pr-3 py-2 border rounded-md"
-              required
-            />
-          </div>
-        </div>
+        <Input
+          label="Unit Price"
+          name="unitPrice"
+          type="number"
+          min="0"
+          step="0.01"
+          value={tradeDetails.unitPrice.toString()}
+          onChange={handleTradeDetailsChange}
+          required
+          leftIcon={<span className="text-muted-foreground">$</span>}
+          placeholder="0.00"
+        />
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Total Value</label>
-          <div className="px-3 py-2 border rounded-md bg-gray-50">
+          <label className="block text-sm font-medium text-foreground">Total Value</label>
+          <div className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground">
             ${tradeDetails.totalValue.toFixed(2)} {tradeDetails.currency}
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="currency" className="block text-sm font-medium">
-            Currency <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="currency"
-            name="currency"
-            value={tradeDetails.currency}
-            onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          >
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-            <option value="GBP">GBP</option>
-            <option value="JPY">JPY</option>
-            <option value="AUD">AUD</option>
-            <option value="CAD">CAD</option>
-            <option value="CHF">CHF</option>
-            <option value="CNY">CNY</option>
-          </select>
-        </div>
+        <Select
+          label="Currency"
+          name="currency"
+          value={tradeDetails.currency}
+          onChange={handleTradeDetailsChange}
+          options={currencyOptions}
+          required
+        />
 
-        <div className="space-y-2">
-          <label
-            htmlFor="countryOfOrigin"
-            className="block text-sm font-medium"
-          >
-            Country of Origin <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="countryOfOrigin"
-            name="countryOfOrigin"
-            value={tradeDetails.countryOfOrigin}
-            onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Country of Origin"
+          name="countryOfOrigin"
+          value={tradeDetails.countryOfOrigin}
+          onChange={handleTradeDetailsChange}
+          required
+          placeholder="Enter country of origin"
+        />
 
-        <div className="space-y-2">
-          <label
-            htmlFor="destinationCountry"
-            className="block text-sm font-medium"
-          >
-            Destination Country <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="destinationCountry"
-            name="destinationCountry"
-            value={tradeDetails.destinationCountry}
-            onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Destination Country"
+          name="destinationCountry"
+          value={tradeDetails.destinationCountry}
+          onChange={handleTradeDetailsChange}
+          required
+          placeholder="Enter destination country"
+        />
 
-        <div className="space-y-2">
-          <label htmlFor="incoterms" className="block text-sm font-medium">
-            Incoterms <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="incoterms"
-            name="incoterms"
-            value={tradeDetails.incoterms}
-            onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          >
-            <option value="EXW">EXW - Ex Works</option>
-            <option value="FOB">FOB - Free On Board</option>
-            <option value="CIF">CIF - Cost, Insurance & Freight</option>
-            <option value="CIP">CIP - Carriage & Insurance Paid To</option>
-            <option value="DAP">DAP - Delivered At Place</option>
-            <option value="DPU">DPU - Delivered at Place Unloaded</option>
-            <option value="DDP">DDP - Delivered Duty Paid</option>
-          </select>
-        </div>
+        <Select
+          label="Incoterms"
+          name="incoterms"
+          value={tradeDetails.incoterms}
+          onChange={handleTradeDetailsChange}
+          options={incotermsOptions}
+          required
+        />
 
-        <div className="space-y-2">
-          <label htmlFor="shippingDate" className="block text-sm font-medium">
-            Shipping Date <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="date"
-            id="shippingDate"
-            name="shippingDate"
-            value={tradeDetails.shippingDate}
-            onChange={handleTradeDetailsChange}
-            min={new Date().toISOString().split('T')[0]}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Shipping Date"
+          name="shippingDate"
+          type="date"
+          value={tradeDetails.shippingDate}
+          onChange={handleTradeDetailsChange}
+          min={new Date().toISOString().split('T')[0]}
+          required
+        />
 
-        <div className="space-y-2">
-          <label
-            htmlFor="expectedDeliveryDate"
-            className="block text-sm font-medium"
-          >
-            Expected Delivery Date <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="date"
-            id="expectedDeliveryDate"
-            name="expectedDeliveryDate"
-            value={tradeDetails.expectedDeliveryDate}
-            onChange={handleTradeDetailsChange}
-            min={tradeDetails.shippingDate}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          />
-        </div>
+        <Input
+          label="Expected Delivery Date"
+          name="expectedDeliveryDate"
+          type="date"
+          value={tradeDetails.expectedDeliveryDate}
+          onChange={handleTradeDetailsChange}
+          min={tradeDetails.shippingDate}
+          required
+        />
 
-        <div className="space-y-2">
-          <label htmlFor="paymentTerms" className="block text-sm font-medium">
-            Payment Terms <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="paymentTerms"
-            name="paymentTerms"
-            value={tradeDetails.paymentTerms}
-            onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          >
-            <option value="30 days">Net 30 days</option>
-            <option value="60 days">Net 60 days</option>
-            <option value="90 days">Net 90 days</option>
-            <option value="advance">Advance payment</option>
-            <option value="on delivery">On delivery</option>
-            <option value="custom">Custom terms</option>
-          </select>
-        </div>
+        <Select
+          label="Payment Terms"
+          name="paymentTerms"
+          value={tradeDetails.paymentTerms}
+          onChange={handleTradeDetailsChange}
+          options={paymentTermsOptions}
+          required
+        />
 
-        <div className="space-y-2">
-          <label htmlFor="paymentMethod" className="block text-sm font-medium">
-            Payment Method <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="paymentMethod"
-            name="paymentMethod"
-            value={tradeDetails.paymentMethod}
-            onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
-            required
-          >
-            <option value="Bank Transfer">Bank Transfer</option>
-            <option value="Letter of Credit">Letter of Credit</option>
-            <option value="Documentary Collection">
-              Documentary Collection
-            </option>
-            <option value="Cash in Advance">Cash in Advance</option>
-            <option value="Online Payment">Online Payment</option>
-          </select>
-        </div>
+        <Select
+          label="Payment Method"
+          name="paymentMethod"
+          value={tradeDetails.paymentMethod}
+          onChange={handleTradeDetailsChange}
+          options={paymentMethodOptions}
+          required
+        />
 
-        <div className="space-y-2 md:col-span-2">
-          <label
-            htmlFor="specialInstructions"
-            className="block text-sm font-medium"
-          >
-            Special Instructions
-          </label>
-          <textarea
-            id="specialInstructions"
+        <div className="md:col-span-2">
+          <Textarea
+            label="Special Instructions"
             name="specialInstructions"
             value={tradeDetails.specialInstructions || ''}
             onChange={handleTradeDetailsChange}
             rows={3}
-            className="w-full px-3 py-2 border rounded-md"
             placeholder="Any special instructions or notes regarding this shipment..."
           />
         </div>

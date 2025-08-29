@@ -1,11 +1,8 @@
 import { ChangeEvent, useRef, useState, useEffect } from 'react';
-import { Upload, FileText, Loader2, Lock, X } from 'lucide-react';
-
-// Simple utility for conditional class names
-const cn = (...classes: (string | undefined)[]) =>
-  classes.filter(Boolean).join(' ');
-
-import {
+import { Upload, FileText, Loader2, Lock, X, AlertCircle, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { FileUpload } from './ui/FormComponents';
+import { 
   uploadToIPFS,
   generateEncryptionKey,
 } from '@/services/ipfsService';
@@ -123,13 +120,33 @@ export function DocumentInput({
       setState(newState);
       onChange(newState);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to process file';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload document';
       setState(prev => ({
         ...prev,
         loading: false,
         error: errorMessage,
       }));
       onError?.(errorMessage);
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragging(false);
+    
+    if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      await processFile(file);
     }
   };
 
@@ -154,124 +171,143 @@ export function DocumentInput({
     });
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isDragging) {
-      setIsDragging(true);
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    
-    if (e.dataTransfer.files?.[0]) {
-      processFile(e.dataTransfer.files[0]);
-    }
-  };
+  if (disabled) {
+    return (
+      <div className={cn('space-y-1', className)}>
+        <div className="flex items-center justify-between">
+          <label className="block text-sm font-medium text-foreground">
+            {label}
+            {required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+          <Lock className="h-4 w-4 text-muted-foreground" />
+        </div>
+        
+        <div className="relative">
+          <div 
+            className={cn(
+              'border-2 border-dashed rounded-lg p-6 text-center transition-colors',
+              'bg-muted cursor-not-allowed'
+            )}
+          >
+            <FileText className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">
+              Document submission disabled
+            </p>
+          </div>
+        </div>
+        
+        {description && (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className={cn('space-y-2', className)}>
-      {label && (
-        <label className="block text-sm font-medium text-gray-700">
-          {label} {required && <span className="text-red-500">*</span>}
+    <div className={cn('space-y-1', className)}>
+      <div className="flex items-center justify-between">
+        <label className="block text-sm font-medium text-foreground">
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
         </label>
-      )}
-
-      {description && (
-        <p className="text-sm text-gray-500 mb-2">{description}</p>
-      )}
-
-      {state.error && (
-        <p className="text-sm text-red-600">{state.error}</p>
-      )}
-
-      {state.file ? (
-        <div className="border rounded-md p-4 bg-gray-50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <FileText className="h-5 w-5 text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">
-                {state.file.name}
+        {state.loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+      </div>
+      
+      <div className="relative">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={accept}
+          onChange={handleFileChange}
+          className="hidden"
+          disabled={state.loading}
+        />
+        
+        {state.file ? (
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <FileText className="h-8 w-8 text-muted-foreground flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{state.file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(state.file.size / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemove}
+                disabled={state.loading}
+                className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            
+            {state.loading && (
+              <div className="mt-2">
+                <div className="w-full bg-secondary-200 dark:bg-secondary-800 rounded-full h-1">
+                  <div 
+                    className="bg-primary-600 h-1 rounded-full transition-all duration-300"
+                    style={{ width: '50%' }}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {state.cid && (
+              <div className="mt-2 flex items-center text-xs text-green-600 dark:text-green-400">
+                <Check className="h-3 w-3 mr-1 flex-shrink-0" />
+                <span>Uploaded to IPFS: {state.cid}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div 
+            className={cn(
+              'border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer',
+              isDragging 
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10' 
+                : 'border-muted-foreground/25 hover:border-muted-foreground/50',
+              state.error && 'border-red-500'
+            )}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={triggerFileInput}
+          >
+            <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-primary-600 hover:text-primary-500">
+                Click to upload
               </span>
-              {state.loading && (
-                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-              )}
-              {state.cid && !state.loading && (
-                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                  Uploaded
-                </span>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={handleRemove}
-              disabled={state.loading || disabled}
-              className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
-            >
-              <X className="h-4 w-4" />
-            </button>
+              {' '}or drag and drop
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {accept && `Accepted: ${accept.replace(/\./g, '').toUpperCase()} • `}
+              Max 10MB
+            </p>
           </div>
-          
-          {state.error && (
-            <p className="mt-2 text-sm text-red-600">{state.error}</p>
-          )}
-          
-          {state.cid && (
-            <div className="mt-2 text-xs text-gray-500">
-              <p>IPFS CID: <span className="font-mono">{state.cid}</span></p>
-              {state.iv && (
-                <p className="mt-1">
-                  <Lock className="inline h-3 w-3 mr-1" />
-                  Encrypted
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div
-          className={(
-            [
-              'border-2 border-dashed rounded-lg p-6 text-center transition-colors',
-              isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300',
-              disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-blue-400',
-            ] as string[]
-          ).filter(Boolean).join(' ')}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onClick={() => !disabled && fileInputRef.current?.click()}
-        >
-          <div className="flex flex-col items-center justify-center space-y-2">
-            <Upload className="h-10 w-10 text-gray-400" />
-            <div className="text-sm text-gray-600">
-              <span className="font-medium text-blue-600">Click to upload</span> or
-              drag and drop
-            </div>
-            <div className="text-xs text-gray-500">
-              {accept ? `${accept.replace(/\./g, ' ').toUpperCase()}` : 'Any file'}
-            </div>
-          </div>
-        </div>
+        )}
+      </div>
+      
+      {state.error && (
+        <p className="text-sm text-red-600 flex items-center">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          {state.error}
+        </p>
       )}
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        accept={accept}
-        onChange={handleFileChange}
-        disabled={disabled || state.loading}
-      />
+      
+      {description && !state.error && (
+        <p className="text-sm text-muted-foreground">{description}</p>
+      )}
     </div>
   );
 }

@@ -1,9 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, XCircle, Clock, Eye, Download, MessageSquare } from 'lucide-react';
+import {
+  StandardCard as Card,
+  StandardCardContent as CardContent,
+  StandardCardHeader as CardHeader,
+  StandardCardTitle as CardTitle,
+  StandardButton as Button,
+  StandardBadge as Badge,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Textarea
+} from './ui';
+import { CheckCircle, XCircle, Clock, Eye, Download, MessageSquare, Shield, AlertTriangle } from 'lucide-react';
+import { useAuth } from '../store';
+
+// Add the organization branding import
+import { ORGANIZATION_BRANDING } from '../config/organizationBranding';
 
 interface DocumentApproval {
   id: string;
@@ -18,6 +31,9 @@ interface DocumentApproval {
   comments?: string;
   reviewedBy?: string;
   reviewDate?: string;
+  organizationOnly?: boolean; // Flag for organization-specific data
+  // Add organization field to ensure proper filtering
+  organization?: string;
 }
 
 interface ApproversPanelProps {
@@ -26,32 +42,40 @@ interface ApproversPanelProps {
 
 const ORGANIZATION_CONFIG = {
   'national-bank': {
-    name: 'National Bank',
+    name: 'National Bank of Ethiopia',
     role: 'License Validator',
     documentTypes: ['LICENSE'],
     color: 'blue',
-    port: 8083
+    port: 8083,
+    msp: 'NationalBankMSP',
+    validRoles: ['NBE_ADMIN', 'NBE_OFFICER']
   },
   'customs': {
     name: 'Customs Authority', 
     role: 'Shipping Validator',
     documentTypes: ['SHIPPING'],
     color: 'green',
-    port: 8082
+    port: 8082,
+    msp: 'CustomsMSP',
+    validRoles: ['CUSTOMS_VALIDATOR']
   },
   'quality-authority': {
     name: 'Coffee Quality Authority',
     role: 'Quality Validator', 
     documentTypes: ['QUALITY'],
     color: 'purple',
-    port: 8081
+    port: 8081,
+    msp: 'CoffeeAuthorityMSP',
+    validRoles: ['QUALITY_INSPECTOR']
   },
   'exporter-bank': {
     name: 'Exporter Bank',
     role: 'Invoice Validator',
     documentTypes: ['INVOICE'], 
     color: 'orange',
-    port: 5000
+    port: 5000,
+    msp: 'ExporterBankMSP',
+    validRoles: ['BANK_VALIDATOR']
   }
 };
 
@@ -67,105 +91,159 @@ const getDocumentName = (docType: string): string => {
 };
 
 export default function ApproversPanel({ organizationType }: ApproversPanelProps) {
+  const { user } = useAuth();
   const [pendingApprovals, setPendingApprovals] = useState<DocumentApproval[]>([]);
   const [completedApprovals, setCompletedApprovals] = useState<DocumentApproval[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<DocumentApproval | null>(null);
   const [loading, setLoading] = useState(false);
   const [comment, setComment] = useState('');
+  const [accessError, setAccessError] = useState<string | null>(null);
 
   const config = ORGANIZATION_CONFIG[organizationType];
+  // Get organization branding
+  const orgBranding = ORGANIZATION_BRANDING[organizationType];
+
+  // Organization-specific access validation
+  useEffect(() => {
+    if (!user) {
+      setAccessError('User authentication required');
+      return;
+    }
+
+    // Validate user's organization matches the component's organization type
+    const userOrgMap: Record<string, string> = {
+      'National Bank of Ethiopia': 'national-bank',
+      'Customs Authority': 'customs',
+      'Coffee Quality Authority': 'quality-authority',
+      'Exporter Bank': 'exporter-bank',
+      'Commercial Bank of Ethiopia': 'exporter-bank'
+    };
+
+    const expectedOrgType = userOrgMap[user.organization];
+    if (expectedOrgType !== organizationType) {
+      setAccessError(`Access denied: User organization '${user.organization}' not authorized for '${config.name}' operations`);
+      return;
+    }
+
+    // Validate user's role is authorized for this organization
+    if (!config.validRoles.includes(user.role)) {
+      setAccessError(`Access denied: Role '${user.role}' not authorized for ${config.name}. Valid roles: ${config.validRoles.join(', ')}`);
+      return;
+    }
+
+    setAccessError(null);
+  }, [user, organizationType, config]);
 
   useEffect(() => {
-    fetchApprovals();
-    const interval = setInterval(fetchApprovals, 30000); // Poll every 30 seconds
-    return () => clearInterval(interval);
-  }, [organizationType]);
+    if (!accessError) {
+      fetchApprovals();
+      const interval = setInterval(fetchApprovals, 30000); // Poll every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [organizationType, accessError]);
 
   const fetchApprovals = async () => {
     setLoading(true);
     try {
-      // Real implementation: fetch from API Gateway
-      const response = await fetch(`http://localhost:8000/api/pending-approvals?org=${organizationType}`);
+      // Enhanced API call with organization-specific headers and validation
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add user role for additional backend validation
+      if (user?.role) {
+        headers['X-User-Role'] = user.role;
+      }
+      
+      // Add organization identifier for cross-validation
+      if (user?.organization) {
+        headers['X-Organization'] = organizationType;
+      }
+
+      const response = await fetch(`http://localhost:8000/api/pending-approvals?org=${organizationType}`, {
+        headers
+      });
       
       if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('Organization access denied - insufficient permissions');
+        } else if (response.status === 400) {
+          throw new Error('Invalid organization parameter');
+        }
         throw new Error(`Failed to fetch approvals: ${response.status}`);
       }
       
       const data = await response.json();
       
-      // Transform API response to match our interface
-      const pendingDocs: DocumentApproval[] = data.pendingApprovals?.map((item: any) => ({
-        id: item.id || item.exportId + '_' + item.docType,
-        exportId: item.exportId,
-        documentType: item.docType,
-        documentName: getDocumentName(item.docType),
-        documentHash: item.hash,
-        exporterName: item.exporterName || 'Unknown Exporter',
-        submissionDate: item.timestamp || item.submissionDate,
-        status: 'PENDING' as const,
-        urgencyLevel: item.urgencyLevel || 'MEDIUM' as const,
-        comments: item.comments,
-        reviewedBy: item.reviewedBy,
-        reviewDate: item.reviewDate
-      })) || [];
-      
-      setPendingApprovals(pendingDocs);
-      
-      // Also fetch completed approvals
-      const completedResponse = await fetch(`http://localhost:8000/api/completed-approvals?org=${organizationType}`);
-      if (completedResponse.ok) {
-        const completedData = await completedResponse.json();
-        const completedDocs: DocumentApproval[] = completedData.completedApprovals?.map((item: any) => ({
-          id: item.id || item.exportId + '_' + item.docType,
-          exportId: item.exportId,
-          documentType: item.docType,
-          documentName: getDocumentName(item.docType),
-          documentHash: item.hash,
-          exporterName: item.exporterName || 'Unknown Exporter',
-          submissionDate: item.timestamp || item.submissionDate,
-          status: item.status || 'PENDING',
-          urgencyLevel: item.urgencyLevel || 'MEDIUM' as const,
-          comments: item.comments,
-          reviewedBy: item.reviewedBy,
-          reviewDate: item.reviewDate
-        })) || [];
-        setCompletedApprovals(completedDocs);
+      // Validate response structure and organization-specific data
+      if (!data.success) {
+        throw new Error(data.error?.message || 'API request failed');
       }
       
+      // Ensure we only receive data for our organization
+      if (data.data.organization !== config.name && data.data.organizationMSP !== config.msp) {
+        console.warn('Received data for different organization, filtering out');
+        setPendingApprovals([]);
+        setCompletedApprovals([]);
+        return;
+      }
+      
+      // Validate that all returned documents are for our organization's document type
+      // AND belong to our organization
+      const validPendingDocuments = data.data.pendingApprovals?.filter((item: any) => {
+        const isValidDocType = item.docType === config.documentTypes[0];
+        const isOrgSpecific = item.organizationOnly === true;
+        const isCorrectOrganization = item.organization === config.name || !item.organization;
+        
+        if (!isValidDocType) {
+          console.warn(`Filtered out document with wrong type: ${item.docType}, expected: ${config.documentTypes[0]}`);
+          return false;
+        }
+        
+        if (!isOrgSpecific) {
+          console.warn('Filtered out document without organization-specific flag');
+          return false;
+        }
+        
+        if (!isCorrectOrganization) {
+          console.warn(`Filtered out document for different organization: ${item.organization}`);
+          return false;
+        }
+        
+        return true;
+      }) || [];
+      
+      const validCompletedDocuments = data.data.completedApprovals?.filter((item: any) => {
+        const isValidDocType = item.docType === config.documentTypes[0];
+        const isOrgSpecific = item.organizationOnly === true;
+        const isCorrectOrganization = item.organization === config.name || !item.organization;
+        
+        if (!isValidDocType) {
+          console.warn(`Filtered out completed document with wrong type: ${item.docType}, expected: ${config.documentTypes[0]}`);
+          return false;
+        }
+        
+        if (!isOrgSpecific) {
+          console.warn('Filtered out completed document without organization-specific flag');
+          return false;
+        }
+        
+        if (!isCorrectOrganization) {
+          console.warn(`Filtered out completed document for different organization: ${item.organization}`);
+          return false;
+        }
+        
+        return true;
+      }) || [];
+      
+      setPendingApprovals(validPendingDocuments);
+      setCompletedApprovals(validCompletedDocuments);
     } catch (error) {
       console.error('Error fetching approvals:', error);
-      
-      // Fallback to mock data for development
-      console.log('Falling back to mock data for development');
-      const mockPending: DocumentApproval[] = [
-        {
-          id: '1',
-          exportId: 'EXP-2024-001',
-          documentType: config.documentTypes[0] as any,
-          documentName: 'Export License Application',
-          documentHash: 'a1b2c3d4e5f6789012345',
-          exporterName: 'Colombian Coffee Co.',
-          submissionDate: '2024-08-26T10:30:00Z',
-          status: 'PENDING',
-          urgencyLevel: 'HIGH'
-        },
-        {
-          id: '2', 
-          exportId: 'EXP-2024-002',
-          documentType: config.documentTypes[0] as any,
-          documentName: 'Commercial Invoice',
-          documentHash: 'x9y8z7w6v5u4t3s2r1q0',
-          exporterName: 'Brazilian Beans Ltd.',
-          submissionDate: '2024-08-26T08:15:00Z',
-          status: 'PENDING',
-          urgencyLevel: 'MEDIUM'
-        }
-      ];
-
-      setPendingApprovals(mockPending);
-    } finally {
-      setLoading(false);
+      setPendingApprovals([]);
+      setCompletedApprovals([]);
     }
+    setLoading(false);
   };
 
   const handleApproval = async (documentId: string, action: 'APPROVED' | 'REJECTED') => {
@@ -250,8 +328,53 @@ export default function ApproversPanel({ organizationType }: ApproversPanelProps
     return <Badge variant={colors[level as keyof typeof colors] as any}>{level}</Badge>;
   };
 
+  // Display access error if user doesn't have proper organization access
+  if (accessError) {
+    return (
+      <Card className="border-red-500">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-red-600">
+            <Shield className="h-5 w-5" />
+            Organization Access Denied
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg border border-red-200">
+            <AlertTriangle className="h-6 w-6 text-red-500 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-red-800">Access Restricted</p>
+              <p className="text-sm text-red-700 mt-1">{accessError}</p>
+              <p className="text-xs text-red-600 mt-2">
+                Please contact your system administrator if you believe this is an error.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      {/* Organization Header with Enhanced Security Info */}
+      <Card className="border-l-4 border-l-blue-500 mb-6">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-full bg-blue-100">
+              <Shield className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-blue-700">
+                {config.name} - {config.role}
+              </h3>
+              <p className="text-xs text-gray-600">
+                MSP: {config.msp} | Document Type: {config.documentTypes[0]} | User: {user?.name} ({user?.role})
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">
@@ -417,18 +540,14 @@ export default function ApproversPanel({ organizationType }: ApproversPanelProps
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Review Comments
-                </label>
-                <textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Add your review comments..."
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  rows={4}
-                />
-              </div>
+              <Textarea
+                label="Review Comments"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Add your review comments..."
+                rows={4}
+                required
+              />
 
               <div className="flex gap-3 pt-4">
                 <Button
@@ -440,7 +559,7 @@ export default function ApproversPanel({ organizationType }: ApproversPanelProps
                 </Button>
                 <Button
                   onClick={() => handleApproval(selectedDocument.id, 'REJECTED')}
-                  variant="destructive"
+                  variant="danger"
                   className="flex-1"
                 >
                   <XCircle className="w-4 h-4 mr-2" />

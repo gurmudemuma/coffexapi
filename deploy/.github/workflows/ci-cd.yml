@@ -1,0 +1,421 @@
+# GitHub Actions CI/CD Pipeline
+# Coffee Export Platform - Continuous Integration and Deployment
+
+name: Coffee Export Platform CI/CD
+
+on:
+  push:
+    branches: [ main, develop, staging ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [ published ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: coffee-export
+
+jobs:
+  # ============================================================================
+  # BUILD AND TEST JOBS
+  # ============================================================================
+  
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: |
+          frontend/package-lock.json
+          api-gateway/package-lock.json
+    
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Install API Gateway dependencies
+      working-directory: ./api-gateway
+      run: npm ci
+    
+    - name: Lint frontend code
+      working-directory: ./frontend
+      run: npm run lint
+    
+    - name: Lint API Gateway code
+      working-directory: ./api-gateway
+      run: npm run lint
+    
+    - name: Run frontend tests
+      working-directory: ./frontend
+      run: npm run test:ci
+    
+    - name: Run API Gateway tests
+      working-directory: ./api-gateway
+      run: npm run test:ci
+    
+    - name: Upload test coverage
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./frontend/coverage/lcov.info,./api-gateway/coverage/lcov.info
+        flags: frontend,api-gateway
+        name: codecov-umbrella
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+    
+    - name: Run npm audit for frontend
+      working-directory: ./frontend
+      run: npm audit --audit-level high
+    
+    - name: Run npm audit for API Gateway
+      working-directory: ./api-gateway
+      run: npm audit --audit-level high
+
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, security-scan]
+    if: github.event_name != 'pull_request'
+    
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ github.repository }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push API Gateway image
+      id: build-api-gateway
+      uses: docker/build-push-action@v5
+      with:
+        context: ./api-gateway
+        file: ./api-gateway/Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}/api-gateway:${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Build and push Frontend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}/frontend:${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Build and push Validator images
+      run: |
+        # Build all validator images
+        docker buildx build --push \
+          --tag ${{ env.REGISTRY }}/${{ github.repository }}/national-bank-validator:${{ github.sha }} \
+          --file validators/national-bank/Dockerfile .
+        
+        docker buildx build --push \
+          --tag ${{ env.REGISTRY }}/${{ github.repository }}/quality-authority-validator:${{ github.sha }} \
+          --file validators/quality-authority/Dockerfile .
+        
+        docker buildx build --push \
+          --tag ${{ env.REGISTRY }}/${{ github.repository }}/customs-validator:${{ github.sha }} \
+          --file validators/customs/Dockerfile .
+        
+        docker buildx build --push \
+          --tag ${{ env.REGISTRY }}/${{ github.repository }}/bank-api-validator:${{ github.sha }} \
+          --file validators/bank-api/Dockerfile .
+
+  # ============================================================================
+  # DEPLOYMENT JOBS
+  # ============================================================================
+  
+  deploy-development:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: development
+      url: http://dev.coffee-export.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup deployment environment
+      run: |
+        echo "DEPLOY_ENV=development" >> $GITHUB_ENV
+        echo "DEPLOY_MODE=full" >> $GITHUB_ENV
+    
+    - name: Deploy to development
+      run: |
+        chmod +x ./deploy/deploy.sh
+        ./deploy/deploy.sh --environment development --verbose
+    
+    - name: Run smoke tests
+      run: |
+        # Wait for deployment to be ready
+        sleep 60
+        
+        # Run basic health checks
+        curl -f http://localhost:8000/health || exit 1
+        curl -f http://localhost:3000 || exit 1
+    
+    - name: Notify deployment status
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+      if: always()
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.ref == 'refs/heads/staging'
+    environment:
+      name: staging
+      url: https://staging.coffee-export.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup staging environment
+      run: |
+        echo "DEPLOY_ENV=staging" >> $GITHUB_ENV
+        echo "DEPLOY_MODE=full" >> $GITHUB_ENV
+    
+    - name: Deploy to staging
+      run: |
+        chmod +x ./deploy/deploy.sh
+        ./deploy/deploy.sh --environment staging --verbose
+      env:
+        STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        STAGING_JWT_SECRET: ${{ secrets.STAGING_JWT_SECRET }}
+    
+    - name: Run integration tests
+      run: |
+        # Wait for deployment to be ready
+        sleep 120
+        
+        # Run comprehensive integration tests
+        ./deploy/tests/integration-tests.sh
+    
+    - name: Performance testing
+      run: |
+        # Run performance tests with k6
+        docker run --rm -v $(pwd)/deploy/tests:/tests \
+          loadimpact/k6 run /tests/performance-test.js
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.event_name == 'release'
+    environment:
+      name: production
+      url: https://app.coffee-export.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+    
+    - name: Setup Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+    
+    - name: Configure kubectl
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+    
+    - name: Deploy to Kubernetes
+      run: |
+        # Update image tags in Kubernetes manifests
+        sed -i "s|:latest|:${{ github.sha }}|g" deploy/kubernetes/coffee-export-deployment.yaml
+        
+        # Apply Kubernetes manifests
+        kubectl apply -f deploy/kubernetes/coffee-export-deployment.yaml
+        
+        # Wait for rollout to complete
+        kubectl rollout status deployment/api-gateway -n coffee-export --timeout=600s
+        kubectl rollout status deployment/frontend -n coffee-export --timeout=600s
+    
+    - name: Verify production deployment
+      run: |
+        # Wait for services to be ready
+        sleep 180
+        
+        # Health checks
+        kubectl exec -n coffee-export deployment/api-gateway -- curl -f http://localhost:8000/health
+        
+        # External health checks
+        curl -f https://api.coffee-export.com/health
+        curl -f https://app.coffee-export.com
+    
+    - name: Run production smoke tests
+      run: |
+        ./deploy/tests/production-smoke-tests.sh
+    
+    - name: Notify production deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#production'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        text: |
+          🚀 Production deployment completed!
+          Version: ${{ github.ref_name }}
+          Commit: ${{ github.sha }}
+          Status: ${{ job.status }}
+      if: always()
+
+  # ============================================================================
+  # CLEANUP AND MONITORING
+  # ============================================================================
+  
+  cleanup-old-images:
+    name: Cleanup Old Images
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Delete old container images
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: coffee-export
+        package-type: container
+        min-versions-to-keep: 10
+        delete-only-untagged-versions: true
+
+  update-documentation:
+    name: Update Documentation
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Generate API documentation
+      run: |
+        # Generate OpenAPI documentation
+        npm run generate-docs
+    
+    - name: Update deployment documentation
+      run: |
+        # Update deployment status and version information
+        echo "Last deployment: $(date)" > DEPLOYMENT_STATUS.md
+        echo "Version: ${{ github.ref_name }}" >> DEPLOYMENT_STATUS.md
+        echo "Commit: ${{ github.sha }}" >> DEPLOYMENT_STATUS.md
+    
+    - name: Commit documentation updates
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: "docs: Update deployment documentation [skip ci]"
+        file_pattern: "*.md docs/"
+
+# ============================================================================
+# WORKFLOW DEPENDENCIES AND NOTIFICATIONS
+# ============================================================================
+
+  notify-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, security-scan, build-images, deploy-development, deploy-staging, deploy-production]
+    if: failure()
+    
+    steps:
+    - name: Notify failure
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        channel: '#alerts'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        text: |
+          ❌ CI/CD Pipeline Failed!
+          Branch: ${{ github.ref_name }}
+          Commit: ${{ github.sha }}
+          Workflow: ${{ github.workflow }}
+          Job: ${{ github.job }}
+
+  metrics-collection:
+    name: Collect Deployment Metrics
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Record deployment metrics
+      run: |
+        # Send deployment metrics to monitoring system
+        curl -X POST "${{ secrets.METRICS_ENDPOINT }}/deployments" \
+          -H "Authorization: Bearer ${{ secrets.METRICS_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "version": "${{ github.ref_name }}",
+            "commit": "${{ github.sha }}",
+            "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+            "environment": "production",
+            "status": "success"
+          }'

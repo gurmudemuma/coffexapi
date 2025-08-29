@@ -1,6 +1,36 @@
 import React from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
+// Utility functions for file formatting
+const getFileIcon = (fileName: string): string => {
+  const extension = fileName.split('.').pop()?.toLowerCase() || '';
+  switch (extension) {
+    case 'pdf':
+      return '📄';
+    case 'doc':
+    case 'docx':
+      return '📝';
+    case 'xls':
+    case 'xlsx':
+      return '📊';
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+    case 'gif':
+      return '🖼️';
+    default:
+      return '📁';
+  }
+};
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 interface DocumentPreviewProps {
   file: File;
   onRemove: () => void;
@@ -20,10 +50,6 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     }
     return null;
   }, [file]);
-
-  import { getFileIcon } from '@/utils/format';
-
-  import { formatFileSize } from '@/utils/format';
 
   return (
     <div

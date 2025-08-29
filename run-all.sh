@@ -22,9 +22,14 @@ NC='\033[0m' # No Color
 # Chaincode and channel configuration
 CHAINCODE_NAME="coffeeexport"
 CHAINCODE_VERSION="1.0"
-CHAINCODE_PATH="github.com/chaincode"
 CHANNEL_NAME="coffeeexport"
 SEQUENCE="1"
+
+# Directories
+NET_DIR="./network"
+ORGS_DIR="${NET_DIR}/organizations"
+GENESIS_DIR="${NET_DIR}/system-genesis-block"
+CHANNEL_ARTIFACTS_DIR="${NET_DIR}/channel-artifacts"
 
 # --- Utility Functions ---
 # -------------------------
@@ -69,7 +74,7 @@ cleanup_network() {
     docker-compose down -v --remove-orphans 2>/dev/null || true
     
     # Remove directories and files created by scripts
-    rm -rf organizations/ system-genesis-block/ channel-artifacts/
+    rm -rf "${ORGS_DIR}" "${GENESIS_DIR}" "${CHANNEL_ARTIFACTS_DIR}"
     rm -f ./*.tar.gz log.txt package_id.txt
     
     print_success "Cleanup complete."
@@ -80,28 +85,29 @@ generate_artifacts() {
     print_header "Generating Network Artifacts"
     
     # Generate crypto material for all organizations
-    print_status "Generating crypto material using 'cryptogen' ભા..."
-    cryptogen generate --config=./network/organizations/cryptogen/crypto-config-orderer.yaml --output="./organizations"
-cryptogen generate --config=./network/organizations/cryptogen/crypto-config.yaml --output="./organizations"
+    print_status "Generating crypto material using 'cryptogen'..."
+    export FABRIC_CFG_PATH="${NET_DIR}"
+    mkdir -p "${ORGS_DIR}"
+    cryptogen generate --config="${ORGS_DIR}/cryptogen/crypto-config-orderer.yaml" --output="${ORGS_DIR}"
+    cryptogen generate --config="${ORGS_DIR}/cryptogen/crypto-config.yaml" --output="${ORGS_DIR}"
     print_success "Crypto material generated."
-    ls -l organizations/peerOrganizations/nationalbank.com/users/Admin@nationalbank.com/msp/admincerts
 
     # Create the system channel genesis block
-    print_status "Generating genesis block using 'configtxgen' ભા..."
-    mkdir -p system-genesis-block
-    configtxgen -profile CoffeeConsortiumOrdererGenesis -channelID system-channel -outputBlock ./system-genesis-block/genesis.block -configPath ./network
+    print_status "Generating genesis block using 'configtxgen'..."
+    mkdir -p "${GENESIS_DIR}"
+    configtxgen -profile CoffeeConsortiumOrdererGenesis -channelID system-channel -outputBlock "${GENESIS_DIR}/genesis.block" -configPath "${NET_DIR}"
     print_success "Genesis block created."
 
     # Create the application channel transaction
     print_status "Generating channel configuration transaction..."
-    mkdir -p ./network/channel-artifacts
-    configtxgen -profile CoffeeExportChannel -outputCreateChannelTx ./network/channel-artifacts/coffeeexport.tx -channelID $CHANNEL_NAME -configPath ./network
+    mkdir -p "${CHANNEL_ARTIFACTS_DIR}"
+    configtxgen -profile CoffeeExportChannel -outputCreateChannelTx "${CHANNEL_ARTIFACTS_DIR}/coffeeexport.tx" -channelID "$CHANNEL_NAME" -configPath "${NET_DIR}"
     print_success "Channel transaction created."
 
     # Generate anchor peer update transactions for each organization
     print_status "Generating anchor peer updates..."
     for org in NationalBank ExporterBank CoffeeAuthority Customs; do
-        configtxgen -profile CoffeeExportChannel -outputAnchorPeersUpdate ./network/channel-artifacts/${org}MSPanchors.tx -channelID $CHANNEL_NAME -asOrg ${org}MSP -configPath ./network
+        configtxgen -profile CoffeeExportChannel -outputAnchorPeersUpdate "${CHANNEL_ARTIFACTS_DIR}/${org}MSPanchors.tx" -channelID "$CHANNEL_NAME" -asOrg "${org}MSP" -configPath "${NET_DIR}"
     done
     print_success "Anchor peer updates created."
 }
@@ -140,7 +146,7 @@ setup_and_start_network() {
         --cafile $ORDERER_CA
     "
     
-    docker-compose exec cli ls -l /etc/hyperledger/fabric/channel-artifacts/
+    docker-compose exec -T cli ls -l /etc/hyperledger/fabric/channel-artifacts/
 
     print_success "Channel created."
 }
@@ -151,16 +157,21 @@ join_channel() {
 
     for org in nationalbank exporterbank coffeeauthority customs; do
         print_status "Joining peer for ${org}..."
-        
-        # Determine port
-        PORT=7051
-        if [ "$org" == "exporterbank" ]; then PORT=8051;
-elif [ "$org" == "coffeeauthority" ]; then PORT=9051;
-elif [ "$org" == "customs" ]; then PORT=10051; fi
 
-        docker-compose exec cli bash -c "
+        case "$org" in
+          nationalbank)
+            MSP="NationalBankMSP"; PORT=7051 ;;
+          exporterbank)
+            MSP="ExporterBankMSP"; PORT=8051 ;;
+          coffeeauthority)
+            MSP="CoffeeAuthorityMSP"; PORT=9051 ;;
+          customs)
+            MSP="CustomsMSP"; PORT=10051 ;;
+        esac
+
+        docker-compose exec -T cli bash -c "
 export CORE_PEER_TLS_ENABLED=true
-export CORE_PEER_LOCALMSPID=\"${org^}MSP\"
+export CORE_PEER_LOCALMSPID=\"${MSP}\"
 export CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/organizations/peerOrganizations/${org}.com/peers/peer0.${org}.com/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/organizations/peerOrganizations/${org}.com/users/Admin@${org}.com/msp
 export CORE_PEER_ADDRESS=peer0.${org}.com:${PORT}

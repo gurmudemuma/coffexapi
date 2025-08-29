@@ -1,0 +1,26 @@
+username,password,organization,role
+nbe.admin1,admin123,National Bank of Ethiopia,NBE_ADMIN
+nbe.admin2,admin123,National Bank of Ethiopia,NBE_ADMIN
+nbe.officer1,officer123,National Bank of Ethiopia,NBE_OFFICER
+nbe.officer2,officer123,National Bank of Ethiopia,NBE_OFFICER
+nbe.officer3,officer123,National Bank of Ethiopia,NBE_OFFICER
+customs.validator1,customs123,Customs Authority,CUSTOMS_VALIDATOR
+customs.validator2,customs123,Customs Authority,CUSTOMS_VALIDATOR
+customs.validator3,customs123,Customs Authority,CUSTOMS_VALIDATOR
+customs.validator4,customs123,Customs Authority,CUSTOMS_VALIDATOR
+customs.validator5,customs123,Customs Authority,CUSTOMS_VALIDATOR
+quality.inspector1,quality123,Coffee Quality Authority,QUALITY_INSPECTOR
+quality.inspector2,quality123,Coffee Quality Authority,QUALITY_INSPECTOR
+quality.inspector3,quality123,Coffee Quality Authority,QUALITY_INSPECTOR
+quality.inspector4,quality123,Coffee Quality Authority,QUALITY_INSPECTOR
+bank.validator1,bank123,Exporter Bank,BANK_VALIDATOR
+bank.validator2,bank123,Exporter Bank,BANK_VALIDATOR
+bank.validator3,bank123,Commercial Bank of Ethiopia,BANK_VALIDATOR
+bank.validator4,bank123,Commercial Bank of Ethiopia,BANK_VALIDATOR
+bank.validator5,bank123,Exporter Bank,BANK_VALIDATOR
+bank.validator6,bank123,Commercial Bank of Ethiopia,BANK_VALIDATOR
+exporter.user1,exporter123,Coffee Exporters Association,EXPORTER
+exporter.user2,exporter123,Coffee Exporters Association,EXPORTER
+exporter.user3,exporter123,Coffee Exporters Association,EXPORTER
+exporter.user4,exporter123,Coffee Exporters Association,EXPORTER
+exporter.user5,exporter123,Coffee Exporters Association,EXPORTER

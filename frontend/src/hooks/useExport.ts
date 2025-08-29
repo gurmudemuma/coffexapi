@@ -10,12 +10,6 @@ export type ExportDocument = {
   metadata: Omit<DocumentMetadata, 'uploadedAt'>;
 };
 
-declare module '../services/ipfsService' {
-  interface IPFSOptions {
-    signal?: AbortSignal;
-  }
-}
-
 type UseExportReturn = {
   submitExport: (
     documents: ExportDocument[],
@@ -167,6 +161,7 @@ export const useExport = (): UseExportReturn => {
         
         const exportId = `EXP-${Date.now()}`;
         const exportRequest: Omit<ExportRequest, 'status'> = {
+          id: exportId,
           exportId,
           documents: documentsMetadata,
           exporter: exporterId,

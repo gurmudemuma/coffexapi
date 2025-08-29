@@ -4,6 +4,7 @@ import { useExportApprovals } from '../hooks/useExportApprovals';
 import type { ExportDocument } from '../hooks/useExport';
 import { ExportStatus } from './ExportStatus';
 import type { DocumentType, DocumentState } from './DocumentInput';
+import { Button } from './ui/StandardComponents';
 
 const ExporterDetailsTab = lazy(() => import('./ExporterDetailsTab'));
 const TradeDetailsTab = lazy(() => import('./TradeDetailsTab'));
@@ -446,15 +447,16 @@ export default function ExportForm() {
               <span className="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
                 {submittedExport.txHash}
               </span>
-              <button
+              <Button
                 onClick={() =>
                   navigator.clipboard.writeText(submittedExport.txHash || '')
                 }
-                className="ml-2 text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
-                title="Copy to clipboard"
+                variant="ghost"
+                size="sm"
+                className="ml-2"
               >
                 📋
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -468,12 +470,13 @@ export default function ExportForm() {
         />
 
         <div className="mt-6 flex justify-end">
-          <button
+          <Button
             onClick={handleNewExport}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+            variant="primary"
+            size="md"
           >
             Submit Another Export
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -503,13 +506,14 @@ export default function ExportForm() {
 
             return (
               <div key={tab} className="flex flex-col items-center flex-1">
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
                   onClick={() => {
                     if (isEnabled) {
                       setActiveTab(tab);
                     }
                   }}
+                  disabled={!isEnabled}
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                     activeTab === tab
                       ? 'bg-primary text-white'
@@ -519,7 +523,7 @@ export default function ExportForm() {
                   }`}
                 >
                   {index + 1}
-                </button>
+                </Button>
                 <span
                   className={`mt-2 text-sm font-medium ${
                     activeTab === tab
@@ -588,54 +592,43 @@ export default function ExportForm() {
         <div className="flex justify-between mt-8">
           <div>
             {activeTab === 'trade' || activeTab === 'documents' ? (
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={prevTab}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
               >
                 Previous
-              </button>
+              </Button>
             ) : null}
           </div>
 
           <div className="space-x-4">
-            <button
-              type="button"
+            <Button
+              variant="outline"
               onClick={handleReset}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
             >
               Reset
-            </button>
+            </Button>
 
             {activeTab === 'exporter' || activeTab === 'trade' ? (
-              <button
-                type="button"
+              <Button
+                variant="primary"
                 onClick={nextTab}
                 disabled={
                   (activeTab === 'exporter' && !isExporterDetailsValid()) ||
                   (activeTab === 'trade' && !isTradeDetailsValid())
                 }
-                className={`px-4 py-2 rounded-md text-white ${
-                  (activeTab === 'exporter' && isExporterDetailsValid()) ||
-                  (activeTab === 'trade' && isTradeDetailsValid())
-                    ? 'bg-primary hover:bg-primary/90'
-                    : 'bg-gray-400 cursor-not-allowed'
-                }`}
               >
                 Next
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
+                variant="primary"
                 type="submit"
                 disabled={!isFormValid || status === 'submitting'}
-                className={`px-4 py-2 rounded-md text-white ${
-                  isFormValid && status !== 'submitting'
-                    ? 'bg-primary hover:bg-primary/90'
-                    : 'bg-gray-400 cursor-not-allowed'
-                }`}
+                loading={status === 'submitting'}
               >
                 {status === 'submitting' ? 'Submitting...' : 'Submit Export'}
-              </button>
+              </Button>
             )}
           </div>
         </div>

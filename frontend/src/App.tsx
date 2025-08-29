@@ -1,142 +1,184 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import ExportForm from './components/ExportForm';
-import ApproversApp from './ApproversApp';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
+import { ErrorBoundary } from 'react-error-boundary';
 
-// Exporter Interface Component
-function ExporterApp() {
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white dark:from-dark-900 dark:to-dark-800 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-12">
-          <div className="inline-block px-6 py-2 bg-gold-100 dark:bg-gold-900/20 rounded-full mb-4">
-            <span className="text-sm font-semibold text-gold-800 dark:text-gold-400">
-              BLOCKCHAIN SECURED
-            </span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-gold-600 mb-4">
-            Coffee Export Platform
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Securely submit and validate your coffee export documents on the
-            blockchain
-          </p>
-        </header>
+// Providers and Context
+import { NotificationProvider } from './contexts/NotificationContext';
+import { AuthProvider } from './contexts/AuthContext';
 
-        <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-xl overflow-hidden border border-border">
-          <div className="p-6 sm:p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-foreground">
-                Document Submission
-              </h2>
-              <div className="flex space-x-2">
-                <span className="h-3 w-3 rounded-full bg-primary-500"></span>
-                <span className="h-3 w-3 rounded-full bg-gold-500"></span>
-                <span className="h-3 w-3 rounded-full bg-dark-500"></span>
-              </div>
-            </div>
-            <ExportForm />
-          </div>
-        </div>
+// Components
+import ProtectedRoute from './components/ProtectedRoute';
+import Layout from './components/Layout';
+import { LoadingSpinner, ErrorFallback } from './shared/components';
 
-        <footer className="mt-12 text-center text-sm text-muted-foreground">
-          <p>
-            © {new Date().getFullYear()} Coffee Export Platform. All rights
-            reserved.
-          </p>
-          <p className="mt-1">Powered by Hyperledger Fabric</p>
-        </footer>
-      </div>
-    </div>
-  );
+// Lazy-loaded pages for better performance
+const LoginPage = React.lazy(() => import('./pages/Login'));
+const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const ExporterDashboard = React.lazy(() => import('./pages/ExporterDashboard'));
+const BankDashboard = React.lazy(() => import('./pages/BankDashboard'));
+const CustomsDashboard = React.lazy(() => import('./pages/CustomsDashboard'));
+const QualityDashboard = React.lazy(() => import('./pages/QualityDashboard'));
+const NBEDashboard = React.lazy(() => import('./pages/NBEDashboard'));
+const ExportManage = React.lazy(() => import('./pages/ExportManage'));
+const UserManagement = React.lazy(() => import('./pages/UserManagement'));
+const ComplianceAlerts = React.lazy(() => import('./pages/ComplianceAlerts'));
+const AuditTrail = React.lazy(() => import('./pages/AuditTrail'));
+const ExportForm = React.lazy(() => import('./components/ExportForm'));
+
+// Global CSS
+import './index.css';
+
+/**
+ * Main Application Component
+ * 
+ * This is the primary application entry point that provides:
+ * - Global providers (Auth, Query Client, Error Boundary)
+ * - Routing configuration
+ * - Loading states and error handling
+ * - Theme and notification systems
+ */
+
+// ==============================================================================
+// Query Client Configuration
+// ==============================================================================
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        // Don't retry on authentication errors
+        if (error && typeof error === 'object' && 'status' in error) {
+          const status = (error as any).status;
+          if (status === 401 || status === 403) {
+            return false;
+          }
+        }
+        return failureCount < 3;
+      },
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime)
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
+
+// ==============================================================================
+// Loading Component
+// ==============================================================================
+
+const LoadingFallback: React.FC = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <LoadingSpinner size="lg" text="Loading application..." />
+  </div>
+);
+
+// ==============================================================================
+// Error Boundary Component
+// ==============================================================================
+
+interface AppErrorFallbackProps {
+  error: Error;
+  resetErrorBoundary: () => void;
 }
 
-// Landing Page with Navigation
-function LandingPage() {
+const AppErrorFallback: React.FC<AppErrorFallbackProps> = ({ 
+  error, 
+  resetErrorBoundary 
+}) => (
+  <ErrorFallback 
+    error={error}
+    resetErrorBoundary={resetErrorBoundary}
+    showDetails={process.env.NODE_ENV === 'development'}
+  />
+);
+
+// ==============================================================================
+// Main App Component
+// ==============================================================================
+
+const App: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white dark:from-dark-900 dark:to-dark-800 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-12">
-          <div className="inline-block px-6 py-2 bg-gold-100 dark:bg-gold-900/20 rounded-full mb-4">
-            <span className="text-sm font-semibold text-gold-800 dark:text-gold-400">
-              BLOCKCHAIN SECURED
-            </span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-gold-600 mb-4">
-            Coffee Export Platform
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Secure blockchain-based document validation for coffee export stakeholders
-          </p>
-        </header>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-          {/* Exporter Interface */}
-          <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-xl overflow-hidden border border-border hover:shadow-2xl transition-shadow">
-            <div className="p-6 sm:p-8 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
+    <ErrorBoundary
+      FallbackComponent={AppErrorFallback}
+      onError={(error, errorInfo) => {
+        console.error('App Error:', error, errorInfo);
+        // In production, send to error reporting service
+        if (process.env.NODE_ENV === 'production') {
+          // Example: Sentry.captureException(error, { extra: errorInfo });
+        }
+      }}
+    >
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <AuthProvider>
+            <NotificationProvider>
+              <div className="min-h-screen bg-gray-50">
+                <Suspense fallback={<LoadingFallback />}>
+                  <Routes>
+                    {/* Public Routes */}
+                    <Route path="/login" element={<LoginPage />} />
+                    
+                    {/* Protected Routes with Layout */}
+                    <Route
+                      path="/*"
+                      element={
+                        <ProtectedRoute>
+                          <Layout>
+                            <Routes>
+                              {/* Dashboard Routes */}
+                              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                              <Route path="/dashboard" element={<Dashboard />} />
+                              
+                              {/* Organization-specific Dashboards */}
+                              <Route path="/exporter" element={<ExporterDashboard />} />
+                              <Route path="/bank" element={<BankDashboard />} />
+                              <Route path="/customs" element={<CustomsDashboard />} />
+                              <Route path="/quality" element={<QualityDashboard />} />
+                              <Route path="/nbe" element={<NBEDashboard />} />
+                              
+                              {/* Export Management */}
+                              <Route path="/exports" element={<ExportManage />} />
+                              <Route path="/exports/new" element={<ExportForm />} />
+                              
+                              {/* Administrative Routes */}
+                              <Route path="/users" element={<UserManagement />} />
+                              <Route path="/compliance" element={<ComplianceAlerts />} />
+                              <Route path="/audit" element={<AuditTrail />} />
+                              
+                              {/* Fallback for unmatched routes */}
+                              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                            </Routes>
+                          </Layout>
+                        </ProtectedRoute>
+                      }
+                    />
+                  </Routes>
+                </Suspense>
               </div>
-              <h3 className="text-2xl font-bold mb-4">Export Documents</h3>
-              <p className="text-muted-foreground mb-6">
-                Submit coffee export documents for blockchain validation
-              </p>
-              <a 
-                href="/export" 
-                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-              >
-                Submit Export
-              </a>
-            </div>
-          </div>
-
-          {/* Approver Interface */}
-          <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-xl overflow-hidden border border-border hover:shadow-2xl transition-shadow">
-            <div className="p-6 sm:p-8 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-2xl font-bold mb-4">Approve Documents</h3>
-              <p className="text-muted-foreground mb-6">
-                Validate and approve export documents as authorized organization
-              </p>
-              <a 
-                href="/approvers" 
-                className="inline-block bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
-              >
-                Access Dashboard
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <footer className="text-center text-sm text-muted-foreground">
-          <p>
-            © {new Date().getFullYear()} Coffee Export Platform. All rights
-            reserved.
-          </p>
-          <p className="mt-1">Powered by Hyperledger Fabric</p>
-        </footer>
-      </div>
-    </div>
+              
+              {/* Global Toast Notifications */}
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: 'white',
+                    color: 'black',
+                    border: '1px solid #e5e5e5',
+                  },
+                }}
+              />
+            </NotificationProvider>
+          </AuthProvider>
+        </Router>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
-}
-
-function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/export" element={<ExporterApp />} />
-        <Route path="/approvers" element={<ApproversApp />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
-  );
-}
+};
 
 export default App;

@@ -21,7 +21,7 @@ echo "Building customs-validator..."
 docker build -f validators/customs/Dockerfile -t customs-validator .
 
 echo "Step 3: Building bank API service..."
-docker build -f chaincode/bank-api/Dockerfile -t bank-api-validator .
+docker build -f validators/bank-api/Dockerfile -t bank-api-validator .
 
 echo "Step 4: Building API Gateway..."
 docker build -f api-gateway/Dockerfile -t api-gateway .

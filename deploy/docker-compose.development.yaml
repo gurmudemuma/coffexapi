@@ -1,0 +1,199 @@
+# Docker Compose Development Environment Override
+# Coffee Export Platform - Development Configuration
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # DEVELOPMENT OVERRIDES
+  # ============================================================================
+  
+  # API Gateway - Development Mode
+  api-gateway:
+    build:
+      context: ../api-gateway
+      target: development
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=DEBUG
+      - HOT_RELOAD=true
+      - DEBUG_MODE=true
+    volumes:
+      - ../api-gateway:/app
+      - /app/node_modules
+    command: npm run dev
+    ports:
+      - "8000:8000"
+      - "9229:9229"  # Debug port
+    networks:
+      - coffee_net
+      - validator_net
+
+  # Frontend - Development Mode
+  frontend:
+    build:
+      context: ../frontend
+      target: development
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_LOG_LEVEL=DEBUG
+      - REACT_APP_ENABLE_DEV_TOOLS=true
+      - FAST_REFRESH=true
+    volumes:
+      - ../frontend/src:/app/src
+      - ../frontend/public:/app/public
+      - /app/node_modules
+    command: npm start
+    ports:
+      - "3000:3000"
+    networks:
+      - coffee_net
+    stdin_open: true
+    tty: true
+
+  # Development database
+  mongodb:
+    image: mongo:6
+    container_name: mongodb-dev
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=dev-password
+      - MONGO_INITDB_DATABASE=coffee_export_dev
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_dev_data:/data/db
+      - ../deploy/mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - coffee_net
+
+  # Development Redis
+  redis:
+    image: redis:7-alpine
+    container_name: redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - coffee_net
+
+  # Development tools
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog-dev
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    networks:
+      - coffee_net
+
+  # Development monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-dev
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../deploy/monitoring/prometheus-dev.yml:/etc/prometheus/prometheus.yml
+      - prometheus_dev_data:/prometheus
+    networks:
+      - coffee_net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-dev
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=dev-password
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_dev_data:/var/lib/grafana
+      - ../deploy/monitoring/grafana-dashboards:/var/lib/grafana/dashboards
+    networks:
+      - coffee_net
+
+  # ============================================================================
+  # VALIDATOR OVERRIDES - Development Mode
+  # ============================================================================
+  
+  national-bank-validator:
+    build:
+      context: ..
+      dockerfile: validators/national-bank/Dockerfile
+      target: development
+    environment:
+      - VALIDATOR_TYPE=LICENSE
+      - VALID_LICENSES=dev-license-hash-123,dev-license-hash-456
+      - PORT=8080
+      - LOG_LEVEL=DEBUG
+      - DEBUG_MODE=true
+    volumes:
+      - ../validators/national-bank:/app
+    ports:
+      - "8083:8080"
+      - "9230:9229"  # Debug port
+
+  bank-api-validator:
+    build:
+      context: ..
+      dockerfile: chaincode/bank-api/Dockerfile
+      target: development
+    environment:
+      - VALIDATOR_TYPE=INVOICE
+      - VALID_INVOICES=dev-invoice-hash-123,dev-invoice-hash-456
+      - PORT=5000
+      - LOG_LEVEL=DEBUG
+      - DEBUG_MODE=true
+    volumes:
+      - ../validators/bank-api:/app
+    ports:
+      - "5000:5000"
+      - "9231:9229"  # Debug port
+
+  quality-authority-validator:
+    build:
+      context: ..
+      dockerfile: validators/quality-authority/Dockerfile
+      target: development
+    environment:
+      - VALIDATOR_TYPE=QUALITY
+      - VALID_QUALITY_CERTS=dev-quality-hash-123,dev-quality-hash-456
+      - PORT=8081
+      - LOG_LEVEL=DEBUG
+      - DEBUG_MODE=true
+    volumes:
+      - ../validators/quality-authority:/app
+    ports:
+      - "8081:8081"
+      - "9232:9229"  # Debug port
+
+  customs-validator:
+    build:
+      context: ..
+      dockerfile: validators/customs/Dockerfile
+      target: development
+    environment:
+      - VALIDATOR_TYPE=SHIPPING
+      - VALID_SHIPPING_DOCS=dev-shipping-hash-123,dev-shipping-hash-456
+      - PORT=8082
+      - LOG_LEVEL=DEBUG
+      - DEBUG_MODE=true
+    volumes:
+      - ../validators/customs:/app
+    ports:
+      - "8082:8082"
+      - "9233:9229"  # Debug port
+
+volumes:
+  mongodb_dev_data:
+  redis_dev_data:
+  prometheus_dev_data:
+  grafana_dev_data:
+
+networks:
+  coffee_net:
+    driver: bridge
+  validator_net:
+    driver: bridge

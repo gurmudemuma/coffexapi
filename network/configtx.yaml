@@ -98,6 +98,27 @@ Organizations:
             - Host: peer0.customs.com
               Port: 10051
 
+    - &Exporter
+        Name: ExporterMSP
+        ID: ExporterMSP
+        MSPDir: organizations/peerOrganizations/exporter.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('ExporterMSP.admin', 'ExporterMSP.peer', 'ExporterMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('ExporterMSP.admin', 'ExporterMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('ExporterMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('ExporterMSP.peer')"
+        AnchorPeers:
+            - Host: peer0.exporter.com
+              Port: 11051
+
 Application: &ApplicationDefaults
     Organizations:
     Policies:
@@ -173,6 +194,7 @@ Profiles:
                     - *ExporterBank
                     - *CoffeeAuthority
                     - *Customs
+                    - *Exporter
 
     CoffeeExportChannel:
         <<: *ChannelDefaults
@@ -184,6 +206,7 @@ Profiles:
                 - *ExporterBank
                 - *CoffeeAuthority
                 - *Customs
+                - *Exporter
             Policies:
                 Readers:
                     Type: ImplicitMeta

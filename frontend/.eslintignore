@@ -1,0 +1,37 @@
+# Build outputs
+dist/
+build/
+coverage/
+
+# Dependencies
+node_modules/
+
+# Configuration files
+*.config.js
+*.config.ts
+vite.config.ts
+tailwind.config.js
+postcss.config.js
+
+# Generated files
+*.d.ts
+vite-env.d.ts
+
+# Test files that don't need strict linting
+**/*.test.setup.*
+setupTests.ts
+
+# Environment files
+.env*
+
+# Temporary files
+*.log
+*.tmp
+
+# IDE files
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db

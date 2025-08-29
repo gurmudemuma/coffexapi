@@ -13,11 +13,24 @@ export interface DocumentMetadata {
 }
 
 export interface ExportRequest {
+  id: string;
   exportId: string;
-  documents: Record<string, DocumentMetadata>; // docType -> DocumentMetadata
   exporter: string;
-  timestamp: number;
   status: string;
+  submittedAt?: number;
+  tradeDetails?: {
+    productType?: string;
+    quantity?: number;
+    totalValue?: number;
+    currency?: string;
+    destination?: string;
+  };
+  validationSummary?: {
+    totalValidations: number;
+    completedValidations: number;
+  };
+  documents: Record<string, DocumentMetadata>;
+  timestamp: number;
 }
 
 export interface FabricContract {
