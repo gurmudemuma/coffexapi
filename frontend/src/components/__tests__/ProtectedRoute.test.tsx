@@ -56,7 +56,7 @@ describe('ProtectedRoute', () => {
     id: 'user-123',
     name: 'Test User',
     role: 'NBE_ADMIN',
-    organization: 'National Bank of Ethiopia',
+    organization: 'The Mint',
     permissions: ['user:manage', 'compliance:screen', 'audit:read'],
     email: 'test@nbe.gov.et',
   };
@@ -168,13 +168,13 @@ describe('ProtectedRoute', () => {
       );
 
       expect(screen.getByText('Organization Access Violation')).toBeInTheDocument();
-      expect(screen.getByText('National Bank of Ethiopia')).toBeInTheDocument();
+      expect(screen.getByText('The Mint')).toBeInTheDocument();
       expect(screen.getByText('/customs-dashboard')).toBeInTheDocument();
       expect(auditLoggerModule.logOrganizationViolation).toHaveBeenCalledWith(
         'user-123',
         'Test User',
         'NBE_ADMIN',
-        'National Bank of Ethiopia',
+        'The Mint',
         '/customs-dashboard',
         ['/nbe-dashboard', '/dashboard/nbe', '/users', '/compliance', '/audit']
       );
@@ -235,7 +235,7 @@ describe('ProtectedRoute', () => {
         'user-123',
         'Test User',
         'NBE_OFFICER',
-        'National Bank of Ethiopia',
+        'The Mint',
         '/users',
         []
       );
@@ -261,7 +261,7 @@ describe('ProtectedRoute', () => {
     it('should allow access when user organization is in allowed list', () => {
       render(
         <TestWrapper>
-          <ProtectedRoute allowedOrganizations={['National Bank of Ethiopia']}>
+          <ProtectedRoute allowedOrganizations={['The Mint']}>
             <TestComponent />
           </ProtectedRoute>
         </TestWrapper>
@@ -281,7 +281,7 @@ describe('ProtectedRoute', () => {
 
       expect(screen.getByText('Organization Not Allowed')).toBeInTheDocument();
       expect(screen.getByText('Customs Authority')).toBeInTheDocument();
-      expect(screen.getByText('National Bank of Ethiopia')).toBeInTheDocument();
+      expect(screen.getByText('The Mint')).toBeInTheDocument();
       expect(auditLoggerModule.logOrganizationViolation).toHaveBeenCalled();
     });
 
@@ -367,7 +367,7 @@ describe('ProtectedRoute', () => {
         'user-123',
         'Test User',
         'NBE_ADMIN',
-        'National Bank of Ethiopia',
+        'The Mint',
         '/test-path',
         ['admin:superuser'],
         mockUser.permissions
@@ -528,7 +528,7 @@ describe('ProtectedRoute', () => {
         <TestWrapper>
           <ProtectedRoute
             requiredPermissions={['user:manage']}
-            allowedOrganizations={['National Bank of Ethiopia']}
+            allowedOrganizations={['The Mint']}
             allowedRoles={['NBE_ADMIN']}
           >
             <TestComponent />

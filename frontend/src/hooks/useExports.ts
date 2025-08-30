@@ -2,6 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../store';
 import type { ExportRequest } from '../lib/fabric';
 
+export type ExportStatus = 
+  | 'DRAFT' 
+  | 'SUBMITTED' 
+  | 'VALIDATING' 
+  | 'APPROVED' 
+  | 'REJECTED' 
+  | 'PAYMENT_RELEASED';
+
 export type ExportSummary = {
   id: string;
   exportId: string;
@@ -10,7 +18,7 @@ export type ExportSummary = {
   totalValue: number;
   currency: string;
   destination: string;
-  status: string;
+  status: ExportStatus;
   submittedAt?: number;
   validationProgress: number;
 };
@@ -23,7 +31,7 @@ export type ExportStats = {
   totalValue: number;
 };
 
-export const useExports = (exports: Record<string, ExportRequest>) => {
+export const useExports = () => {
   const { user } = useAuth();
   const [exportSummaries, setExportSummaries] = useState<ExportSummary[]>([]);
   const [stats, setStats] = useState<ExportStats>({
@@ -36,6 +44,70 @@ export const useExports = (exports: Record<string, ExportRequest>) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // Mock data for demonstration
+  const mockExports: Record<string, ExportRequest> = {
+    'exp-001': {
+      id: 'exp-001',
+      exportId: 'CE-2024-001',
+      exporter: user?.id || 'user-1',
+      status: 'SUBMITTED',
+      submittedAt: Date.now() - 24 * 60 * 60 * 1000, // 1 day ago
+      tradeDetails: {
+        productType: 'Arabica Coffee Beans',
+        quantity: 5000,
+        totalValue: 150000,
+        currency: 'USD',
+        destination: 'Germany',
+      },
+      validationSummary: {
+        totalValidations: 4,
+        completedValidations: 2,
+      },
+      documents: {},
+      timestamp: Date.now(),
+    },
+    'exp-002': {
+      id: 'exp-002',
+      exportId: 'CE-2024-002',
+      exporter: user?.id || 'user-1',
+      status: 'VALIDATING',
+      submittedAt: Date.now() - 12 * 60 * 60 * 1000, // 12 hours ago
+      tradeDetails: {
+        productType: 'Robusta Coffee Beans',
+        quantity: 3000,
+        totalValue: 90000,
+        currency: 'USD',
+        destination: 'Italy',
+      },
+      validationSummary: {
+        totalValidations: 4,
+        completedValidations: 1,
+      },
+      documents: {},
+      timestamp: Date.now(),
+    },
+    'exp-003': {
+      id: 'exp-003',
+      exportId: 'CE-2024-003',
+      exporter: user?.id || 'user-1',
+      status: 'APPROVED',
+      submittedAt: Date.now() - 48 * 60 * 60 * 1000, // 2 days ago
+      tradeDetails: {
+        productType: 'Arabica Coffee Beans',
+        quantity: 7500,
+        totalValue: 225000,
+        currency: 'USD',
+        destination: 'Netherlands',
+      },
+      validationSummary: {
+        totalValidations: 4,
+        completedValidations: 4,
+      },
+      documents: {},
+      timestamp: Date.now(),
+    },
+  };
+
   const processExports = useCallback((exportsData: Record<string, ExportRequest>) => {
     try {
       if (!user) return [];
@@ -47,13 +119,13 @@ export const useExports = (exports: Record<string, ExportRequest>) => {
 
       return userExports.map((exportRequest) => ({
         id: exportRequest.id,
-        exportId: exportRequest.id,
+        exportId: exportRequest.exportId,
         productType: exportRequest.tradeDetails?.productType || 'N/A',
         quantity: exportRequest.tradeDetails?.quantity || 0,
         totalValue: exportRequest.tradeDetails?.totalValue || 0,
         currency: exportRequest.tradeDetails?.currency || 'USD',
         destination: exportRequest.tradeDetails?.destination || 'N/A',
-        status: exportRequest.status,
+        status: exportRequest.status as ExportStatus,
         submittedAt: exportRequest.submittedAt,
         validationProgress:
           (exportRequest.validationSummary?.totalValidations ?? 0) > 0
@@ -71,62 +143,54 @@ export const useExports = (exports: Record<string, ExportRequest>) => {
 
   // Update export summaries and stats when exports or user changes
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setExportSummaries([]);
+      setStats({
+        totalExports: 0,
+        activeExports: 0,
+        pendingValidation: 0,
+        approvedExports: 0,
+        totalValue: 0,
+      });
+      setLoading(false);
+      return;
+    }
 
+    setLoading(true);
+    
+    // Process data immediately without artificial delay
     try {
-      setLoading(true);
-      const summaries = processExports(exports);
+      const summaries = processExports(mockExports);
       setExportSummaries(summaries);
 
-      // Calculate statistics
-      const activeCount = summaries.filter((s) =>
-        ['SUBMITTED', 'VALIDATING'].includes(s.status)
-      ).length;
-      const pendingCount = summaries.filter(
-        (s) => s.status === 'VALIDATING'
-      ).length;
-      const approvedCount = summaries.filter(
-        (s) => s.status === 'APPROVED'
-      ).length;
-      const totalVal = summaries.reduce((sum, s) => sum + s.totalValue, 0);
+      // Calculate stats
+      const totalExports = summaries.length;
+      const activeExports = summaries.filter(s => ['SUBMITTED', 'VALIDATING'].includes(s.status)).length;
+      const pendingValidation = summaries.filter(s => s.status === 'VALIDATING').length;
+      const approvedExports = summaries.filter(s => s.status === 'APPROVED').length;
+      const totalValue = summaries.reduce((sum, s) => sum + s.totalValue, 0);
 
       setStats({
-        totalExports: summaries.length,
-        activeExports: activeCount,
-        pendingValidation: pendingCount,
-        approvedExports: approvedCount,
-        totalValue: totalVal,
+        totalExports,
+        activeExports,
+        pendingValidation,
+        approvedExports,
+        totalValue,
       });
+
+      setError(null);
     } catch (err) {
-      console.error('Error updating export stats:', err);
-      setError(err instanceof Error ? err : new Error('Failed to update export stats'));
+      setError(err instanceof Error ? err : new Error('Failed to load exports'));
     } finally {
       setLoading(false);
     }
-  }, [exports, user, processExports]);
-
-  // Filter exports by status
-  const getExportsByStatus = useCallback(
-    (status: string) => {
-      return exportSummaries.filter((exp) => exp.status === status);
-    },
-    [exportSummaries]
-  );
-
-  // Get a single export by ID
-  const getExportById = useCallback(
-    (id: string) => {
-      return exportSummaries.find((exp) => exp.id === id);
-    },
-    [exportSummaries]
-  );
+  }, [user, processExports]);
 
   return {
-    exports: exportSummaries,
+    exports: mockExports,
+    exportSummaries,
     stats,
     loading,
     error,
-    getExportsByStatus,
-    getExportById,
   };
 };

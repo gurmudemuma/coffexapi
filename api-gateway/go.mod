@@ -3,6 +3,7 @@ module github.com/coffex/api-gateway
 go 1.18
 
 require (
+	github.com/chaincode/shared v0.0.0
 	github.com/hyperledger/fabric-gateway v1.0.0
 	google.golang.org/grpc v1.50.1
 )
@@ -19,3 +20,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )
+
+replace github.com/chaincode/shared => ../chaincode/shared

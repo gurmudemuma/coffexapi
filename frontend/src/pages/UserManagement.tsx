@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
-  Card,
-  CardContent,
+  Grid,
   Typography,
-  Button,
+  Avatar,
+  LinearProgress,
   Table,
   TableBody,
   TableCell,
@@ -12,25 +13,31 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Chip,
   IconButton,
+  Tooltip,
+  Stepper,
+  Step,
+  StepLabel,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  MenuItem,
+  Button,
+  Chip,
+  Alert,
   FormControl,
   InputLabel,
   Select,
-  Checkbox,
-  FormControlLabel,
+  MenuItem,
+  TextField,
   FormGroup,
-  Avatar,
-  Tooltip,
-  Alert,
-  Grid,
-  Divider,
+  FormControlLabel,
+  Checkbox,
+  Card,
+  CardContent,
 } from '@mui/material';
 import {
   Add,
@@ -43,6 +50,7 @@ import {
   AdminPanelSettings,
   Shield,
   Business,
+  Download,
 } from '@mui/icons-material';
 import { useAuth } from '../store';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -57,6 +65,7 @@ interface User {
   status: 'active' | 'inactive' | 'suspended';
   lastLogin: string;
   createdAt: string;
+  lastActive?: string; // Added for new functionality
 }
 
 interface UserFormData {
@@ -79,7 +88,7 @@ const availablePermissions = [
 ];
 
 const organizationTypes = [
-  'National Bank of Ethiopia',
+  'The Mint',
   'Customs Authority', 
   'Coffee Quality Authority',
   'Exporter Bank',
@@ -94,6 +103,7 @@ const roleTypes = [
 
 const UserManagement: React.FC = () => {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const { showNotification } = useNotifications();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,11 +133,12 @@ const UserManagement: React.FC = () => {
         name: 'Ahmed Hassan',
         email: 'ahmed.hassan@nbe.gov.et',
         role: 'NBE_ADMIN',
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         permissions: ['license:create', 'license:read', 'license:update', 'regulatory:all', 'user:manage'],
         status: 'active',
         lastLogin: '2024-01-15 09:30',
-        createdAt: '2023-12-01'
+        createdAt: '2023-12-01',
+        lastActive: '2024-01-15 09:30' // Added for new functionality
       },
       {
         id: '2',
@@ -138,7 +149,8 @@ const UserManagement: React.FC = () => {
         permissions: ['shipping:validate', 'document:review', 'customs:approve'],
         status: 'active',
         lastLogin: '2024-01-15 08:45',
-        createdAt: '2023-11-15'
+        createdAt: '2023-11-15',
+        lastActive: '2024-01-15 08:45' // Added for new functionality
       },
       {
         id: '3',
@@ -149,7 +161,8 @@ const UserManagement: React.FC = () => {
         permissions: ['quality:inspect', 'certificate:issue', 'quality:approve'],
         status: 'active',
         lastLogin: '2024-01-14 16:20',
-        createdAt: '2023-10-20'
+        createdAt: '2023-10-20',
+        lastActive: '2024-01-14 16:20' // Added for new functionality
       },
       {
         id: '4',
@@ -160,7 +173,8 @@ const UserManagement: React.FC = () => {
         permissions: ['invoice:validate', 'payment:process', 'bank:approve'],
         status: 'suspended',
         lastLogin: '2024-01-10 14:15',
-        createdAt: '2023-09-10'
+        createdAt: '2023-09-10',
+        lastActive: '2024-01-10 14:15' // Added for new functionality
       }
     ];
     
@@ -217,7 +231,8 @@ const UserManagement: React.FC = () => {
           id: Date.now().toString(),
           ...formData,
           lastLogin: 'Never',
-          createdAt: new Date().toISOString().split('T')[0]
+          createdAt: new Date().toISOString().split('T')[0],
+          lastActive: new Date().toISOString().split('T')[0] // Added for new functionality
         };
         setUsers(prev => [...prev, newUser]);
         showNotification('success', 'User Created', `${formData.name} has been added successfully`);
@@ -229,37 +244,109 @@ const UserManagement: React.FC = () => {
     }
   };
 
+  // Enhanced button handlers
+  const handleCreateUser = () => {
+    setEditingUser(null);
+    setFormData({
+      name: '',
+      email: '',
+      role: '',
+      organization: '',
+      permissions: [],
+      status: 'active'
+    });
+    setOpenDialog(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setFormData({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      organization: user.organization,
+      permissions: [...user.permissions],
+      status: user.status
+    });
+    setOpenDialog(true);
+  };
+
   const handleDeleteUser = async (userId: string) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
+    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const user = users.find(u => u.id === userId);
+        // In a real app, you'd make an API call here
         setUsers(prev => prev.filter(u => u.id !== userId));
-        showNotification('success', 'User Deleted', `${user?.name} has been removed`);
+        console.log(`User ${userId} deleted successfully`);
       } catch (error) {
-        showNotification('error', 'Error', 'Failed to delete user');
+        console.error('Failed to delete user:', error);
       }
     }
   };
 
-  const handleStatusChange = async (userId: string, newStatus: 'active' | 'inactive' | 'suspended') => {
+  const handleSuspendUser = async (userId: string) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       setUsers(prev => prev.map(u => 
         u.id === userId 
-          ? { ...u, status: newStatus }
+          ? { ...u, status: 'suspended' as User['status'] }
           : u
       ));
-      
-      const user = users.find(u => u.id === userId);
-      showNotification('success', 'Status Updated', `${user?.name} is now ${newStatus}`);
+      console.log(`User ${userId} suspended successfully`);
     } catch (error) {
-      showNotification('error', 'Error', 'Failed to update user status');
+      console.error('Failed to suspend user:', error);
     }
+  };
+
+  const handleActivateUser = async (userId: string) => {
+    try {
+      setUsers(prev => prev.map(u => 
+        u.id === userId 
+          ? { ...u, status: 'active' as User['status'] }
+          : u
+      ));
+      console.log(`User ${userId} activated successfully`);
+    } catch (error) {
+      console.error('Failed to activate user:', error);
+    }
+  };
+
+  const handleViewUserDetails = (userId: string) => {
+    navigate(`/users/${userId}`);
+  };
+
+  const handleExportUsers = () => {
+    // Export users data as CSV
+    const csvContent = generateUsersCSV(users);
+    downloadCSV(csvContent, 'users-data.csv');
+  };
+
+  // CSV generation and download functions
+  const generateUsersCSV = (data: User[]) => {
+    const headers = ['ID', 'Name', 'Email', 'Role', 'Organization', 'Status', 'Permissions'];
+    const rows = data.map(user => [
+      user.id,
+      user.name,
+      user.email,
+      user.role,
+      user.organization,
+      user.status,
+      user.permissions.join('; ')
+    ]);
+    
+    return [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+  };
+
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getStatusColor = (status: string) => {
@@ -296,18 +383,27 @@ const UserManagement: React.FC = () => {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      {/* Header */}
+      {/* Header with Action Buttons */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
+        <Typography variant="h4" component="h1">
           User Management
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => handleOpenDialog()}
-        >
-          Add New User
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<Download />}
+            onClick={handleExportUsers}
+          >
+            Export Users
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={handleCreateUser}
+          >
+            Create User
+          </Button>
+        </Box>
       </Box>
 
       {/* Stats Cards */}
@@ -445,12 +541,12 @@ const UserManagement: React.FC = () => {
                     <TableCell>
                       <Box sx={{ display: 'flex' }}>
                         <Tooltip title="View Details">
-                          <IconButton size="small">
+                          <IconButton size="small" onClick={() => handleViewUserDetails(user.id)}>
                             <Visibility />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Edit User">
-                          <IconButton size="small" onClick={() => handleOpenDialog(user)}>
+                          <IconButton size="small" onClick={() => handleEditUser(user)}>
                             <Edit />
                           </IconButton>
                         </Tooltip>
@@ -458,7 +554,7 @@ const UserManagement: React.FC = () => {
                           <Tooltip title="Suspend User">
                             <IconButton 
                               size="small" 
-                              onClick={() => handleStatusChange(user.id, 'suspended')}
+                              onClick={() => handleSuspendUser(user.id)}
                             >
                               <Block />
                             </IconButton>
@@ -467,7 +563,7 @@ const UserManagement: React.FC = () => {
                           <Tooltip title="Activate User">
                             <IconButton 
                               size="small" 
-                              onClick={() => handleStatusChange(user.id, 'active')}
+                              onClick={() => handleActivateUser(user.id)}
                             >
                               <CheckCircle />
                             </IconButton>

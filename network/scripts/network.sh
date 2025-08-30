@@ -31,7 +31,7 @@ print_error() {
 }
 
 # Set absolute path to the bin directory
-BIN_DIR="/home/gu-da/coffexapi/bin"
+BIN_DIR="$(cd "$(dirname "$0")/../../bin" && pwd)"
 export PATH=$BIN_DIR:$PATH
 
 # Verify binaries exist
@@ -91,7 +91,7 @@ generate_crypto() {
     print_status "Generating crypto materials for all organizations..."
     
     # Define the base directory
-    local BASE_DIR="/home/gu-da/coffexapi/network"
+    local BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
     
     # Create organizations directory
     mkdir -p "$BASE_DIR/organizations/peerOrganizations"
@@ -117,7 +117,7 @@ generate_genesis() {
     print_status "Generating system genesis block..."
     
     # Define the base directory
-    local BASE_DIR="/home/gu-da/coffexapi/network"
+    local BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
     
     # Create system-genesis-block directory if it doesn't exist
     mkdir -p "$BASE_DIR/system-genesis-block"
@@ -137,7 +137,7 @@ generate_channel_tx() {
     print_status "Generating channel configuration transaction..."
     
     # Define the base directory
-    local BASE_DIR="/home/gu-da/coffexapi/network"
+    local BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
     
     # Create channel-artifacts directory if it doesn't exist
     mkdir -p "$BASE_DIR/channel-artifacts"
@@ -157,7 +157,7 @@ generate_anchor_peers() {
     print_status "Generating anchor peer transactions..."
     
     # Define the base directory
-    local BASE_DIR="/home/gu-da/coffexapi/network"
+    local BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
     
     # Create channel-artifacts directory if it doesn't exist
     mkdir -p "$BASE_DIR/channel-artifacts"
@@ -200,7 +200,7 @@ start_network() {
     print_status "Starting the consortium network..."
     
     # Define the base directory
-    local BASE_DIR="/home/gu-da/coffexapi"
+    local BASE_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
     
     # Ensure the channel-artifacts directory exists
     mkdir -p "$BASE_DIR/network/channel-artifacts"

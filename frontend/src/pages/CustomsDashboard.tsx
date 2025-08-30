@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Grid,
@@ -14,6 +15,12 @@ import {
   Paper,
   IconButton,
   Tooltip,
+  Stepper,
+  Step,
+  StepLabel,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import {
   LocalShipping,
@@ -66,9 +73,70 @@ interface CustomsDashboardStats {
 
 const CustomsDashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<CustomsDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
+
+  // Enhanced button handlers
+  const handleViewDocuments = (shipmentId: string) => {
+    // Navigate to shipment documents page
+    navigate(`/customs/shipments`);
+  };
+
+  const handleDownloadManifest = (shipmentId: string) => {
+    // Generate and download shipping manifest
+    const manifestData = {
+      shipmentId,
+      timestamp: new Date().toISOString(),
+      authority: 'Customs Authority',
+      // Add more manifest data as needed
+    };
+    
+    const manifestContent = generateManifest(manifestData);
+    downloadManifest(manifestContent, `manifest-${shipmentId}.txt`);
+  };
+
+  const handleProcessClearance = (shipmentId: string) => {
+    // Navigate to clearance processing page
+    navigate(`/customs/clearance`);
+  };
+
+  const handleViewShipmentDetails = (shipmentId: string) => {
+    navigate(`/customs/shipments`);
+  };
+
+  // Manifest generation and download functions
+  const generateManifest = (data: any) => {
+    return `
+      SHIPPING MANIFEST
+      =================
+      Shipment ID: ${data.shipmentId}
+      Authority: ${data.authority}
+      Date: ${new Date(data.timestamp).toLocaleString()}
+      
+      This manifest contains the complete list of items
+      being shipped for export clearance.
+      
+      Customs Officer: ${user?.name || 'N/A'}
+      Organization: ${user?.organization || 'N/A'}
+      Role: ${user?.role || 'N/A'}
+      
+      Generated on: ${new Date().toLocaleString()}
+    `;
+  };
+
+  const downloadManifest = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Get organization branding
   const orgBranding = ORGANIZATION_BRANDING['customs'];
@@ -528,18 +596,18 @@ const CustomsDashboard: React.FC = () => {
                           <TableCell>
                             <Box sx={{ display: 'flex' }}>
                               <Tooltip title="View Documents">
-                                <IconButton size="small">
+                                <IconButton size="small" onClick={() => handleViewDocuments(shipment.id)}>
                                   <Visibility />
                                 </IconButton>
                               </Tooltip>
                               <Tooltip title="Download Manifest">
-                                <IconButton size="small" sx={{ color: '#2e7d32' }}>
+                                <IconButton size="small" sx={{ color: '#2e7d32' }} onClick={() => handleDownloadManifest(shipment.id)}>
                                   <Download />
                                 </IconButton>
                               </Tooltip>
                               {shipment.status === 'Under Review' && (
                                 <Tooltip title="Process Clearance">
-                                  <IconButton size="small" sx={{ color: '#1976d2' }}>
+                                  <IconButton size="small" sx={{ color: '#1976d2' }} onClick={() => handleProcessClearance(shipment.id)}>
                                     <AssignmentTurnedIn />
                                   </IconButton>
                                 </Tooltip>

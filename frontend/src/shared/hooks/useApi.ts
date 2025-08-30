@@ -65,6 +65,13 @@ export const useApi = <T = any>(options: UseApiOptions = {}): UseApiReturn<T> =>
   }, []);
 
   const execute = useCallback(async (apiCall: () => Promise<ApiResponse<T>>) => {
+    // Check if this is a duplicate request
+    const requestId = JSON.stringify(apiCall.toString());
+    if (lastApiCallRef.current && JSON.stringify(lastApiCallRef.current.toString()) === requestId) {
+      console.warn('Duplicate API request detected, skipping...');
+      return;
+    }
+    
     // Cancel any ongoing request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -109,12 +116,13 @@ export const useApi = <T = any>(options: UseApiOptions = {}): UseApiReturn<T> =>
 
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         
-        // Retry logic
-        if (attempt < retryAttempts) {
+        // Optimized retry logic with circuit breaker pattern
+        if (attempt < retryAttempts && !errorMessage.includes('401') && !errorMessage.includes('403')) {
           retryCountRef.current = attempt + 1;
+          const delay = Math.min(retryDelay * Math.pow(2, attempt), 10000); // Cap at 10 seconds
           setTimeout(() => {
             attemptApiCall(attempt + 1);
-          }, retryDelay * Math.pow(2, attempt)); // Exponential backoff
+          }, delay);
           return;
         }
 

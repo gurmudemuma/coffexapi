@@ -56,7 +56,7 @@ const Login: React.FC = () => {
 
     try {
       await login(username, password);
-      // Prefer context user if available after login; fallback to localStorage
+      // Get user from Zustand store after login
       const userStr = localStorage.getItem('user');
       if (userStr) {
         const stored = JSON.parse(userStr);
@@ -72,274 +72,146 @@ const Login: React.FC = () => {
   };
 
   const routeToOrganizationDashboard = (organization: string) => {
-    const ORG_HOME: Record<string, string> = {
-      'National Bank of Ethiopia': '/nbe',
+    const dashboardMap: Record<string, string> = {
+      'The Mint': '/nbe',
       'Customs Authority': '/customs',
       'Coffee Quality Authority': '/quality',
       'Exporter Bank': '/bank',
       'Commercial Bank of Ethiopia': '/bank',
       'Coffee Exporters Association': '/exporter',
     };
-    navigate(ORG_HOME[organization] || '/dashboard');
-  };
 
-  const networkMembers = [
-    {
-      organization: 'National Bank of Ethiopia',
-      credentials: [
-        { username: 'nbe.admin', password: 'admin123', role: 'NBE Administrator' },
-        { username: 'nbe.officer', password: 'officer123', role: 'NBE Officer' },
-      ],
-      icon: AccountBalance,
-      color: '#1565c0',
-      description: 'Central Banking & Regulatory Authority'
-    },
-    {
-      organization: 'Customs Authority',
-      credentials: [
-        { username: 'customs.validator', password: 'customs123', role: 'Customs Validator' },
-        { username: 'customs.supervisor', password: 'supervisor123', role: 'Customs Supervisor' },
-      ],
-      icon: LocalShipping,
-      color: '#2e7d32',
-      description: 'Import/Export Documentation & Clearance'
-    },
-    {
-      organization: 'Coffee Quality Authority',
-      credentials: [
-        { username: 'quality.inspector', password: 'quality123', role: 'Quality Inspector' },
-        { username: 'quality.manager', password: 'manager123', role: 'Quality Manager' },
-      ],
-      icon: VerifiedUser,
-      color: '#7b1fa2',
-      description: 'Coffee Quality Certification & Standards'
-    },
-    {
-      organization: 'Commercial Banks',
-      credentials: [
-        { username: 'bank.validator', password: 'bank123', role: 'Bank Validator' },
-        { username: 'bank.manager', password: 'manager123', role: 'Bank Manager' },
-      ],
-      icon: Assessment,
-      color: '#f57c00',
-      description: 'Trade Finance & Payment Processing'
-    },
-    {
-      organization: 'Coffee Exporters Association',
-      credentials: [
-        { username: 'exporter.user', password: 'exporter123', role: 'Coffee Exporter' },
-      ],
-      icon: Coffee,
-      color: '#8bc34a',
-      description: 'Coffee Export Operations & Management'
-    },
-  ];
-
-  const [selectedOrgIndex, setSelectedOrgIndex] = useState(0);
-
-  const fillCredentials = (username: string, password: string) => {
-    setUsername(username);
-    setPassword(password);
+    const dashboard = dashboardMap[organization] || '/dashboard';
+    navigate(dashboard);
   };
 
   return (
-    <div className="container mx-auto max-w-6xl">
-      <div
-        className="min-h-screen flex items-center py-8"
-        style={{
-          backgroundImage: "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url('/images/coffee-beans.jpg')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center w-full">
-          {/* Left Side - Branding */}
-          <div className="text-white text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start mb-6">
-              <Coffee className="text-5xl mr-4" />
-              <h1 className="text-4xl font-bold">
-                CoffEx
-              </h1>
-            </div>
-            <h2 className="text-3xl font-bold mb-4">
-              Ethiopia Coffee Export Platform
-            </h2>
-            <h3 className="text-xl mb-8 opacity-90">
-              Blockchain-secured trade finance and document validation system
-            </h3>
-            
-            {/* Features */}
-            <div className="mb-8">
-              <div className="flex items-center mb-4">
-                <Shield className="mr-4" />
-                <span className="text-lg">Secure Multi-party Validation</span>
-              </div>
-              <div className="flex items-center mb-4">
-                <BusinessCenter className="mr-4" />
-                <span className="text-lg">Trade Finance Integration</span>
-              </div>
-              <div className="flex items-center mb-4">
-                <CheckCircle className="mr-4" />
-                <span className="text-lg">Regulatory Compliance</span>
-              </div>
-            </div>
-
-            <p className="opacity-80">
-              Powered by Hyperledger Fabric Blockchain Technology
-            </p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-4">
+      <div className="w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Coffee className="h-12 w-12 text-green-600" />
           </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Coffee Export Platform
+          </h1>
+          <p className="text-gray-600">
+            Secure consortium network for coffee export management
+          </p>
+        </div>
 
-          {/* Right Side - Login Form */}
-          <div className="w-full">
-            <Card className="max-w-md mx-auto shadow-xl">
-              <CardContent className="p-6">
-                <div className="flex flex-col items-center mb-6">
-                  <div className="m-2 bg-primary-600 rounded-full w-14 h-14 flex items-center justify-center">
-                    <LockOutlined className="text-white" />
-                  </div>
-                  <h1 className="text-2xl font-bold text-primary-600">
-                    Network Portal
-                  </h1>
-                  <p className="text-gray-600 text-center">
-                    Coffee Export Consortium - Unified Login
-                  </p>
-                </div>
+        {/* Login Card */}
+        <Card className="shadow-xl">
+          <CardContent className="p-6">
+            <div className="text-center mb-6">
+              <LockOutlined className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <h2 className="text-xl font-semibold text-gray-900">Sign In</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Access your organization's dashboard
+              </p>
+            </div>
 
-                {error && (
-                  <Alert variant="error" className="mb-4">
-                    {error}
-                  </Alert>
-                )}
+            {error && (
+              <Alert variant="error" className="mb-4">
+                {error}
+              </Alert>
+            )}
 
-                <form onSubmit={handleSubmit} className="mt-4">
-                  <div className="mb-4">
-                    <Input
-                      required
-                      id="username"
-                      label="Username"
-                      name="username"
-                      autoComplete="username"
-                      autoFocus
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      disabled={isLoading}
-                    />
-                  </div>
-                  <div className="mb-6">
-                    <div className="relative">
-                      <Input
-                        required
-                        name="password"
-                        label="Password"
-                        type={showPassword ? 'text' : 'password'}
-                        id="password"
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        disabled={isLoading}
-                        aria-label="Password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-600"
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        disabled={isLoading}
-                      >
-                        {showPassword ? 'Hide' : 'Show'}
-                      </button>
-                    </div>
-                  </div>
-                  <Button
-                    type="submit"
-                    variant="default"
-                    size="lg"
-                    disabled={!isFormValid() || isLoading}
-                    className="mt-4 w-full"
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                  Username
+                </label>
+                <Input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your username"
+                  required
+                  disabled={isLoading}
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                    disabled={isLoading}
+                    className="w-full pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    disabled={isLoading}
                   >
-                    Sign In
-                  </Button>
-                </form>
-
-                <div className="my-6 flex items-center">
-                  <div className="flex-grow border-t border-gray-300"></div>
-                  <span className="mx-4 text-gray-600 text-sm">
-                    Network Members
-                  </span>
-                  <div className="flex-grow border-t border-gray-300"></div>
+                    {showPassword ? (
+                      <LockOutlined className="h-4 w-4" />
+                    ) : (
+                      <LockOutlined className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
+              </div>
 
-                {/* Organization Tabs */}
-                <div className="border-b border-gray-200 mb-4">
-                  <Tabs 
-                    value={selectedOrgIndex.toString()} 
-                    onValueChange={(newValue) => setSelectedOrgIndex(parseInt(newValue))}
-                  >
-                    <TabsList className="w-full grid grid-cols-5">
-                      {networkMembers.map((org, index) => {
-                        const IconComponent = org.icon;
-                        return (
-                          <TabsTrigger 
-                            key={index}
-                            value={index.toString()}
-                            className="flex flex-col items-center gap-1 py-2"
-                          >
-                            <IconComponent className="h-4 w-4" />
-                            <span className="text-xs hidden sm:inline">{org.organization.split(' ')[0]}</span>
-                          </TabsTrigger>
-                        );
-                      })}
-                    </TabsList>
-                  </Tabs>
-                </div>
+              <Button
+                type="submit"
+                disabled={isLoading || !isFormValid()}
+                className="w-full"
+              >
+                {isLoading ? 'Signing In...' : 'Sign In'}
+              </Button>
+            </form>
 
-                {/* Selected Organization Details */}
-                <div>
-                  <div className="p-3 mb-3 rounded-lg border" 
-                    style={{ 
-                      backgroundColor: networkMembers[selectedOrgIndex].color + '10',
-                      borderColor: networkMembers[selectedOrgIndex].color + '30'
-                    }}
-                  >
-                    <h3 className="text-lg font-semibold" 
-                      style={{ 
-                        color: networkMembers[selectedOrgIndex].color
-                      }}
-                    >
-                      {networkMembers[selectedOrgIndex].organization}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {networkMembers[selectedOrgIndex].description}
-                    </p>
-                  </div>
-                  
-                  <div className="max-h-40 overflow-y-auto">
-                    {networkMembers[selectedOrgIndex].credentials.map((cred, index) => (
-                      <div 
-                        key={index}
-                        className="p-3 mb-2 rounded cursor-pointer border border-transparent hover:border-gray-300"
-                        style={{ 
-                          backgroundColor: '#f5f5f5',
-                        }}
-                        onClick={() => fillCredentials(cred.username, cred.password)}
-                      >
-                        <h4 className="font-medium">
-                          {cred.role}
-                        </h4>
-                        <p className="text-sm font-mono text-gray-600">
-                          {cred.username} / {cred.password}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Demo Credentials */}
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-900 mb-2">Demo Credentials</h3>
+              <div className="space-y-1 text-xs text-gray-600">
+                <div><strong>Exporter:</strong> exporter / password</div>
+                <div><strong>NBE Officer:</strong> nbe / password</div>
+                <div><strong>Quality Inspector:</strong> quality / password</div>
+                <div><strong>Customs Officer:</strong> customs / password</div>
+                <div><strong>Bank Officer:</strong> bank / password</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-            <p className="text-white text-center mt-4">
-              © 2024 Ethiopia Coffee Export Consortium. All rights reserved.
-            </p>
+        {/* Organization Icons */}
+        <div className="mt-8 text-center">
+          <p className="text-sm text-gray-500 mb-4">Trusted by leading organizations</p>
+          <div className="flex justify-center space-x-6">
+            <div className="flex flex-col items-center">
+              <AccountBalance className="h-6 w-6 text-blue-600" />
+              <span className="text-xs text-gray-600 mt-1">NBE</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <LocalShipping className="h-6 w-6 text-green-600" />
+              <span className="text-xs text-gray-600 mt-1">Customs</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <VerifiedUser className="h-6 w-6 text-purple-600" />
+              <span className="text-xs text-gray-600 mt-1">Quality</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <BusinessCenter className="h-6 w-6 text-orange-600" />
+              <span className="text-xs text-gray-600 mt-1">Bank</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <Assessment className="h-6 w-6 text-red-600" />
+              <span className="text-xs text-gray-600 mt-1">Exporters</span>
+            </div>
           </div>
         </div>
       </div>

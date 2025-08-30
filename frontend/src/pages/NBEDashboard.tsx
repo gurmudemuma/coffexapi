@@ -1,10 +1,26 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Grid,
   Typography,
   Avatar,
   LinearProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Tooltip,
+  Stepper,
+  Step,
+  StepLabel,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import {
   AccountBalance,
@@ -44,9 +60,75 @@ interface NBEDashboardStats {
 
 const NBEDashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<NBEDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
+
+  // Enhanced button handlers
+  const handleManageLicenses = () => {
+    // Navigate to license management page
+    navigate('/licenses');
+  };
+
+  const handleViewCompliance = () => {
+    // Navigate to compliance monitoring page
+    navigate('/compliance');
+  };
+
+  const handleTakeAction = () => {
+    // Navigate to enforcement actions page
+    navigate('/compliance');
+  };
+
+  const handleViewLicenseDetails = (licenseId: string) => {
+    navigate(`/licenses`);
+  };
+
+  const handleDownloadLicense = (licenseId: string) => {
+    // Generate and download license document
+    const licenseData = {
+      licenseId,
+      timestamp: new Date().toISOString(),
+      authority: 'The Mint',
+      // Add more license data as needed
+    };
+    
+    const licenseContent = generateLicense(licenseData);
+    downloadLicense(licenseContent, `license-${licenseId}.txt`);
+  };
+
+  // License generation and download functions
+  const generateLicense = (data: any) => {
+    return `
+      EXPORT LICENSE
+      ==============
+      License ID: ${data.licenseId}
+      Authority: ${data.authority}
+      Date: ${new Date(data.timestamp).toLocaleString()}
+      
+      This license authorizes the export of coffee products
+      in accordance with NBE regulations and requirements.
+      
+      Issued by: ${user?.name || 'N/A'}
+      Organization: ${user?.organization || 'N/A'}
+      Role: ${user?.role || 'N/A'}
+      
+      Valid until: ${new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+    `;
+  };
+
+  const downloadLicense = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Get organization branding
   const orgBranding = ORGANIZATION_BRANDING['national-bank'];
@@ -69,7 +151,7 @@ const NBEDashboard: React.FC = () => {
       
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.data.organization === 'National Bank of Ethiopia') {
+        if (data.success && data.data.organization === 'The Mint') {
           setStats(data.data.stats);
         } else {
           // Fallback to organization-specific mock data
@@ -81,7 +163,7 @@ const NBEDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error fetching NBE dashboard data:', error);
       // Fallback to NBE-specific mock data (only for NBE users)
-      if (user?.organization === 'National Bank of Ethiopia') {
+      if (user?.organization === 'The Mint') {
         const nbeSpecificStats: NBEDashboardStats = {
           totalLicenses: 2847,
           activeLicenses: 2689,
@@ -125,7 +207,7 @@ const NBEDashboard: React.FC = () => {
           </Avatar>
           <Box>
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: orgBranding.primaryColor, mb: 0 }}>
-              National Bank of Ethiopia
+              The Mint
             </Typography>
             <Typography variant="h6" color="text.secondary">
               Regulatory Control Center - Welcome, {user?.name}
@@ -275,7 +357,7 @@ const NBEDashboard: React.FC = () => {
                       Recent Regulatory Actions
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Monitor NBE-specific coffee export license activities and regulatory compliance for National Bank of Ethiopia operations only.
+                      Monitor NBE-specific coffee export license activities and regulatory compliance for The Mint operations only.
                     </Typography>
                     <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
                       <Button variant="outline">
@@ -349,7 +431,7 @@ const NBEDashboard: React.FC = () => {
                       Regulatory Actions Center
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                      NBE-specific regulatory enforcement actions, compliance monitoring, and license management activities for National Bank of Ethiopia jurisdiction.
+                      NBE-specific regulatory enforcement actions, compliance monitoring, and license management activities for The Mint jurisdiction.
                     </Typography>
                     
                     <Grid container spacing={2}>
@@ -362,7 +444,7 @@ const NBEDashboard: React.FC = () => {
                             <Typography variant="body2" sx={{ mb: 2 }}>
                               • Process NBE export license applications\n• Monitor NBE regulatory compliance\n• Handle NBE license renewals and extensions
                             </Typography>
-                            <Button variant="primary" size="sm">
+                            <Button variant="primary" size="sm" onClick={handleManageLicenses}>
                               Manage Licenses
                             </Button>
                           </CardContent>
@@ -378,7 +460,7 @@ const NBEDashboard: React.FC = () => {
                             <Typography variant="body2" sx={{ mb: 2 }}>
                               • NBE real-time violation detection\n• NBE automated compliance checks\n• NBE regulatory risk assessments
                             </Typography>
-                            <Button variant="primary" size="sm">
+                            <Button variant="primary" size="sm" onClick={handleViewCompliance}>
                               View Compliance
                             </Button>
                           </CardContent>
@@ -394,7 +476,7 @@ const NBEDashboard: React.FC = () => {
                             <Typography variant="body2" sx={{ mb: 2 }}>
                               • Issue NBE violations and penalties\n• NBE license suspension and revocation\n• NBE investigation management
                             </Typography>
-                            <Button variant="primary" size="sm">
+                            <Button variant="primary" size="sm" onClick={handleTakeAction}>
                               Take Action
                             </Button>
                           </CardContent>

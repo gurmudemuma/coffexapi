@@ -528,13 +528,13 @@ const mockLogin = async (username: string, password: string): Promise<{ user: Us
   await new Promise(resolve => setTimeout(resolve, 1000));
   
   const mockUsers: Record<string, { password: string; user: User }> = {
-    'nbe.admin': {
-      password: 'admin123',
+    'nbe': {
+      password: 'password',
       user: {
         id: 'nbe-admin-001',
-        name: 'NBE Administrator',
+        name: 'NBE Officer',
         role: 'NBE_ADMIN',
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         permissions: [
           'license:create', 'license:read', 'license:update', 'license:delete',
           'declaration:read', 'declaration:approve', 'declaration:reject',
@@ -545,11 +545,11 @@ const mockLogin = async (username: string, password: string): Promise<{ user: Us
         lastLogin: Date.now(),
       }
     },
-    'customs.validator': {
-      password: 'customs123',
+    'customs': {
+      password: 'password',
       user: {
         id: 'customs-val-001',
-        name: 'Customs Validator',
+        name: 'Customs Officer',
         role: 'CUSTOMS_VALIDATOR',
         organization: 'Customs Authority',
         permissions: [
@@ -559,8 +559,8 @@ const mockLogin = async (username: string, password: string): Promise<{ user: Us
         lastLogin: Date.now(),
       }
     },
-    'quality.inspector': {
-      password: 'quality123',
+    'quality': {
+      password: 'password',
       user: {
         id: 'quality-ins-001',
         name: 'Quality Inspector',
@@ -573,13 +573,13 @@ const mockLogin = async (username: string, password: string): Promise<{ user: Us
         lastLogin: Date.now(),
       }
     },
-    'bank.validator': {
-      password: 'bank123',
+    'bank': {
+      password: 'password',
       user: {
         id: 'bank-val-001',
-        name: 'Bank Validator',
+        name: 'Bank Officer',
         role: 'BANK_VALIDATOR',
-        organization: 'Exporter Bank',
+        organization: 'Commercial Bank of Ethiopia',
         permissions: [
           'invoice:validate', 'payment:process', 'bank:approve', 'audit:read'
         ],
@@ -587,8 +587,8 @@ const mockLogin = async (username: string, password: string): Promise<{ user: Us
         lastLogin: Date.now(),
       }
     },
-    'exporter.user': {
-      password: 'exporter123',
+    'exporter': {
+      password: 'password',
       user: {
         id: 'exporter-001',
         name: 'Coffee Exporter',

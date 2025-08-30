@@ -84,7 +84,7 @@ describe('Authentication Store Integration', () => {
           id: 'nbe-admin-001',
           name: 'NBE Administrator',
           role: 'NBE_ADMIN',
-          organization: 'National Bank of Ethiopia',
+          organization: 'The Mint',
           email: 'admin@nbe.gov.et',
         })
       );
@@ -96,7 +96,7 @@ describe('Authentication Store Integration', () => {
         'nbe-admin-001',
         'NBE Administrator',
         'NBE_ADMIN',
-        'National Bank of Ethiopia'
+        'The Mint'
       );
 
       // Check localStorage

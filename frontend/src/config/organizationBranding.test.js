@@ -17,7 +17,7 @@ console.log('- Organizations:', organizations.join(', '));
 // Test data that matches our TypeScript configuration
 const testData = {
   'national-bank': {
-    name: 'National Bank of Ethiopia',
+    name: 'The Mint',
     primaryColor: '#1565c0',
     backgroundColor: '#f8f9fa'
   },

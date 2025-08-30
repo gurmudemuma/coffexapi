@@ -16,64 +16,64 @@ export interface OrganizationBranding {
 
 export const ORGANIZATION_BRANDING: Record<string, OrganizationBranding> = {
   'national-bank': {
-    name: 'National Bank of Ethiopia',
-    primaryColor: '#1565c0', // Deep blue
-    secondaryColor: '#0d47a1', // Darker blue
-    accentColor: '#64b5f6', // Light blue
+    name: 'The Mint',
+    primaryColor: '#FFD700', // Gold
+    secondaryColor: '#800080', // Purple
+    accentColor: '#000000', // Black
     backgroundColor: '#f8f9fa', // Light gray
-    textColor: '#0d47a1',
-    logoColor: '#1565c0',
-    chartColors: ['#1565c0', '#0d47a1', '#64b5f6', '#bbdefb', '#e3f2fd'],
-    gradient: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
-    boxShadow: '0 4px 6px rgba(21, 101, 192, 0.1)'
+    textColor: '#000000',
+    logoColor: '#FFD700',
+    chartColors: ['#FFD700', '#800080', '#000000', '#E6E6FA', '#FFFFFF'],
+    gradient: 'linear-gradient(135deg, #FFD700 0%, #800080 100%)',
+    boxShadow: '0 4px 6px rgba(128, 0, 128, 0.1)'
   },
   'customs': {
-    name: 'Customs Authority',
-    primaryColor: '#2e7d32', // Deep green
-    secondaryColor: '#1b5e20', // Darker green
-    accentColor: '#81c784', // Light green
+    name: 'Clearance House',
+    primaryColor: '#0000FF', // Blue
+    secondaryColor: '#ADD8E6', // Light Blue
+    accentColor: '#FFFFFF', // White
     backgroundColor: '#f1f8e9', // Light green background
-    textColor: '#1b5e20',
-    logoColor: '#2e7d32',
-    chartColors: ['#2e7d32', '#1b5e20', '#81c784', '#c8e6c9', '#e8f5e9'],
-    gradient: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)',
-    boxShadow: '0 4px 6px rgba(46, 125, 50, 0.1)'
+    textColor: '#0000FF',
+    logoColor: '#0000FF',
+    chartColors: ['#0000FF', '#ADD8E6', '#FFFFFF', '#E6E6FA', '#F0F8FF'],
+    gradient: 'linear-gradient(135deg, #0000FF 0%, #ADD8E6 100%)',
+    boxShadow: '0 4px 6px rgba(0, 0, 255, 0.1)'
   },
   'quality-authority': {
-    name: 'Coffee Quality Authority',
-    primaryColor: '#7b1fa2', // Deep purple
-    secondaryColor: '#4a148c', // Darker purple
-    accentColor: '#ba68c8', // Light purple
+    name: 'Cup of Quality',
+    primaryColor: '#A52A2A', // Brown
+    secondaryColor: '#D2B48C', // Tan
+    accentColor: '#F5F5DC', // Beige
     backgroundColor: '#fce4ec', // Light pink background
-    textColor: '#4a148c',
-    logoColor: '#7b1fa2',
-    chartColors: ['#7b1fa2', '#4a148c', '#ba68c8', '#e1bee7', '#f8bbd0'],
-    gradient: 'linear-gradient(135deg, #7b1fa2 0%, #4a148c 100%)',
-    boxShadow: '0 4px 6px rgba(123, 31, 162, 0.1)'
+    textColor: '#A52A2A',
+    logoColor: '#A52A2A',
+    chartColors: ['#A52A2A', '#D2B48C', '#F5F5DC', '#FAEBD7', '#FFFAF0'],
+    gradient: 'linear-gradient(135deg, #A52A2A 0%, #D2B48C 100%)',
+    boxShadow: '0 4px 6px rgba(165, 42, 42, 0.1)'
   },
   'exporter-bank': {
-    name: 'Exporter Bank',
-    primaryColor: '#f57c00', // Deep orange
-    secondaryColor: '#e65100', // Darker orange
-    accentColor: '#ffb74d', // Light orange
+    name: 'The Vault',
+    primaryColor: '#FFD700', // Gold
+    secondaryColor: '#800080', // Purple
+    accentColor: '#000000', // Black
     backgroundColor: '#fff3e0', // Light orange background
-    textColor: '#e65100',
-    logoColor: '#f57c00',
-    chartColors: ['#f57c00', '#e65100', '#ffb74d', '#ffcc80', '#fff3e0'],
-    gradient: 'linear-gradient(135deg, #f57c00 0%, #e65100 100%)',
-    boxShadow: '0 4px 6px rgba(245, 124, 0, 0.1)'
+    textColor: '#000000',
+    logoColor: '#FFD700',
+    chartColors: ['#FFD700', '#800080', '#000000', '#E6E6FA', '#FFFFFF'],
+    gradient: 'linear-gradient(135deg, #FFD700 0%, #800080 100%)',
+    boxShadow: '0 4px 6px rgba(128, 0, 128, 0.1)'
   },
   'coffee-exporters': {
-    name: 'Coffee Exporters Association',
-    primaryColor: '#8bc34a', // Green
-    secondaryColor: '#689f38', // Darker green
-    accentColor: '#c5e1a5', // Light green
+    name: 'GreenBean Exporters',
+    primaryColor: '#008000', // Green
+    secondaryColor: '#90EE90', // Light Green
+    accentColor: '#D2B48C', // Tan
     backgroundColor: '#f1f8e9', // Light green background
-    textColor: '#689f38',
-    logoColor: '#8bc34a',
-    chartColors: ['#8bc34a', '#689f38', '#c5e1a5', '#dcedc8', '#f1f8e9'],
-    gradient: 'linear-gradient(135deg, #8bc34a 0%, #689f38 100%)',
-    boxShadow: '0 4px 6px rgba(139, 195, 74, 0.1)'
+    textColor: '#008000',
+    logoColor: '#008000',
+    chartColors: ['#008000', '#90EE90', '#D2B48C', '#F0E68C', '#F5DEB3'],
+    gradient: 'linear-gradient(135deg, #008000 0%, #90EE90 100%)',
+    boxShadow: '0 4px 6px rgba(0, 128, 0, 0.1)'
   }
 };
 

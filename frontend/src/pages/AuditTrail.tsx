@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useDebounce } from '../shared/hooks/useDebounce';
 import {
   Box,
-  Card,
-  CardContent,
+  Grid,
   Typography,
-  Button,
+  Avatar,
+  LinearProgress,
   Table,
   TableBody,
   TableCell,
@@ -12,25 +14,32 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Chip,
   IconButton,
+  Tooltip,
+  Stepper,
+  Step,
+  StepLabel,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  MenuItem,
+  Button,
+  Chip,
+  Alert,
   FormControl,
   InputLabel,
   Select,
-  Grid,
-  Avatar,
-  Tooltip,
+  MenuItem,
+  TextField,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
+  Card,
+  CardContent,
   Pagination,
-  LinearProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
 } from '@mui/material';
 import {
   History,
@@ -74,6 +83,7 @@ interface AuditLogEntry {
 
 const AuditTrail: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState<AuditLogEntry | null>(null);
@@ -85,15 +95,17 @@ const AuditTrail: React.FC = () => {
   const [dateRange, setDateRange] = useState('7d');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
+  
+  // Debounced search term for better performance
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   useEffect(() => {
     fetchAuditLogs();
   }, [page, dateRange, filterCategory, filterStatus, filterUser]);
 
-  const fetchAuditLogs = async () => {
+  const fetchAuditLogs = useCallback(async () => {
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Removed artificial delay for better performance
     
     const mockAuditLogs: AuditLogEntry[] = [
       {
@@ -102,7 +114,7 @@ const AuditTrail: React.FC = () => {
         userId: 'user-001',
         userName: 'Ahmed Hassan',
         userRole: 'NBE_ADMIN',
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         action: 'DOCUMENT_APPROVED',
         category: 'document_validation',
         resourceType: 'Export License',
@@ -169,7 +181,7 @@ const AuditTrail: React.FC = () => {
         userId: 'user-001',
         userName: 'Ahmed Hassan',
         userRole: 'NBE_ADMIN',
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         action: 'USER_CREATED',
         category: 'user_management',
         resourceType: 'User Account',
@@ -237,27 +249,28 @@ const AuditTrail: React.FC = () => {
     
     setAuditLogs(mockAuditLogs);
     setLoading(false);
-  };
+  }, []);
 
-  const getStatusColor = (status: string) => {
+  // Memoized utility functions for better performance
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'success': return 'success';
       case 'failure': return 'error';
       case 'warning': return 'warning';
       default: return 'default';
     }
-  };
+  }, []);
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = useCallback((status: string) => {
     switch (status) {
       case 'success': return <CheckCircle />;
       case 'failure': return <Cancel />;
       case 'warning': return <Schedule />;
       default: return <Assignment />;
     }
-  };
+  }, []);
 
-  const getCategoryColor = (category: string) => {
+  const getCategoryColor = useCallback((category: string) => {
     switch (category) {
       case 'document_validation': return 'primary';
       case 'user_management': return 'secondary';
@@ -265,7 +278,7 @@ const AuditTrail: React.FC = () => {
       case 'compliance_action': return 'warning';
       default: return 'default';
     }
-  };
+  }, []);
 
   const handleViewDetails = (entry: AuditLogEntry) => {
     setSelectedEntry(entry);
@@ -288,16 +301,85 @@ const AuditTrail: React.FC = () => {
     alert('Audit log export would be downloaded here');
   };
 
-  const filteredLogs = auditLogs.filter(entry => {
-    const matchesSearch = entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         entry.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         entry.resourceId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === 'all' || entry.category === filterCategory;
-    const matchesStatus = filterStatus === 'all' || entry.status === filterStatus;
-    const matchesUser = filterUser === 'all' || entry.userId === filterUser;
+  const handleExportEntry = (entry: AuditLogEntry) => {
+    // Generate and download audit entry as JSON
+    const entryData = {
+      ...entry,
+      exportedAt: new Date().toISOString(),
+      exportedBy: user?.name || 'Unknown',
+      exportedFrom: 'Audit Trail System'
+    };
     
-    return matchesSearch && matchesCategory && matchesStatus && matchesUser;
-  });
+    const jsonContent = JSON.stringify(entryData, null, 2);
+    downloadJSON(jsonContent, `audit-entry-${entry.id}.json`);
+  };
+
+  const handleViewEntryDetails = (entryId: string) => {
+    navigate(`/audit/${entryId}`);
+  };
+
+  const handleExportAllEntries = () => {
+    // Export all audit entries as CSV
+    const csvContent = generateAuditCSV(auditLogs);
+    downloadCSV(csvContent, 'audit-trail.csv');
+  };
+
+  // Download functions
+  const downloadJSON = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // CSV generation function
+  const generateAuditCSV = (data: AuditLogEntry[]) => {
+    const headers = ['ID', 'Timestamp', 'User', 'Action', 'Resource', 'Status', 'IP Address'];
+    const rows = data.map(entry => [
+      entry.id,
+      new Date(entry.timestamp).toLocaleString(),
+      `${entry.userName} (${entry.userRole})`,
+      entry.action,
+      `${entry.resourceType}: ${entry.resourceId}`,
+      entry.status,
+      entry.ipAddress
+    ]);
+    
+    return [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+  };
+
+  // Memoized filtered logs for better performance
+  const filteredLogs = useMemo(() => {
+    return auditLogs.filter(entry => {
+      const matchesSearch = entry.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                           entry.userName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                           entry.resourceId.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+      const matchesCategory = filterCategory === 'all' || entry.category === filterCategory;
+      const matchesStatus = filterStatus === 'all' || entry.status === filterStatus;
+      const matchesUser = filterUser === 'all' || entry.userId === filterUser;
+      
+      return matchesSearch && matchesCategory && matchesStatus && matchesUser;
+    });
+  }, [auditLogs, debouncedSearchTerm, filterCategory, filterStatus, filterUser]);
 
   const totalPages = Math.ceil(filteredLogs.length / pageSize);
   const paginatedLogs = filteredLogs.slice((page - 1) * pageSize, page * pageSize);
@@ -688,7 +770,7 @@ const AuditTrail: React.FC = () => {
             </DialogContent>
             <DialogActions>
               <Button onClick={() => setOpenDialog(false)}>Close</Button>
-              <Button variant="contained" startIcon={<Download />}>
+              <Button variant="contained" startIcon={<Download />} onClick={() => selectedEntry && handleExportEntry(selectedEntry)}>
                 Export Entry
               </Button>
             </DialogActions>
@@ -699,4 +781,4 @@ const AuditTrail: React.FC = () => {
   );
 };
 
-export default AuditTrail;
+export default React.memo(AuditTrail);

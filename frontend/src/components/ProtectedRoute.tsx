@@ -20,7 +20,7 @@ interface ProtectedRouteProps {
 
 // Organization-specific route mappings (aligned with App routes)
 const ORGANIZATION_ROUTES: Record<string, string[]> = {
-  'National Bank of Ethiopia': [
+  'The Mint': [
     '/nbe',
     '/users', // Only NBE admins can manage users
     '/compliance',
@@ -52,7 +52,7 @@ const ORGANIZATION_ROUTES: Record<string, string[]> = {
 
 // Default home route per organization
 const ORGANIZATION_HOME: Record<string, string> = {
-  'National Bank of Ethiopia': '/nbe',
+  'The Mint': '/nbe',
   'Customs Authority': '/customs',
   'Coffee Quality Authority': '/quality',
   'Exporter Bank': '/bank',

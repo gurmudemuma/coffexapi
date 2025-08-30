@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Grid,
@@ -78,9 +79,70 @@ interface BankDashboardStats {
 
 const BankDashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<BankDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
+
+  // Enhanced button handlers
+  const handleProcessTransfer = () => {
+    // Navigate to transfer processing page or open transfer modal
+    navigate('/bank/transfers');
+  };
+
+  const handleManageLC = () => {
+    // Navigate to Letter of Credit management page
+    navigate('/bank/letters-of-credit');
+  };
+
+  const handleViewRates = () => {
+    // Navigate to currency exchange rates page
+    navigate('/bank/exchange-rates');
+  };
+
+  const handleViewTransactionDetails = (transactionId: string) => {
+    navigate(`/bank/transactions`);
+  };
+
+  const handleDownloadReceipt = (transactionId: string) => {
+    // Generate and download transaction receipt
+    const receiptData = {
+      transactionId,
+      timestamp: new Date().toISOString(),
+      bank: 'Exporter Bank',
+      // Add more receipt data as needed
+    };
+    
+    const receiptContent = generateReceipt(receiptData);
+    downloadReceipt(receiptContent, `receipt-${transactionId}.pdf`);
+  };
+
+  // Receipt generation and download functions
+  const generateReceipt = (data: any) => {
+    // This would typically generate a PDF receipt
+    // For now, we'll create a simple text receipt
+    return `
+      RECEIPT
+      ========
+      Transaction ID: ${data.transactionId}
+      Bank: ${data.bank}
+      Date: ${new Date(data.timestamp).toLocaleString()}
+      
+      Thank you for your business!
+    `;
+  };
+
+  const downloadReceipt = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Get organization branding
   const orgBranding = ORGANIZATION_BRANDING['exporter-bank'];
@@ -564,12 +626,18 @@ const BankDashboard: React.FC = () => {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Button variant="outline" size="sm">
-                            View Details
-                          </Button>
-                          <Button variant="primary" size="sm">
-                            Process Payment
-                          </Button>
+                          <Box sx={{ display: 'flex' }}>
+                            <Tooltip title="View Details">
+                              <IconButton size="small" onClick={() => handleViewTransactionDetails(transaction.id)}>
+                                <Visibility />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Download Receipt">
+                              <IconButton size="small" sx={{ color: '#f57c00' }} onClick={() => handleDownloadReceipt(transaction.id)}>
+                                <Download />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -701,7 +769,7 @@ const BankDashboard: React.FC = () => {
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                         Process international wire transfers with real-time tracking
                       </Typography>
-                      <Button variant="primary" className="bg-[#f57c00]">
+                      <Button variant="primary" className="bg-[#f57c00]" onClick={handleProcessTransfer}>
                         Process Transfer
                       </Button>
                     </Box>
@@ -715,7 +783,7 @@ const BankDashboard: React.FC = () => {
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                         Manage Letter of Credit payments and documentary collections
                       </Typography>
-                      <Button variant="primary" className="bg-[#ff9800]">
+                      <Button variant="primary" className="bg-[#ff9800]" onClick={handleManageLC}>
                         Manage L/C
                       </Button>
                     </Box>
@@ -729,7 +797,7 @@ const BankDashboard: React.FC = () => {
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                         Real-time currency conversion and rate management
                       </Typography>
-                      <Button variant="primary" className="bg-[#ffb74d]">
+                      <Button variant="primary" className="bg-[#ffb74d]" onClick={handleViewRates}>
                         View Rates
                       </Button>
                     </Box>

@@ -340,6 +340,9 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, isMobileMenuOpen }) => {
                       )}
                       onClick={() => {
                         markNotificationRead(notification.id);
+                        if (notification.path) {
+                          navigate(notification.path);
+                        }
                         setShowNotifications(false);
                       }}
                     >

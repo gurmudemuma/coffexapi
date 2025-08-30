@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Grid,
@@ -18,6 +19,8 @@ import {
   Paper,
   IconButton,
   Tooltip,
+  Divider,
+  Alert,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -31,6 +34,11 @@ import {
   Visibility,
   Download,
   Refresh,
+  Add,
+  Payment,
+  DocumentScanner,
+  Security,
+  AccountBalance,
 } from '@mui/icons-material';
 import { useAuth } from '../store';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
@@ -44,12 +52,48 @@ interface DashboardStats {
   trendsData: any[];
   recentActivity: any[];
   validationByType: any[];
+  roleSpecificStats: {
+    pendingActions: number;
+    completedToday: number;
+    upcomingDeadlines: number;
+    alerts: string[];
+  };
 }
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Enhanced button handlers
+  const handleViewAll = () => {
+    navigate('/audit');
+  };
+
+  const handleTakeAction = (activityId: string, actionType: string) => {
+    // Navigate to appropriate action page based on activity type
+    switch (actionType) {
+      case 'License Validation':
+        navigate('/licenses');
+        break;
+      case 'Quality Certificate':
+        navigate('/quality/reports');
+        break;
+      case 'Shipping Documents':
+        navigate('/customs/shipments');
+        break;
+      case 'Invoice Validation':
+        navigate('/bank/transactions');
+        break;
+      default:
+        navigate('/compliance');
+    }
+  };
+
+  const handleViewDetails = (activityId: string) => {
+    navigate(`/audit/${activityId}`);
+  };
 
   useEffect(() => {
     // Simulate API call to fetch dashboard data
@@ -57,6 +101,9 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Generate role-specific stats
+      const roleStats = generateRoleSpecificStats(user?.role);
       
       const mockStats: DashboardStats = {
         totalDocuments: 1247,
@@ -111,7 +158,8 @@ const Dashboard: React.FC = () => {
           { name: 'Quality', value: 312, color: '#388e3c' },
           { name: 'Shipping', value: 287, color: '#f57c00' },
           { name: 'Invoice', value: 223, color: '#7b1fa2' },
-        ]
+        ],
+        roleSpecificStats: roleStats
       };
       
       setStats(mockStats);
@@ -119,7 +167,55 @@ const Dashboard: React.FC = () => {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [user?.role]);
+
+  const generateRoleSpecificStats = (role?: string) => {
+    switch (role) {
+      case 'EXPORTER':
+        return {
+          pendingActions: 5,
+          completedToday: 3,
+          upcomingDeadlines: 2,
+          alerts: ['Payment request pending approval', 'Quality certificate expires in 7 days']
+        };
+      case 'NBE_ADMIN':
+      case 'NBE_OFFICER':
+        return {
+          pendingActions: 12,
+          completedToday: 8,
+          upcomingDeadlines: 4,
+          alerts: ['3 license applications require immediate attention', 'Compliance audit due tomorrow']
+        };
+      case 'CUSTOMS_VALIDATOR':
+        return {
+          pendingActions: 7,
+          completedToday: 5,
+          upcomingDeadlines: 1,
+          alerts: ['2 shipping documents pending validation', 'Customs clearance deadline approaching']
+        };
+      case 'QUALITY_INSPECTOR':
+        return {
+          pendingActions: 9,
+          completedToday: 6,
+          upcomingDeadlines: 3,
+          alerts: ['Quality inspection scheduled for tomorrow', '2 certificates need renewal']
+        };
+      case 'BANK_VALIDATOR':
+        return {
+          pendingActions: 6,
+          completedToday: 4,
+          upcomingDeadlines: 2,
+          alerts: ['Payment processing queue: 6 invoices', 'Bank reconciliation due this week']
+        };
+      default:
+        return {
+          pendingActions: 0,
+          completedToday: 0,
+          upcomingDeadlines: 0,
+          alerts: []
+        };
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -144,6 +240,41 @@ const Dashboard: React.FC = () => {
         return <Schedule />;
       default:
         return <Assignment />;
+    }
+  };
+
+  const getRoleSpecificQuickActions = () => {
+    switch (user?.role) {
+      case 'EXPORTER':
+        return [
+          { label: 'New Export Request', icon: <Add />, action: () => console.log('New Export') },
+          { label: 'Upload Documents', icon: <DocumentScanner />, action: () => console.log('Upload') },
+          { label: 'Request Payment', icon: <Payment />, action: () => console.log('Payment') },
+        ];
+      case 'NBE_ADMIN':
+      case 'NBE_OFFICER':
+        return [
+          { label: 'Review Licenses', icon: <Security />, action: () => console.log('Review') },
+          { label: 'Compliance Check', icon: <DocumentScanner />, action: () => console.log('Compliance') },
+          { label: 'User Management', icon: <AccountBalance />, action: () => console.log('Users') },
+        ];
+      case 'CUSTOMS_VALIDATOR':
+        return [
+          { label: 'Validate Shipping', icon: <DocumentScanner />, action: () => console.log('Shipping') },
+          { label: 'Clearance Review', icon: <Security />, action: () => console.log('Clearance') },
+        ];
+      case 'QUALITY_INSPECTOR':
+        return [
+          { label: 'Quality Inspection', icon: <DocumentScanner />, action: () => console.log('Quality') },
+          { label: 'Issue Certificate', icon: <Security />, action: () => console.log('Certificate') },
+        ];
+      case 'BANK_VALIDATOR':
+        return [
+          { label: 'Validate Invoice', icon: <DocumentScanner />, action: () => console.log('Invoice') },
+          { label: 'Process Payment', icon: <Payment />, action: () => console.log('Payment') },
+        ];
+      default:
+        return [];
     }
   };
 
@@ -189,6 +320,40 @@ const Dashboard: React.FC = () => {
           </Button>
         </Box>
       </Box>
+
+      {/* Role-Specific Alerts */}
+      {stats.roleSpecificStats.alerts.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          {stats.roleSpecificStats.alerts.map((alert, index) => (
+            <Alert key={index} severity="info" sx={{ mb: 1 }}>
+              {alert}
+            </Alert>
+          ))}
+        </Box>
+      )}
+
+      {/* Quick Actions for Current Role */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Quick Actions
+          </Typography>
+          <Grid container spacing={2}>
+            {getRoleSpecificQuickActions().map((action, index) => (
+              <Grid item key={index}>
+                <Button
+                  variant="outlined"
+                  startIcon={action.icon}
+                  onClick={action.action}
+                  sx={{ minWidth: 150 }}
+                >
+                  {action.label}
+                </Button>
+              </Grid>
+            ))}
+          </Grid>
+        </CardContent>
+      </Card>
 
       {/* Key Metrics Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -288,6 +453,70 @@ const Dashboard: React.FC = () => {
         </Grid>
       </Grid>
 
+      {/* Role-Specific Stats */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Typography color="text.secondary" gutterBottom>
+                Pending Actions
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
+                {stats.roleSpecificStats.pendingActions}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Require your attention
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Typography color="text.secondary" gutterBottom>
+                Completed Today
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                {stats.roleSpecificStats.completedToday}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Tasks finished
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Typography color="text.secondary" gutterBottom>
+                Upcoming Deadlines
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'info.main' }}>
+                {stats.roleSpecificStats.upcomingDeadlines}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Due this week
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Typography color="text.secondary" gutterBottom>
+                System Status
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                All Systems
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Operational
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
       {/* Charts Section */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} lg={8}>
@@ -348,7 +577,7 @@ const Dashboard: React.FC = () => {
                 <Typography variant="h6">
                   Recent Validation Activity
                 </Typography>
-                <Button size="small" endIcon={<Visibility />}>
+                <Button size="small" endIcon={<Visibility />} onClick={handleViewAll}>
                   View All
                 </Button>
               </Box>
@@ -386,13 +615,16 @@ const Dashboard: React.FC = () => {
                         <TableCell>{activity.timestamp}</TableCell>
                         <TableCell>
                           <Tooltip title="View Details">
-                            <IconButton size="small">
+                            <IconButton size="small" onClick={() => handleViewDetails(activity.id)}>
                               <Visibility />
                             </IconButton>
                           </Tooltip>
                           {user?.permissions.includes('regulatory:all') && (
                             <Tooltip title="Take Action">
-                              <IconButton size="small">
+                              <IconButton 
+                                size="small" 
+                                onClick={() => handleTakeAction(activity.id, activity.type)}
+                              >
                                 <Gavel />
                               </IconButton>
                             </Tooltip>

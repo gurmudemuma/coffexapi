@@ -138,7 +138,7 @@ services:
   bank-api-validator:
     build:
       context: ..
-      dockerfile: chaincode/bank-api/Dockerfile
+      dockerfile: validators/bank-api/Dockerfile
       target: development
     environment:
       - VALIDATOR_TYPE=INVOICE

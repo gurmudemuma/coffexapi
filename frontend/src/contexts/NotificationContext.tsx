@@ -10,6 +10,7 @@ export interface Notification {
   message: string;
   timestamp: Date;
   read: boolean;
+  path?: string;
   action?: {
     label: string;
     onClick: () => void;
@@ -45,6 +46,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         message: 'Coffee export request CE-2024-001 submitted for validation',
         timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
         read: false,
+        path: '/validation',
       },
       {
         id: '2',
@@ -53,6 +55,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         message: 'Export license EL-2024-045 expires in 7 days',
         timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
         read: false,
+        path: '/alerts',
       },
       {
         id: '3',
@@ -61,6 +64,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         message: 'Quality certificate QC-2024-032 approved successfully',
         timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
         read: true,
+        path: '/reports',
       },
     ];
     setNotifications(mockNotifications);

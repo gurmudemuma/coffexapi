@@ -120,7 +120,7 @@ const mockLogin = async (username: string, password: string) => {
         id: 'nbe-admin-001',
         name: 'NBE Administrator',
         role: 'NBE_ADMIN',
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         permissions: [
           'license:create', 'license:read', 'license:update', 'license:delete',
           'declaration:read', 'declaration:approve', 'declaration:reject',
@@ -135,7 +135,7 @@ const mockLogin = async (username: string, password: string) => {
         id: 'nbe-officer-001',
         name: 'NBE Compliance Officer',
         role: 'NBE_OFFICER',
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         permissions: [
           'license:read', 'declaration:read', 'declaration:approve', 'declaration:reject',
           'compliance:screen', 'audit:read'

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, Badge } from '../ui';
 import { Button } from '../ui/StandardComponents';
 import { 
@@ -78,6 +79,37 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
   orgBranding,
   className = ''
 }) => {
+  const navigate = useNavigate();
+
+  // Enhanced button handlers with navigation
+  const handleNewExport = () => {
+    if (onNewExport) {
+      onNewExport();
+    } else {
+      navigate('/exports/new');
+    }
+  };
+
+  const handleViewExports = () => {
+    if (onViewExports) {
+      onViewExports();
+    } else {
+      navigate('/exports?tab=manage');
+    }
+  };
+
+  const handleViewAuditTrail = () => {
+    if (onViewAuditTrail) {
+      onViewAuditTrail();
+    } else {
+      navigate('/audit');
+    }
+  };
+
+  const handleViewExportDetails = (exportId: string) => {
+    navigate(`/exports/${exportId}`);
+  };
+
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
@@ -94,7 +126,7 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
         <div className="flex flex-wrap gap-2">
           <Button 
             variant="primary" 
-            onClick={onNewExport}
+            onClick={handleNewExport}
             className="flex items-center gap-2"
           >
             <AddIcon className="h-5 w-5" />
@@ -138,7 +170,7 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Button 
           variant="outline" 
-          onClick={onViewExports}
+          onClick={handleViewExports}
           className="h-full p-6 flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-200 hover:border-[${orgBranding.primaryColor}] hover:bg-[${orgBranding.primaryColor}]/5 transition-colors"
         >
           <ListIcon className="h-8 w-8 mb-2 text-gray-400" />
@@ -148,7 +180,7 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
         
         <Button 
           variant="outline" 
-          onClick={onViewAuditTrail}
+          onClick={handleViewAuditTrail}
           className="h-full p-6 flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-200 hover:border-[${orgBranding.accentColor}] hover:bg-[${orgBranding.accentColor}]/5 transition-colors"
         >
           <TrendingUpIcon className="h-8 w-8 mb-2 text-gray-400" />
@@ -158,7 +190,7 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
         
         <Button 
           variant="outline" 
-          onClick={onNewExport}
+          onClick={handleNewExport}
           className="h-full p-6 flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-200 hover:border-green-500 hover:bg-green-50 transition-colors"
         >
           <AddIcon className="h-8 w-8 mb-2 text-green-500" />
@@ -174,7 +206,7 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
           <Button 
             variant="ghost" 
             size="sm"
-            onClick={onViewAuditTrail}
+            onClick={handleViewAuditTrail}
             className="text-[${orgBranding.primaryColor}] hover:bg-[${orgBranding.primaryColor}]/10"
           >
             View All
@@ -202,7 +234,12 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
                       </p>
                     </div>
                     <div className="ml-auto">
-                      <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-gray-400 hover:text-gray-600"
+                        onClick={() => handleViewExportDetails(`EXP-${1000 + item}`)}
+                      >
                         View
                       </Button>
                     </div>

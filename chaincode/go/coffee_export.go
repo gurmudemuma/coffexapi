@@ -763,3 +763,28 @@ func (s *SmartContract) GetSystemStats(ctx contractapi.TransactionContextInterfa
 	
 	return stats, nil
 }
+
+// GetAllExportRequests returns all export requests
+func (s *SmartContract) GetAllExportRequests(ctx contractapi.TransactionContextInterface) ([]*ExportRequest, error) {
+	resultsIterator, err := ctx.GetStub().GetPrivateDataByRange("exportRequests", "", "")
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	var results []*ExportRequest
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		var exportRequest ExportRequest
+		if err := json.Unmarshal(queryResponse.Value, &exportRequest); err != nil {
+			return nil, err
+		}
+		results = append(results, &exportRequest)
+	}
+
+	return results, nil
+}

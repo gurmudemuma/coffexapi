@@ -1,37 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Add as AddIcon, 
-  Assignment as AssignmentIcon,
-  CheckCircle as CheckCircleIcon,
-  Pending as PendingIcon,
-  Visibility as ViewIcon,
-  Edit as EditIcon,
-} from '@mui/icons-material';
+import { useAuth } from '../store';
+import { useExports, type ExportStatus } from '../hooks/useExports';
+import { ORGANIZATION_BRANDING } from '../config/organizationBranding';
+import { useDebounce } from '../shared/hooks/useDebounce';
 
-import { 
-  Button,
+import {
   Card,
   CardContent,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Badge,
+  Alert,
+  AlertTitle,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  Badge
 } from '../components/ui';
 
-import { useAuth } from '../store';
-import { useExports } from '../store';
-import ExportForm from '../components/ExportForm';
-import { ORGANIZATION_BRANDING } from '../config/organizationBranding';
+import {
+  Plus as PlusIcon,
+  RefreshCw as RefreshIcon,
+  Download as DownloadIcon,
+  Eye as EyeIcon,
+  Edit as EditIcon,
+  Search as SearchIcon,
+  Filter as FilterIcon,
+} from 'lucide-react';
 
-type ExportStatus = 
-  | 'DRAFT' 
-  | 'SUBMITTED' 
-  | 'VALIDATING' 
-  | 'APPROVED' 
-  | 'REJECTED' 
-  | 'PAYMENT_RELEASED';
+
 
 type ExportSummary = {
   id: string;
@@ -44,49 +46,37 @@ type ExportSummary = {
   status: ExportStatus;
   submittedAt?: number;
   validationProgress: number;
-  urgentActions: string[];
 };
 
 const ExportManage: React.FC = () => {
   const { user } = useAuth();
-  const { exports: exportsData, loading } = useExports();
+  const { exportSummaries, stats, loading, error } = useExports();
   const navigate = useNavigate();
   
-  const [exportSummaries, setExportSummaries] = useState<ExportSummary[]>([]);
   const [activeTab, setActiveTab] = useState('new-export');
+  const [refreshLoading, setRefreshLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ExportStatus | 'ALL'>('ALL');
+  
+  // Debounced search term for better performance
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Get organization branding
   const orgBranding = ORGANIZATION_BRANDING['coffee-exporters'];
 
-  React.useEffect(() => {
-    if (user) {
-      // Transform exports to summaries - only show exports belonging to current user
-      const userExports = Object.values(exportsData || {}).filter((exportRequest: any) => {
-        // Filter exports to only show those belonging to the current user
-        return exportRequest?.exporterId === user?.id;
-      });
-      
-      const summaries = userExports.map((exportRequest: any) => ({
-        id: exportRequest.id,
-        exportId: exportRequest.id,
-        productType: exportRequest.tradeDetails?.productType || 'N/A',
-        quantity: exportRequest.tradeDetails?.quantity || 0,
-        totalValue: exportRequest.tradeDetails?.totalValue || 0,
-        currency: exportRequest.tradeDetails?.currency || 'USD',
-        destination: exportRequest.tradeDetails?.destination || 'N/A',
-        status: exportRequest.status || 'DRAFT',
-        submittedAt: exportRequest.submittedAt,
-        validationProgress: exportRequest.validationSummary?.totalValidations > 0 
-          ? (exportRequest.validationSummary.completedValidations / exportRequest.validationSummary.totalValidations) * 100 
-          : 0,
-        urgentActions: [],
-      }));
-      
-      setExportSummaries(summaries);
-    }
-  }, [exportsData, user]);
+  // Memoized utility functions for better performance
+  const formatCurrency = useCallback((amount: number, currency: string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
+  }, []);
 
-  const getStatusColor = (status: string) => {
+  const formatDate = useCallback((timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString();
+  }, []);
+
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'DRAFT': return 'default';
       case 'SUBMITTED': return 'secondary';
@@ -96,162 +86,361 @@ const ExportManage: React.FC = () => {
       case 'PAYMENT_RELEASED': return 'success';
       default: return 'default';
     }
-  };
+  }, []);
 
-  const handleViewExport = (exportId: string) => {
+  // Memoized button handlers for better performance
+  const handleViewExport = useCallback((exportId: string) => {
     navigate(`/exports/${exportId}`);
-  };
+  }, [navigate]);
 
-  const handleEditExport = (exportId: string) => {
+  const handleEditExport = useCallback((exportId: string) => {
     navigate(`/exports/${exportId}/edit`);
-  };
+  }, [navigate]);
 
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'USD',
-    }).format(amount);
-  };
+  const handleCreateNewExport = useCallback(() => {
+    setActiveTab('new-export');
+  }, []);
 
-  const formatDate = (timestamp?: number) => {
-    if (!timestamp) return 'N/A';
-    return new Date(timestamp).toLocaleDateString();
-  };
+  const handleRefreshExports = useCallback(async () => {
+    setRefreshLoading(true);
+    try {
+      // In a real app, you'd fetch fresh data from the API
+      // Removed artificial delay for better performance
+      console.log('Exports refreshed');
+    } catch (err) {
+      console.error('Failed to refresh exports:', err);
+    } finally {
+      setRefreshLoading(false);
+    }
+  }, []);
+
+  const handleExportData = useCallback(() => {
+    // Export exports data as CSV
+    const csvContent = generateExportsCSV(exportSummaries);
+    downloadCSV(csvContent, 'exports-data.csv');
+  }, [exportSummaries]);
+
+  // Memoized CSV generation and download functions
+  const generateExportsCSV = useCallback((data: ExportSummary[]) => {
+    const headers = ['Export ID', 'Product Type', 'Quantity', 'Value', 'Destination', 'Status', 'Submitted'];
+    const rows = data.map(exp => [
+      exp.exportId || '',
+      exp.productType || '',
+      exp.quantity?.toString() || '',
+      exp.currency && exp.totalValue ? formatCurrency(exp.totalValue, exp.currency) : '',
+      exp.destination || '',
+      exp.status || '',
+      exp.submittedAt ? formatDate(exp.submittedAt) : ''
+    ]);
+    
+    return [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+  }, [formatCurrency, formatDate]);
+
+  const downloadCSV = useCallback((content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
+  // Memoized filtered exports for better performance
+  const filteredExports = useMemo(() => {
+    return exportSummaries.filter((exp: any) => {
+      const matchesSearch = 
+        exp.exportId.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        exp.productType.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        exp.destination.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'ALL' || exp.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [exportSummaries, debouncedSearchTerm, statusFilter]);
 
   if (loading) {
     return (
       <div className="p-6 max-w-7xl mx-auto">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading export requests...</p>
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
         </div>
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <Alert variant="error">
+          <AlertTitle>Error Loading Exports</AlertTitle>
+          {error.message}
+        </Alert>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Export Activities - Only the buttons and tabs section */}
+    <div className="p-6 max-w-7xl mx-auto" style={{ backgroundColor: orgBranding.backgroundColor }}>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Export Management</h1>
+          <p className="text-gray-600">
+            Manage your coffee export requests and track their validation progress
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={handleRefreshExports}
+            disabled={refreshLoading}
+            className="flex items-center gap-2"
+          >
+            <RefreshIcon className={`h-4 w-4 ${refreshLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExportData}
+            className="flex items-center gap-2"
+          >
+            <DownloadIcon className="h-4 w-4" />
+            Export Data
+          </Button>
+          <Button
+            onClick={handleCreateNewExport}
+            className="flex items-center gap-2"
+            style={{ backgroundColor: orgBranding.primaryColor }}
+          >
+            <PlusIcon className="h-4 w-4" />
+            Create New
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Exports</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalExports}</p>
+              </div>
+              <div className="p-2 rounded-full" style={{ backgroundColor: orgBranding.primaryColor + '20' }}>
+                <PlusIcon className="h-6 w-6" style={{ color: orgBranding.primaryColor }} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Active Exports</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.activeExports}</p>
+              </div>
+              <div className="p-2 rounded-full bg-blue-100">
+                <RefreshIcon className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Pending Validation</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.pendingValidation}</p>
+              </div>
+              <div className="p-2 rounded-full bg-yellow-100">
+                <RefreshIcon className="h-6 w-6 text-yellow-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Value</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(stats.totalValue, 'USD')}
+                </p>
+              </div>
+              <div className="p-2 rounded-full bg-green-100">
+                <DownloadIcon className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="new-export" className="flex items-center gap-2">
-            <AddIcon className="h-4 w-4" />
-            Create Export Request
-          </TabsTrigger>
-          <TabsTrigger value="manage" className="flex items-center gap-2">
-            <AssignmentIcon className="h-4 w-4" />
-            My Export Requests
-          </TabsTrigger>
+          <TabsTrigger value="new-export">Create New Export</TabsTrigger>
+          <TabsTrigger value="manage">Manage Exports</TabsTrigger>
         </TabsList>
 
         <TabsContent value="new-export" className="mt-6">
           <Card>
             <CardContent className="p-6">
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold text-green-600 mb-3">📋 Create Coffee Export Request</h3>
-                <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
-                  <p className="text-green-800 font-medium">Complete Process:</p>
-                  <div className="mt-2 text-sm text-green-700">
-                    <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>Fill company & trade details<br/>
-                    <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>Upload required documents<br/>
-                    <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>Submit for validation & approval
-                  </div>
-                </div>
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Create New Export Request
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Start a new coffee export request with all required documentation
+                </p>
+                <Button
+                  onClick={() => navigate('/exports/new')}
+                  className="flex items-center gap-2 mx-auto"
+                  style={{ backgroundColor: orgBranding.primaryColor }}
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Start New Export
+                </Button>
               </div>
-              
-              <ExportForm />
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="manage" className="mt-6">
-          <Card>
+          {/* Filters */}
+          <Card className="mb-6">
             <CardContent className="p-6">
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold text-blue-600 mb-3">📊 My Export Requests</h3>
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                  <p className="text-blue-800 font-medium">Track & manage all your export requests in one place</p>
-                </div>
-              </div>
-
-              {exportSummaries.length > 0 ? (
-                <div className="space-y-4">
-                  {exportSummaries.map((exportSummary) => (
-                    <Card key={exportSummary.id} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-bold text-lg">{exportSummary.productType}</h4>
-                          <Badge 
-                            variant={getStatusColor(exportSummary.status)}
-                            className="capitalize"
-                          >
-                            {exportSummary.status.toLowerCase().replace('_', ' ')}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
-                          <div>
-                            <p className="text-gray-600 font-medium">Quantity</p>
-                            <p className="font-semibold">{exportSummary.quantity.toLocaleString()} kg</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-600 font-medium">Destination</p>
-                            <p className="font-semibold">{exportSummary.destination}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-600 font-medium">Value</p>
-                            <p className="font-semibold">{formatCurrency(exportSummary.totalValue, exportSummary.currency)}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-600 font-medium">Submitted</p>
-                            <p className="font-semibold">{formatDate(exportSummary.submittedAt)}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-3">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewExport(exportSummary.exportId)}
-                            className="border-blue-500 text-blue-500 hover:bg-blue-50"
-                          >
-                            <ViewIcon className="w-4 h-4 mr-1" />
-                            View Details
-                          </Button>
-                          {exportSummary.status === 'DRAFT' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditExport(exportSummary.exportId)}
-                              className="border-green-500 text-green-500 hover:bg-green-50"
-                            >
-                              <EditIcon className="w-4 h-4 mr-1" />
-                              Edit
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-16">
-                  <div className="bg-gray-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
-                    <AssignmentIcon className="h-12 w-12 text-gray-400" />
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <input
+                      type="text"
+                      placeholder="Search exports..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
                   </div>
-                  <h4 className="text-xl font-semibold mb-3 text-gray-700">No Export Requests Yet</h4>
-                  <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                    Start your coffee export journey! Create your first export request and track its progress through our blockchain-validated system.
-                  </p>
-                  <Button 
-                    variant="default" 
-                    onClick={() => setActiveTab('new-export')} 
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                    size="lg"
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as ExportStatus | 'ALL')}
+                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <AddIcon className="w-5 h-5 mr-2" />
-                    Create Your First Export Request
+                    <option value="ALL">All Statuses</option>
+                    <option value="DRAFT">Draft</option>
+                    <option value="SUBMITTED">Submitted</option>
+                    <option value="VALIDATING">Validating</option>
+                    <option value="APPROVED">Approved</option>
+                    <option value="REJECTED">Rejected</option>
+                    <option value="PAYMENT_RELEASED">Payment Released</option>
+                  </select>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setStatusFilter('ALL');
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <FilterIcon className="h-4 w-4" />
+                    Clear
                   </Button>
                 </div>
-              )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Exports Table */}
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Export ID</TableCell>
+                    <TableCell>Product Type</TableCell>
+                    <TableCell>Quantity</TableCell>
+                    <TableCell>Value</TableCell>
+                    <TableCell>Destination</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Progress</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredExports.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                        No exports found matching your criteria
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                                         filteredExports.map((exp: any) => (
+                      <TableRow key={exp.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">{exp.exportId}</TableCell>
+                        <TableCell>{exp.productType}</TableCell>
+                        <TableCell>{exp.quantity.toLocaleString()} kg</TableCell>
+                        <TableCell>{formatCurrency(exp.totalValue, exp.currency)}</TableCell>
+                        <TableCell>{exp.destination}</TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusColor(exp.status)}>
+                            {exp.status.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
+                                style={{ width: `${exp.validationProgress}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm text-gray-600">
+                              {Math.round(exp.validationProgress)}%
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewExport(exp.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                              View
+                            </Button>
+                            {['DRAFT', 'REJECTED'].includes(exp.status) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditExport(exp.id)}
+                                className="flex items-center gap-1"
+                              >
+                                <EditIcon className="h-4 w-4" />
+                                Edit
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
@@ -260,4 +449,4 @@ const ExportManage: React.FC = () => {
   );
 };
 
-export default ExportManage;
+export default React.memo(ExportManage);

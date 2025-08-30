@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Card, 
   CardContent, 
@@ -62,6 +63,7 @@ export const ManageExports: React.FC<ManageExportsProps> = ({
   onExportData,
   className = ''
 }) => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ExportStatus | 'all'>('all');
   const [sortConfig, setSortConfig] = useState<{
@@ -202,6 +204,81 @@ export const ManageExports: React.FC<ManageExportsProps> = ({
     { value: 'PAYMENT_RELEASED', label: 'Payment Released' }
   ];
 
+  // Enhanced button handlers
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      // Default refresh behavior - reload the page data
+      window.location.reload();
+    }
+  };
+
+  const handleExportData = () => {
+    if (onExportData) {
+      onExportData();
+    } else {
+      // Default export behavior - download filtered data as CSV
+      const filteredData = filteredExports;
+      const csvContent = generateCSV(filteredData);
+      downloadCSV(csvContent, 'exports-data.csv');
+    }
+  };
+
+  const handleViewExport = (id: string) => {
+    if (onViewExport) {
+      onViewExport(id);
+    } else {
+      navigate(`/exports/${id}`);
+    }
+  };
+
+  const handleEditExport = (id: string) => {
+    if (onEditExport) {
+      onEditExport(id);
+    } else {
+      navigate(`/exports/${id}/edit`);
+    }
+  };
+
+  const handleCreateNew = () => {
+    if (onCreateNew) {
+      onCreateNew();
+    } else {
+      navigate('/exports/new');
+    }
+  };
+
+  // CSV generation and download functions
+  const generateCSV = (data: ExportSummary[]) => {
+    const headers = ['Export ID', 'Product', 'Quantity', 'Value', 'Destination', 'Status', 'Submitted'];
+    const rows = data.map(exp => [
+      exp.exportId || '',
+      exp.productType || '',
+      exp.quantity?.toString() || '',
+      exp.currency && exp.totalValue ? formatCurrency(exp.totalValue, exp.currency) : '',
+      exp.destination || '',
+      exp.status || '',
+      exp.submittedAt ? formatDate(exp.submittedAt) : ''
+    ]);
+    
+    return [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+  };
+
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (exports.length === 0) {
     return (
       <div className="text-center py-16">
@@ -214,7 +291,7 @@ export const ManageExports: React.FC<ManageExportsProps> = ({
         </p>
         <Button 
           variant="default" 
-          onClick={onCreateNew}
+          onClick={handleCreateNew}
           className="bg-blue-600 hover:bg-blue-700 text-white"
         >
           <AddIcon className="mr-2 h-4 w-4" />
@@ -228,10 +305,39 @@ export const ManageExports: React.FC<ManageExportsProps> = ({
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">My Export Requests</h2>
-        <Button variant="outline" onClick={onRefresh} disabled={loading}>
-          <RefreshIcon className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportData} disabled={loading || filteredExports.length === 0}>
+            <DownloadIcon className="mr-2 h-4 w-4" />
+            Export Data
+          </Button>
+          <Button variant="outline" onClick={handleRefresh} disabled={loading}>
+            <RefreshIcon className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Search and Filter Controls */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-4">
+        <div className="relative flex-1">
+          <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search exports..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select
+          value={statusFilter}
+          onValueChange={(value) => setStatusFilter(value as ExportStatus | 'all')}
+        >
+          {statusOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
       </div>
 
       <div className="space-y-4">
@@ -384,7 +490,7 @@ export const ManageExports: React.FC<ManageExportsProps> = ({
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => onViewExport(exp.id)}
+                            onClick={() => handleViewExport(exp.id)}
                             className="h-8 w-8 p-0 text-gray-600 hover:text-primary-600"
                           >
                             <ViewIcon className="h-4 w-4" />
@@ -402,7 +508,7 @@ export const ManageExports: React.FC<ManageExportsProps> = ({
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => onEditExport(exp.id)}
+                            onClick={() => handleEditExport(exp.id)}
                             className="h-8 w-8 p-0 text-gray-600 hover:text-primary-600"
                             disabled={!['DRAFT', 'REJECTED'].includes(exp.status)}
                           >

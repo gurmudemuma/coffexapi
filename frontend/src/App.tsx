@@ -6,7 +6,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 
 // Providers and Context
 import { NotificationProvider } from './contexts/NotificationContext';
-import { AuthProvider } from './contexts/AuthContext';
+// Remove AuthProvider import - using Zustand store instead
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -26,6 +26,9 @@ const UserManagement = React.lazy(() => import('./pages/UserManagement'));
 const ComplianceAlerts = React.lazy(() => import('./pages/ComplianceAlerts'));
 const AuditTrail = React.lazy(() => import('./pages/AuditTrail'));
 const ExportForm = React.lazy(() => import('./components/ExportForm'));
+const ExportDetails = React.lazy(() => import('./pages/ExportDetails'));
+const LicenseManagement = React.lazy(() => import('./pages/LicenseManagement'));
+const QualityReports = React.lazy(() => import('./pages/QualityReports'));
 
 // Global CSS
 import './index.css';
@@ -34,7 +37,7 @@ import './index.css';
  * Main Application Component
  * 
  * This is the primary application entry point that provides:
- * - Global providers (Auth, Query Client, Error Boundary)
+ * - Global providers (Query Client, Error Boundary)
  * - Routing configuration
  * - Loading states and error handling
  * - Theme and notification systems
@@ -115,66 +118,81 @@ const App: React.FC = () => {
     >
       <QueryClientProvider client={queryClient}>
         <Router>
-          <AuthProvider>
-            <NotificationProvider>
-              <div className="min-h-screen bg-gray-50">
-                <Suspense fallback={<LoadingFallback />}>
-                  <Routes>
-                    {/* Public Routes */}
-                    <Route path="/login" element={<LoginPage />} />
-                    
-                    {/* Protected Routes with Layout */}
-                    <Route
-                      path="/*"
-                      element={
-                        <ProtectedRoute>
-                          <Layout>
-                            <Routes>
-                              {/* Dashboard Routes */}
-                              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                              <Route path="/dashboard" element={<Dashboard />} />
-                              
-                              {/* Organization-specific Dashboards */}
-                              <Route path="/exporter" element={<ExporterDashboard />} />
-                              <Route path="/bank" element={<BankDashboard />} />
-                              <Route path="/customs" element={<CustomsDashboard />} />
-                              <Route path="/quality" element={<QualityDashboard />} />
-                              <Route path="/nbe" element={<NBEDashboard />} />
-                              
-                              {/* Export Management */}
-                              <Route path="/exports" element={<ExportManage />} />
-                              <Route path="/exports/new" element={<ExportForm />} />
-                              
-                              {/* Administrative Routes */}
-                              <Route path="/users" element={<UserManagement />} />
-                              <Route path="/compliance" element={<ComplianceAlerts />} />
-                              <Route path="/audit" element={<AuditTrail />} />
-                              
-                              {/* Fallback for unmatched routes */}
-                              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                            </Routes>
-                          </Layout>
-                        </ProtectedRoute>
-                      }
-                    />
-                  </Routes>
-                </Suspense>
-              </div>
-              
-              {/* Global Toast Notifications */}
-              <Toaster
-                position="top-right"
-                toastOptions={{
-                  duration: 4000,
-                  style: {
-                    background: 'white',
-                    color: 'black',
-                    border: '1px solid #e5e5e5',
-                  },
-                }}
-              />
-            </NotificationProvider>
-          </AuthProvider>
+          <NotificationProvider>
+            <div className="min-h-screen bg-gray-50">
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/login" element={<LoginPage />} />
+                  
+                  {/* Protected Routes with Layout */}
+                  <Route
+                    path="/*"
+                    element={
+                      <ProtectedRoute>
+                        <Layout>
+                          <Routes>
+                            {/* Dashboard Routes */}
+                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                            <Route path="/dashboard" element={<Dashboard />} />
+                            
+                            {/* Organization-specific Dashboards */}
+                            <Route path="/exporter" element={<ExporterDashboard />} />
+                            <Route path="/bank" element={<BankDashboard />} />
+                            <Route path="/customs" element={<CustomsDashboard />} />
+                            <Route path="/quality" element={<QualityDashboard />} />
+                            <Route path="/nbe" element={<NBEDashboard />} />
+                            
+                            {/* Export Management */}
+                            <Route path="/exports" element={<ExportManage />} />
+                            <Route path="/exports/new" element={<ExportForm />} />
+                            <Route path="/exports/:exportId" element={<ExportDetails />} />
+                            
+                            {/* NBE Routes */}
+                            <Route path="/licenses" element={<LicenseManagement />} />
+                            
+                            {/* Quality Authority Routes */}
+                            <Route path="/quality/reports" element={<QualityReports />} />
+                            
+                            {/* Bank Routes - Fixed to point to specific business logic */}
+                            <Route path="/bank/transfers" element={<BankDashboard />} />
+                            <Route path="/bank/letters-of-credit" element={<BankDashboard />} />
+                            <Route path="/bank/exchange-rates" element={<BankDashboard />} />
+                            <Route path="/bank/transactions" element={<BankDashboard />} />
+                            
+                            {/* Customs Routes - Fixed to point to specific business logic */}
+                            <Route path="/customs/shipments" element={<CustomsDashboard />} />
+                            <Route path="/customs/clearance" element={<CustomsDashboard />} />
+                            
+                            {/* Administrative Routes */}
+                            <Route path="/users" element={<UserManagement />} />
+                            <Route path="/compliance" element={<ComplianceAlerts />} />
+                            <Route path="/audit" element={<AuditTrail />} />
+                            
+                            {/* Fallback for unmatched routes */}
+                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                          </Routes>
+                        </Layout>
+                      </ProtectedRoute>
+                    }
+                  />
+                </Routes>
+              </Suspense>
+            </div>
+            
+            {/* Global Toast Notifications */}
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: 'white',
+                  color: 'black',
+                  border: '1px solid #e5e5e5',
+                },
+              }}
+            />
+          </NotificationProvider>
         </Router>
       </QueryClientProvider>
     </ErrorBoundary>

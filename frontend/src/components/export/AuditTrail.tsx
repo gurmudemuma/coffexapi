@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, Button } from '../ui';
 import { 
   History as HistoryIcon, 
@@ -8,7 +9,8 @@ import {
   FilterList as FilterIcon,
   Search as SearchIcon,
   GetApp as DownloadIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  X as CloseIcon
 } from '@mui/icons-material';
 import { AuditEvent } from '../../types/export';
 
@@ -38,6 +40,15 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({
   filterOptions,
   onFilterChange
 }) => {
+  const navigate = useNavigate();
+  const [showFilters, setShowFilters] = useState(false);
+  const [localFilters, setLocalFilters] = useState({
+    status: filterOptions?.status || [],
+    dateRange: filterOptions?.dateRange || { start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), end: new Date() },
+    searchTerm: filterOptions?.searchTerm || ''
+  });
+  const [displayCount, setDisplayCount] = useState(20);
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleString();
   };
@@ -52,6 +63,77 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({
       default:
         return <ClockIcon className="h-4 w-4 text-yellow-500" />;
     }
+  };
+
+  // Enhanced button handlers
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      // Default refresh behavior
+      window.location.reload();
+    }
+  };
+
+  const handleExport = () => {
+    if (onExport) {
+      onExport();
+    } else {
+      // Default export behavior - download filtered data as CSV
+      const csvContent = generateCSV(filteredEvents);
+      downloadCSV(csvContent, 'audit-trail.csv');
+    }
+  };
+
+  const handleFilterChange = (newFilters: any) => {
+    setLocalFilters(newFilters);
+    if (onFilterChange) {
+      onFilterChange(newFilters);
+    }
+  };
+
+  const handleClearFilters = () => {
+    const clearedFilters = { status: [], dateRange: { start: new Date(), end: new Date() }, searchTerm: '' };
+    setLocalFilters(clearedFilters);
+    if (onFilterChange) {
+      onFilterChange(clearedFilters);
+    }
+  };
+
+  const handleLoadMore = () => {
+    setDisplayCount(prev => prev + 20);
+  };
+
+  const handleViewDetails = (eventId: string) => {
+    navigate(`/audit/${eventId}`);
+  };
+
+  // CSV generation and download functions
+  const generateCSV = (data: AuditEvent[]) => {
+    const headers = ['Timestamp', 'Action', 'Performed By', 'Status', 'Details'];
+    const rows = data.map(event => [
+      formatDate(event.timestamp),
+      event.action,
+      event.performedBy,
+      event.status,
+      event.details || ''
+    ]);
+    
+    return [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+  };
+
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (loading) {
@@ -95,6 +177,8 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({
   }, [events, filterOptions]);
   
   const hasEvents = filteredEvents.length > 0;
+  const displayedEvents = filteredEvents.slice(0, displayCount);
+  const hasMoreEvents = displayedEvents.length < filteredEvents.length;
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -111,7 +195,7 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({
           <Button 
             variant="outline" 
             size="sm"
-            onClick={onRefresh}
+            onClick={handleRefresh}
             disabled={loading}
             className="flex items-center gap-1.5"
           >
@@ -122,7 +206,7 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({
           <Button 
             variant="outline" 
             size="sm"
-            onClick={onExport}
+            onClick={handleExport}
             disabled={!hasEvents || loading}
             className="flex items-center gap-1.5"
           >
@@ -130,19 +214,120 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({
             Export
           </Button>
           
-          <div className="relative">
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="flex items-center gap-1.5"
-            >
-              <FilterIcon className="h-4 w-4" />
-              Filter
-            </Button>
-            {/* Filter dropdown would go here */}
-          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-1.5"
+          >
+            <FilterIcon className="h-4 w-4" />
+            Filter
+          </Button>
         </div>
       </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Filter Options</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFilters(false)}
+              >
+                <CloseIcon className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <div className="space-y-2">
+                  {['success', 'pending', 'failed'].map((status) => (
+                    <label key={status} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={localFilters.status.includes(status as any)}
+                        onChange={(e) => {
+                          const newStatus = e.target.checked
+                            ? [...localFilters.status, status]
+                            : localFilters.status.filter(s => s !== status);
+                          handleFilterChange({ ...localFilters, status: newStatus });
+                        }}
+                        className="mr-2"
+                      />
+                      <span className="text-sm capitalize">{status}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                <div className="space-y-2">
+                  <input
+                    type="date"
+                    value={localFilters.dateRange.start.toISOString().split('T')[0]}
+                    onChange={(e) => {
+                      const newDateRange = {
+                        ...localFilters.dateRange,
+                        start: new Date(e.target.value)
+                      };
+                      handleFilterChange({ ...localFilters, dateRange: newDateRange });
+                    }}
+                    className="w-full p-2 border border-gray-300 rounded"
+                  />
+                  <input
+                    type="date"
+                    value={localFilters.dateRange.end.toISOString().split('T')[0]}
+                    onChange={(e) => {
+                      const newDateRange = {
+                        ...localFilters.dateRange,
+                        end: new Date(e.target.value)
+                      };
+                      handleFilterChange({ ...localFilters, dateRange: newDateRange });
+                    }}
+                    className="w-full p-2 border border-gray-300 rounded"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                <input
+                  type="text"
+                  placeholder="Search events..."
+                  value={localFilters.searchTerm}
+                  onChange={(e) => {
+                    handleFilterChange({ ...localFilters, searchTerm: e.target.value });
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded"
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearFilters}
+                className="mr-2"
+              >
+                Clear Filters
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setShowFilters(false)}
+              >
+                Apply Filters
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!hasEvents && !loading && (
         <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
@@ -160,7 +345,7 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({
               variant="ghost" 
               size="sm" 
               className="mt-4"
-              onClick={() => onFilterChange?.({})}
+              onClick={handleClearFilters}
             >
               Clear filters
             </Button>
@@ -169,14 +354,15 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({
       )}
 
       <div className="space-y-3">
-        {filteredEvents.map((event) => (
+        {displayedEvents.map((event) => (
           <Card 
             key={event.id} 
             className={`border-l-4 ${
               event.status === 'success' ? 'border-green-500' :
               event.status === 'failed' ? 'border-red-500' :
               'border-yellow-500'
-            } hover:shadow-md transition-shadow`}
+            } hover:shadow-md transition-shadow cursor-pointer`}
+            onClick={() => handleViewDetails(event.id)}
           >
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -206,6 +392,10 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({
                     variant="ghost" 
                     size="sm" 
                     className="text-xs text-primary-600 hover:bg-primary-50 self-end sm:self-center"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDetails(event.id);
+                    }}
                   >
                     View details
                   </Button>
@@ -215,12 +405,13 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({
           </Card>
         ))}
         
-        {hasEvents && (
+        {hasMoreEvents && (
           <div className="flex justify-center pt-4">
             <Button 
               variant="ghost" 
               size="sm"
               className="text-sm text-gray-600 hover:text-gray-900"
+              onClick={handleLoadMore}
             >
               Load more
             </Button>

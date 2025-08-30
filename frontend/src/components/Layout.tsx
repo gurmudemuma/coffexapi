@@ -98,8 +98,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     handleMenuClose();
   };
 
+  const handleProfile = () => {
+    navigate('/profile');
+    handleMenuClose();
+  };
+
+  const handleSettings = () => {
+    navigate('/settings');
+    handleMenuClose();
+  };
+
   const handleNotificationItemClick = (notificationId: string) => {
     markAsRead(notificationId);
+    const notification = notifications.find(n => n.id === notificationId);
+    if (notification && notification.path) {
+      navigate(notification.path);
+    }
+    handleNotificationClose();
   };
 
   const getNotificationIcon = (type: string) => {
@@ -265,13 +280,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </Typography>
             </MenuItem>
             <Divider />
-            <MenuItem onClick={handleMenuClose}>
+            <MenuItem onClick={handleProfile}>
               <ListItemIcon>
                 <AccountCircle fontSize="small" />
               </ListItemIcon>
               Profile
             </MenuItem>
-            <MenuItem onClick={handleMenuClose}>
+            <MenuItem onClick={handleSettings}>
               <ListItemIcon>
                 <Settings fontSize="small" />
               </ListItemIcon>

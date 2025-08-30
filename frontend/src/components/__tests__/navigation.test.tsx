@@ -123,12 +123,12 @@ describe('Organization-Specific Navigation', () => {
     // Test the getNavigationItems function indirectly through ModernLayout
     const organizationTestCases = [
       {
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         role: 'NBE_ADMIN',
         expectedItems: ['Dashboard', 'NBE Control Center', 'Compliance Monitor', 'User Management', 'Audit Trail'],
       },
       {
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         role: 'NBE_OFFICER',
         expectedItems: ['Dashboard', 'NBE Control Center', 'Compliance Monitor', 'Audit Trail'], // No User Management
       },
@@ -191,7 +191,7 @@ describe('Organization-Specific Navigation', () => {
         // Check that User Management is only shown for NBE_ADMIN
         if (role === 'NBE_ADMIN') {
           expect(screen.getByText('User Management')).toBeInTheDocument();
-        } else if (organization === 'National Bank of Ethiopia' && role === 'NBE_OFFICER') {
+        } else if (organization === 'The Mint' && role === 'NBE_OFFICER') {
           expect(screen.queryByText('User Management')).not.toBeInTheDocument();
         }
       });
@@ -241,12 +241,12 @@ describe('Organization-Specific Navigation', () => {
 
     const routerTestCases = [
       {
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         role: 'NBE_ADMIN',
         expectedComponent: 'nbe-dashboard',
       },
       {
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         role: 'NBE_OFFICER',
         expectedComponent: 'nbe-dashboard',
       },
@@ -295,7 +295,7 @@ describe('Organization-Specific Navigation', () => {
           if (!user) return <div data-testid="no-user">No User</div>;
           
           const organizationDashboardMap: Record<string, { roles: string[], component: React.ReactElement }> = {
-            'National Bank of Ethiopia': {
+            'The Mint': {
               roles: ['NBE_ADMIN', 'NBE_OFFICER'],
               component: <div data-testid="nbe-dashboard">NBE Dashboard</div>
             },
@@ -349,7 +349,7 @@ describe('Organization-Specific Navigation', () => {
         id: 'test-user',
         name: 'Test User',
         role: 'CUSTOMS_VALIDATOR', // Wrong role for NBE
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         permissions: [],
         email: 'test@example.com',
       };
@@ -365,7 +365,7 @@ describe('Organization-Specific Navigation', () => {
         if (!user) return <div data-testid="no-user">No User</div>;
         
         const organizationDashboardMap: Record<string, { roles: string[] }> = {
-          'National Bank of Ethiopia': {
+          'The Mint': {
             roles: ['NBE_ADMIN', 'NBE_OFFICER'],
           },
         };
@@ -390,7 +390,7 @@ describe('Organization-Specific Navigation', () => {
       );
 
       expect(screen.getByTestId('access-denied')).toBeInTheDocument();
-      expect(screen.getByText(/Role CUSTOMS_VALIDATOR not authorized for National Bank of Ethiopia/)).toBeInTheDocument();
+      expect(screen.getByText(/Role CUSTOMS_VALIDATOR not authorized for The Mint/)).toBeInTheDocument();
     });
 
     it('should fallback to general dashboard for unrecognized organizations', async () => {
@@ -414,7 +414,7 @@ describe('Organization-Specific Navigation', () => {
         if (!user) return <div data-testid="no-user">No User</div>;
         
         const organizationDashboardMap: Record<string, any> = {
-          'National Bank of Ethiopia': { roles: ['NBE_ADMIN'] },
+          'The Mint': { roles: ['NBE_ADMIN'] },
         };
         
         const organizationConfig = organizationDashboardMap[user.organization];
@@ -442,7 +442,7 @@ describe('Organization-Specific Navigation', () => {
         id: 'test-user',
         name: 'Test User',
         role: 'NBE_ADMIN',
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         permissions: ['user:manage'],
         email: 'test@example.com',
       };
@@ -468,7 +468,7 @@ describe('Organization-Specific Navigation', () => {
         id: 'test-user',
         name: 'Test User',
         role: 'NBE_ADMIN',
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         permissions: [],
         email: 'test@example.com',
       };
@@ -514,7 +514,7 @@ describe('Organization-Specific Navigation', () => {
         id: 'test-user',
         name: 'Test User',
         role: 'NBE_OFFICER',
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         permissions: ['audit:read'], // Missing user:manage and compliance:screen
         email: 'test@example.com',
       };
@@ -543,7 +543,7 @@ describe('Organization-Specific Navigation', () => {
         id: 'test-user',
         name: 'Test User',
         role: 'NBE_ADMIN',
-        organization: 'National Bank of Ethiopia',
+        organization: 'The Mint',
         permissions: ['user:manage', 'compliance:screen', 'audit:read'],
         email: 'test@example.com',
       };

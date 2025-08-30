@@ -42,7 +42,7 @@ interface ApproversPanelProps {
 
 const ORGANIZATION_CONFIG = {
   'national-bank': {
-    name: 'National Bank of Ethiopia',
+    name: 'The Mint',
     role: 'License Validator',
     documentTypes: ['LICENSE'],
     color: 'blue',
@@ -112,7 +112,7 @@ export default function ApproversPanel({ organizationType }: ApproversPanelProps
 
     // Validate user's organization matches the component's organization type
     const userOrgMap: Record<string, string> = {
-      'National Bank of Ethiopia': 'national-bank',
+      'The Mint': 'national-bank',
       'Customs Authority': 'customs',
       'Coffee Quality Authority': 'quality-authority',
       'Exporter Bank': 'exporter-bank',

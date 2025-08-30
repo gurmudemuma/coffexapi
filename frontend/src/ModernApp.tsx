@@ -301,7 +301,7 @@ const OrganizationRouter: React.FC = () => {
     
     // Validate user has access to their organization's dashboard
     const organizationDashboardMap: Record<string, { roles: string[], component: React.ReactElement }> = {
-      'National Bank of Ethiopia': {
+      'The Mint': {
         roles: ['NBE_ADMIN', 'NBE_OFFICER'],
         component: <NBEDashboard />
       },
@@ -420,7 +420,7 @@ const ModernApp: React.FC = () => {
                     path="/nbe-dashboard" 
                     element={
                       <ProtectedRoute 
-                        allowedOrganizations={['National Bank of Ethiopia']}
+                        allowedOrganizations={['The Mint']}
                         allowedRoles={['NBE_ADMIN', 'NBE_OFFICER']}
                       >
                         <Suspense fallback={<Spinner />}>
@@ -557,7 +557,7 @@ const ModernApp: React.FC = () => {
                     element={
                       <ProtectedRoute 
                         requiredPermissions={['user:manage']}
-                        allowedOrganizations={['National Bank of Ethiopia']}
+                        allowedOrganizations={['The Mint']}
                         allowedRoles={['NBE_ADMIN']}
                       >
                         <Suspense fallback={<Spinner />}>
@@ -572,7 +572,7 @@ const ModernApp: React.FC = () => {
                     element={
                       <ProtectedRoute 
                         requiredPermissions={['compliance:screen']}
-                        allowedOrganizations={['National Bank of Ethiopia']}
+                        allowedOrganizations={['The Mint']}
                       >
                         <Suspense fallback={<Spinner />}>
                           <ComplianceAlerts />

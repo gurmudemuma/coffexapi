@@ -5,9 +5,10 @@ WORKDIR /app
 RUN apk add --no-cache git
 
 COPY go.mod go.sum ./
-COPY vendor ./vendor
+RUN go mod download
 
 COPY . .
+RUN go mod vendor
 
 RUN go build -mod=vendor -o /api-gateway
 

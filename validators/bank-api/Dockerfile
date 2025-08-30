@@ -4,7 +4,8 @@ FROM golang:1.21 AS builder
 WORKDIR /app
 
 # Copy module files for the validator
-COPY validators/bank-api/go.mod validators/bank-api/go.sum ./
+COPY validators/bank-api/go.mod ./
+RUN go mod tidy
 
 # Copy the entire shared module to match the replace directive
 COPY chaincode/shared /app/chaincode/shared
@@ -13,7 +14,7 @@ COPY chaincode/shared /app/chaincode/shared
 RUN go mod download
 
 # Copy the validator's source code
-COPY validators/bank-api/ ./
+COPY validators/bank-api/bank-api/ ./
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o main .

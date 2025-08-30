@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -71,6 +72,7 @@ interface ComplianceAlert {
 
 const ComplianceAlerts: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { showNotification } = useNotifications();
   const [alerts, setAlerts] = useState<ComplianceAlert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +82,13 @@ const ComplianceAlerts: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSeverity, setFilterSeverity] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [actionForm, setActionForm] = useState({
+    action: '',
+    notes: '',
+    priority: 'medium',
+    assignTo: '',
+    dueDate: ''
+  });
 
   useEffect(() => {
     fetchAlerts();
@@ -215,16 +224,90 @@ const ComplianceAlerts: React.FC = () => {
     }
   };
 
-  const handleTakeAction = async (action: string) => {
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      showNotification('success', 'Action Taken', `${action} completed successfully`);
-      setOpenDialog(false);
-    } catch (error) {
-      showNotification('error', 'Error', `Failed to execute ${action}`);
+  const handleTakeAction = (action: string, alertId: string) => {
+    // Handle different action types
+    switch (action.toLowerCase()) {
+      case 'investigate':
+        navigate(`/compliance/investigations/${alertId}`);
+        break;
+      case 'review':
+        navigate(`/compliance/reviews/${alertId}`);
+        break;
+      case 'escalate':
+        navigate(`/compliance/escalations/${alertId}`);
+        break;
+      case 'resolve':
+        setSelectedAlert(alerts.find(a => a.id === alertId) || null);
+        setOpenDialog(true);
+        break;
+      default:
+        // Default action handling
+        console.log(`Taking action: ${action} on alert ${alertId}`);
     }
+  };
+
+  const handleSubmitAction = () => {
+    if (selectedAlert && actionForm.action) {
+      // Submit the action form
+      console.log('Submitting action:', {
+        alertId: selectedAlert.id,
+        ...actionForm
+      });
+      
+      // Update alert status to resolved
+      handleUpdateAlertStatus(selectedAlert.id, 'resolved');
+      
+      // Close dialog and reset form
+      setOpenDialog(false);
+      setSelectedAlert(null);
+      setActionForm({
+        action: '',
+        notes: '',
+        priority: 'medium',
+        assignTo: '',
+        dueDate: ''
+      });
+    }
+  };
+
+  const handleViewAlertDetails = (alertId: string) => {
+    navigate(`/compliance/alerts/${alertId}`);
+  };
+
+  const handleExportAlerts = () => {
+    // Export alerts data as CSV
+    const csvContent = generateAlertsCSV(alerts);
+    downloadCSV(csvContent, 'compliance-alerts.csv');
+  };
+
+  // CSV generation and download functions
+  const generateAlertsCSV = (data: ComplianceAlert[]) => {
+    const headers = ['ID', 'Title', 'Severity', 'Status', 'Exporter', 'Created', 'Due Date'];
+    const rows = data.map(alert => [
+      alert.id,
+      alert.title,
+      alert.severity,
+      alert.status,
+      alert.exporterName,
+      new Date(alert.createdAt).toLocaleDateString(),
+      alert.dueDate ? new Date(alert.dueDate).toLocaleDateString() : 'N/A'
+    ]);
+    
+    return [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+  };
+
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const filteredAlerts = alerts.filter(alert => {
@@ -578,7 +661,7 @@ const ComplianceAlerts: React.FC = () => {
                         variant="outlined"
                         size="small"
                         startIcon={<PlayArrow />}
-                        onClick={() => handleTakeAction(action)}
+                        onClick={() => handleTakeAction(action, selectedAlert.id)}
                       >
                         {action}
                       </Button>
@@ -615,6 +698,90 @@ const ComplianceAlerts: React.FC = () => {
             </DialogActions>
           </>
         )}
+      </Dialog>
+
+      {/* Action Form Dialog */}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Take Action on Alert</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" gutterBottom>
+                Alert: {selectedAlert?.title}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Action Type</InputLabel>
+                <Select
+                  value={actionForm.action}
+                  onChange={(e) => setActionForm({ ...actionForm, action: e.target.value })}
+                  label="Action Type"
+                >
+                  <MenuItem value="investigate">Investigate</MenuItem>
+                  <MenuItem value="review">Review</MenuItem>
+                  <MenuItem value="escalate">Escalate</MenuItem>
+                  <MenuItem value="resolve">Resolve</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Priority</InputLabel>
+                <Select
+                  value={actionForm.priority}
+                  onChange={(e) => setActionForm({ ...actionForm, priority: e.target.value })}
+                  label="Priority"
+                >
+                  <MenuItem value="low">Low</MenuItem>
+                  <MenuItem value="medium">Medium</MenuItem>
+                  <MenuItem value="high">High</MenuItem>
+                  <MenuItem value="critical">Critical</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Assign To"
+                value={actionForm.assignTo}
+                onChange={(e) => setActionForm({ ...actionForm, assignTo: e.target.value })}
+                placeholder="Enter user email or name"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Due Date"
+                type="date"
+                value={actionForm.dueDate}
+                onChange={(e) => setActionForm({ ...actionForm, dueDate: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Notes"
+                multiline
+                rows={4}
+                value={actionForm.notes}
+                onChange={(e) => setActionForm({ ...actionForm, notes: e.target.value })}
+                placeholder="Enter detailed notes about the action..."
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button 
+            onClick={handleSubmitAction}
+            variant="contained"
+            disabled={!actionForm.action}
+          >
+            Submit Action
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );

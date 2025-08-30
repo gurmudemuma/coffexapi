@@ -168,67 +168,6 @@ const ExporterDashboard: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto" style={{ backgroundColor: orgBranding.backgroundColor }}>
-      {/* Header with enhanced branding */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <CoffeeIcon className={`h-8 w-8 text-[${orgBranding.primaryColor}]`} />
-          <h1 className="text-3xl font-bold text-gray-900">Export Dashboard</h1>
-        </div>
-        <p className="text-gray-600">
-          Welcome back, {user?.name}. Manage your coffee export requests and track their progress through our blockchain-validated platform.
-        </p>
-      </div>
-
-      {/* Welcome Message and Overview */}
-      <Card className="mb-8">
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Export Management Hub</h3>
-              <p className="text-gray-600 mb-4">
-                Your central hub for creating and managing coffee export requests. Track validation progress, 
-                view approvals, and monitor your export pipeline through our secure blockchain platform.
-              </p>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
-                  <span>Create and submit export requests</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
-                  <span>Track validation and approval status</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 bg-purple-500 rounded-full"></span>
-                  <span>Monitor payment release process</span>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900">Quick Summary</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="bg-gray-50 p-3 rounded">
-                  <div className="text-2xl font-bold text-gray-900">{stats.totalExports}</div>
-                  <div className="text-gray-600">Total Exports</div>
-                </div>
-                <div className="bg-blue-50 p-3 rounded">
-                  <div className="text-2xl font-bold text-blue-600">{stats.activeExports}</div>
-                  <div className="text-gray-600">Active</div>
-                </div>
-                <div className="bg-green-50 p-3 rounded">
-                  <div className="text-2xl font-bold text-green-600">{stats.approvedExports}</div>
-                  <div className="text-gray-600">Approved</div>
-                </div>
-                <div className="bg-yellow-50 p-3 rounded">
-                  <div className="text-2xl font-bold text-yellow-600">{formatCurrency(stats.totalValue, 'USD').replace('$', '')}</div>
-                  <div className="text-gray-600">Total Value (USD)</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Quick Action Buttons with enhanced branding */}
       <Card className="mb-8">
         <CardContent className="p-6">

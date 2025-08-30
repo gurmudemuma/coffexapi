@@ -2,19 +2,27 @@ package main
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"runtime/debug"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
-	
+
 	"github.com/chaincode/shared"
+	"github.com/hyperledger/fabric-gateway/pkg/client"
+	"github.com/hyperledger/fabric-gateway/pkg/identity"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // APIResponse represents a standardized API response
@@ -74,11 +82,18 @@ func NewAPIGateway() (*APIGateway, error) {
 	
 	// Initialize health monitor
 	monitor := shared.NewHealthMonitor("api-gateway", config.Version, config.Environment)
+
+	// Connect to the gateway
+	gw, err := connectToGateway()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to gateway: %w", err)
+	}
 	
 	return &APIGateway{
 		logger:  logger,
 		monitor: monitor,
 		config:  config,
+		gw:      gw,
 	}, nil
 }
 
@@ -311,6 +326,111 @@ func (ag *APIGateway) rateLimitMiddleware(next http.HandlerFunc) http.HandlerFun
 		
 		next(w, r)
 	}
+}
+
+const (
+	mspID        = "ExporterBankMSP"
+	cryptoPath   = "../../network/organizations/peerOrganizations/exporterbank.com"
+	certPath     = cryptoPath + "/users/User1@exporterbank.com/msp/signcerts/cert.pem"
+	keyPath      = cryptoPath + "/users/User1@exporterbank.com/msp/keystore/"
+	tlsCertPath  = cryptoPath + "/tlsca/tlsca.exporterbank.com-cert.pem"
+	peerEndpoint = "localhost:8051"
+	gatewayPeer  = "peer0.exporterbank.com"
+)
+
+func connectToGateway() (*client.Gateway, error) {
+	clientConnection, err := newGrpcConnection()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC connection: %w", err)
+	}
+
+	id, err := newIdentity()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create identity: %w", err)
+	}
+
+	sign, err := newSign()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create sign: %w", err)
+	}
+
+	gw, err := client.Connect(
+		id,
+		client.WithSign(sign),
+		client.WithClientConnection(clientConnection),
+		client.WithEvaluateTimeout(5*time.Second),
+		client.WithEndorseTimeout(15*time.Second),
+		client.WithSubmitTimeout(5*time.Second),
+		client.WithCommitStatusTimeout(1*time.Minute),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to gateway: %w", err)
+	}
+
+	return gw, nil
+}
+
+func newGrpcConnection() (*grpc.ClientConn, error) {
+	certificate, err := loadCertificate(tlsCertPath)
+	if err != nil {
+		return nil, err
+	}
+
+	certPool := x509.NewCertPool()
+	certPool.AddCert(certificate)
+	transportCredentials := credentials.NewClientTLSFromCert(certPool, gatewayPeer)
+
+	connection, err := grpc.Dial(peerEndpoint, grpc.WithTransportCredentials(transportCredentials))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC connection: %w", err)
+	}
+
+	return connection, nil
+}
+
+func newIdentity() (*identity.X509Identity, error) {
+	certificate, err := loadCertificate(certPath)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := identity.NewX509Identity(mspID, certificate)
+	if err != nil {
+		return nil, err
+	}
+
+	return id, nil
+}
+
+func newSign() (identity.Sign, error) {
+	files, err := ioutil.ReadDir(keyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read keystore directory: %w", err)
+	}
+	privateKeyPEM, err := ioutil.ReadFile(path.Join(keyPath, files[0].Name()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key file: %w", err)
+	}
+
+	privateKey, err := identity.PrivateKeyFromPEM(privateKeyPEM)
+	if err != nil {
+		return nil, err
+	}
+
+	sign, err := identity.NewPrivateKeySign(privateKey.(*ecdsa.PrivateKey))
+	if err != nil {
+		return nil, err
+	}
+
+	return sign, nil
+}
+
+func loadCertificate(path string) (*x509.Certificate, error) {
+	certificatePEM, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read certificate file: %w", err)
+	}
+	return identity.CertificateFromPEM(certificatePEM)
 }
 
 func main() {
@@ -672,15 +792,39 @@ func (ag *APIGateway) submitExportHandler(w http.ResponseWriter, r *http.Request
 		ag.writeErrorResponse(w, r, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request format", err.Error())
 		return
 	}
-	
-	// TODO: Implement actual blockchain submission
-	// For now, return a mock response
-	exportID := fmt.Sprintf("EXP-%d", time.Now().Unix())
+
+	network := ag.gw.GetNetwork("coffeechannel")
+	contract := network.GetContract("coffee-export")
+
+	exportJSON, err := json.Marshal(exportReq)
+	if err != nil {
+		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to marshal request", err.Error())
+		return
+	}
+
+	proposal, err := contract.NewProposal("SubmitExport", client.WithArguments(string(exportJSON)))
+	if err != nil {
+		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to create proposal", err.Error())
+		return
+	}
+
+	transaction, err := proposal.Endorse()
+	if err != nil {
+		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to endorse transaction", err.Error())
+		return
+	}
+
+	result, err := transaction.Submit()
+	if err != nil {
+		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to submit transaction", err.Error())
+		return
+	}
+
 	responseData := map[string]interface{}{
-		"exportId":    exportID,
+		"exportId":    exportReq["exportId"],
 		"status":      "submitted",
 		"submittedAt": time.Now().Unix(),
-		"txHash":      fmt.Sprintf("0x%x", time.Now().UnixNano()),
+		"txHash":      result.TransactionID(),
 	}
 	
 	ag.writeSuccessResponse(w, r, responseData)
@@ -693,97 +837,51 @@ func (ag *APIGateway) pendingApprovalsHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	
-	// Extract organization configuration from context (set by organizationMiddleware)
 	orgConfig, ok := r.Context().Value("organizationConfig").(OrganizationConfig)
 	if !ok {
 		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "MISSING_ORG_CONTEXT", "Organization context not found", "Organization middleware must be applied")
 		return
 	}
-	
-	// Additional role validation (optional - could be passed via header)
-	userRole := r.Header.Get("X-User-Role")
-	if userRole != "" && !validateOrganizationRole(r.URL.Query().Get("org"), userRole) {
-		ag.writeErrorResponse(w, r, http.StatusForbidden, "INVALID_ROLE", "Invalid role for organization", fmt.Sprintf("Role '%s' not authorized for %s", userRole, orgConfig.Name))
+
+	network := ag.gw.GetNetwork("coffeechannel")
+	contract := network.GetContract("coffee-export")
+
+	result, err := contract.EvaluateTransaction("GetAllExportRequests")
+	if err != nil {
+		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to evaluate transaction", err.Error())
 		return
 	}
-	
-	// Log access attempt
-	ag.logger.WithRequestID(getRequestID(r)).WithContext("organization", orgConfig.Name).WithContext("documentType", orgConfig.DocumentType).WithContext("userRole", userRole).Info("Fetching pending approvals for organization")
-	
-	// Mock data - replace with actual blockchain queries filtered by organization
-	// In real implementation, this would query the blockchain with organization-specific filters
-	mockApprovals := []map[string]interface{}{}
-	
-	// Only return documents relevant to this organization's document type
-	if orgConfig.DocumentType == "LICENSE" {
-		mockApprovals = append(mockApprovals, map[string]interface{}{
-			"id":           "1",
-			"exportId":     "EXP-2024-001",
-			"docType":      orgConfig.DocumentType,
-			"hash":         "a1b2c3d4e5f6789012345",
-			"exporterName": "Colombian Coffee Co.",
-			"timestamp":    time.Now().Unix(),
-			"urgencyLevel": "HIGH",
-			"submittedAt":  time.Now().Add(-2 * time.Hour).Unix(),
-			"organizationOnly": true, // Flag indicating this is organization-specific data
-		})
+
+	var allExports []map[string]interface{}
+	if err := json.Unmarshal(result, &allExports); err != nil {
+		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to unmarshal response", err.Error())
+		return
 	}
-	
-	if orgConfig.DocumentType == "INVOICE" {
-		mockApprovals = append(mockApprovals, map[string]interface{}{
-			"id":           "2",
-			"exportId":     "EXP-2024-002",
-			"docType":      orgConfig.DocumentType,
-			"hash":         "x9y8z7w6v5u4t3s2r1q0",
-			"exporterName": "Brazilian Beans Ltd.",
-			"timestamp":    time.Now().Unix(),
-			"urgencyLevel": "MEDIUM",
-			"submittedAt":  time.Now().Add(-1 * time.Hour).Unix(),
-			"organizationOnly": true,
-		})
-	}
-	
-	if orgConfig.DocumentType == "QUALITY" {
-		mockApprovals = append(mockApprovals, map[string]interface{}{
-			"id":           "3",
-			"exportId":     "EXP-2024-003",
-			"docType":      orgConfig.DocumentType,
-			"hash":         "q1w2e3r4t5y6u7i8o9p0",
-			"exporterName": "Ethiopian Premium Coffee",
-			"timestamp":    time.Now().Unix(),
-			"urgencyLevel": "HIGH",
-			"submittedAt":  time.Now().Add(-3 * time.Hour).Unix(),
-			"organizationOnly": true,
-		})
-	}
-	
-	if orgConfig.DocumentType == "SHIPPING" {
-		mockApprovals = append(mockApprovals, map[string]interface{}{
-			"id":           "4",
-			"exportId":     "EXP-2024-004",
-			"docType":      orgConfig.DocumentType,
-			"hash":         "s1h2i3p4p5i6n7g8d9o0",
-			"exporterName": "Kenyan Coffee Exporters",
-			"timestamp":    time.Now().Unix(),
-			"urgencyLevel": "MEDIUM",
-			"submittedAt":  time.Now().Add(-4 * time.Hour).Unix(),
-			"organizationOnly": true,
-		})
+
+	var pendingApprovals []map[string]interface{}
+	for _, export := range allExports {
+		documents, ok := export["documents"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		for docType, doc := range documents {
+			if docType == orgConfig.DocumentType {
+				validation, ok := doc.(map[string]interface{})["validation"].(map[string]interface{})
+				if !ok || validation["status"] == "PENDING" {
+					pendingApprovals = append(pendingApprovals, export)
+				}
+			}
+		}
 	}
 	
 	responseData := map[string]interface{}{
-		"pendingApprovals": mockApprovals,
+		"pendingApprovals": pendingApprovals,
 		"organization":     orgConfig.Name,
 		"organizationMSP":  orgConfig.MSP,
 		"documentType":     orgConfig.DocumentType,
-		"totalCount":       len(mockApprovals),
+		"totalCount":       len(pendingApprovals),
 		"lastUpdated":      time.Now().Unix(),
-		"dataScope":        "organization-specific", // Explicitly indicate data scope
-		"accessControl": map[string]interface{}{
-			"filteredByOrg":  true,
-			"filteredByRole": userRole != "",
-			"validRoles":     orgConfig.ValidRoles,
-		},
+		"dataScope":        "organization-specific",
 	}
 	
 	ag.writeSuccessResponse(w, r, responseData)
@@ -796,108 +894,51 @@ func (ag *APIGateway) completedApprovalsHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 	
-	// Extract organization configuration from context (set by organizationMiddleware)
 	orgConfig, ok := r.Context().Value("organizationConfig").(OrganizationConfig)
 	if !ok {
 		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "MISSING_ORG_CONTEXT", "Organization context not found", "Organization middleware must be applied")
 		return
 	}
-	
-	// Additional role validation (optional - could be passed via header)
-	userRole := r.Header.Get("X-User-Role")
-	if userRole != "" && !validateOrganizationRole(r.URL.Query().Get("org"), userRole) {
-		ag.writeErrorResponse(w, r, http.StatusForbidden, "INVALID_ROLE", "Invalid role for organization", fmt.Sprintf("Role '%s' not authorized for %s", userRole, orgConfig.Name))
+
+	network := ag.gw.GetNetwork("coffeechannel")
+	contract := network.GetContract("coffee-export")
+
+	result, err := contract.EvaluateTransaction("GetAllExportRequests")
+	if err != nil {
+		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to evaluate transaction", err.Error())
 		return
 	}
-	
-	// Log access attempt
-	ag.logger.WithRequestID(getRequestID(r)).WithContext("organization", orgConfig.Name).WithContext("documentType", orgConfig.DocumentType).WithContext("userRole", userRole).Info("Fetching completed approvals for organization")
-	
-	// Mock data - replace with actual blockchain queries filtered by organization
-	mockCompletedApprovals := []map[string]interface{}{}
-	
-	// Only return completed approvals relevant to this organization's document type
-	if orgConfig.DocumentType == "LICENSE" {
-		mockCompletedApprovals = append(mockCompletedApprovals, map[string]interface{}{
-			"id":           "3",
-			"exportId":     "EXP-2024-003",
-			"docType":      orgConfig.DocumentType,
-			"hash":         "completed123",
-			"exporterName": "Ethiopian Premium Coffee",
-			"timestamp":    time.Now().Add(-2 * time.Hour).Unix(),
-			"status":       "APPROVED",
-			"reviewedBy":   orgConfig.Name + " Officer",
-			"reviewDate":   time.Now().Add(-1 * time.Hour).Unix(),
-			"comments":     "License validated and approved",
-			"submittedAt":  time.Now().Add(-3 * time.Hour).Unix(),
-			"organizationOnly": true,
-		})
+
+	var allExports []map[string]interface{}
+	if err := json.Unmarshal(result, &allExports); err != nil {
+		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to unmarshal response", err.Error())
+		return
 	}
-	
-	if orgConfig.DocumentType == "INVOICE" {
-		mockCompletedApprovals = append(mockCompletedApprovals, map[string]interface{}{
-			"id":           "4",
-			"exportId":     "EXP-2024-004",
-			"docType":      orgConfig.DocumentType,
-			"hash":         "inv_completed456",
-			"exporterName": "Brazilian Coffee Exports",
-			"timestamp":    time.Now().Add(-1 * time.Hour).Unix(),
-			"status":       "APPROVED",
-			"reviewedBy":   orgConfig.Name + " Validator",
-			"reviewDate":   time.Now().Add(-30 * time.Minute).Unix(),
-			"comments":     "Invoice verified and payment approved",
-			"submittedAt":  time.Now().Add(-2 * time.Hour).Unix(),
-			"organizationOnly": true,
-		})
-	}
-	
-	if orgConfig.DocumentType == "QUALITY" {
-		mockCompletedApprovals = append(mockCompletedApprovals, map[string]interface{}{
-			"id":           "5",
-			"exportId":     "EXP-2024-005",
-			"docType":      orgConfig.DocumentType,
-			"hash":         "qual_completed789",
-			"exporterName": "Colombian Premium Beans",
-			"timestamp":    time.Now().Add(-3 * time.Hour).Unix(),
-			"status":       "APPROVED",
-			"reviewedBy":   orgConfig.Name + " Inspector",
-			"reviewDate":   time.Now().Add(-2 * time.Hour).Unix(),
-			"comments":     "Quality standards met, certificate issued",
-			"submittedAt":  time.Now().Add(-4 * time.Hour).Unix(),
-			"organizationOnly": true,
-		})
-	}
-	
-	if orgConfig.DocumentType == "SHIPPING" {
-		mockCompletedApprovals = append(mockCompletedApprovals, map[string]interface{}{
-			"id":           "6",
-			"exportId":     "EXP-2024-006",
-			"docType":      orgConfig.DocumentType,
-			"hash":         "ship_completed012",
-			"exporterName": "Kenyan Coffee Cooperative",
-			"timestamp":    time.Now().Add(-5 * time.Hour).Unix(),
-			"status":       "APPROVED",
-			"reviewedBy":   orgConfig.Name + " Officer",
-			"reviewDate":   time.Now().Add(-4 * time.Hour).Unix(),
-			"comments":     "Shipping documents cleared for export",
-			"submittedAt":  time.Now().Add(-6 * time.Hour).Unix(),
-			"organizationOnly": true,
-		})
+
+	var completedApprovals []map[string]interface{}
+	for _, export := range allExports {
+		documents, ok := export["documents"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		for docType, doc := range documents {
+			if docType == orgConfig.DocumentType {
+				validation, ok := doc.(map[string]interface{})["validation"].(map[string]interface{})
+				if ok && validation["status"] != "PENDING" {
+					completedApprovals = append(completedApprovals, export)
+				}
+			}
+		}
 	}
 	
 	responseData := map[string]interface{}{
-		"completedApprovals": mockCompletedApprovals,
+		"completedApprovals": completedApprovals,
 		"organization":       orgConfig.Name,
 		"organizationMSP":    orgConfig.MSP,
 		"documentType":       orgConfig.DocumentType,
-		"totalCount":         len(mockCompletedApprovals),
+		"totalCount":         len(completedApprovals),
 		"lastUpdated":        time.Now().Unix(),
 		"dataScope":          "organization-specific",
-		"accessControl": map[string]interface{}{
-			"filteredByOrg":  true,
-			"filteredByRole": userRole != "",
-			"validRoles":     orgConfig.ValidRoles,
-		},
 	}
 	
 	ag.writeSuccessResponse(w, r, responseData)
@@ -915,28 +956,23 @@ func (ag *APIGateway) exportStatusHandler(w http.ResponseWriter, r *http.Request
 		ag.writeErrorResponse(w, r, http.StatusBadRequest, "MISSING_PARAMETER", "Missing export ID parameter", "The 'exportId' query parameter is required")
 		return
 	}
-	
-	// Mock export status data
-	responseData := map[string]interface{}{
-		"exportId":      exportID,
-		"status":        "PENDING_APPROVAL",
-		"submittedAt":   time.Now().Add(-2 * time.Hour).Unix(),
-		"lastUpdated":   time.Now().Unix(),
-		"validations": map[string]interface{}{
-			"LICENSE":  map[string]interface{}{"status": "PENDING", "validator": "National Bank"},
-			"INVOICE":  map[string]interface{}{"status": "APPROVED", "validator": "Exporter Bank"},
-			"QUALITY":  map[string]interface{}{"status": "PENDING", "validator": "Coffee Authority"},
-			"SHIPPING": map[string]interface{}{"status": "PENDING", "validator": "Customs"},
-		},
-		"documents": map[string]interface{}{
-			"LICENSE":  map[string]interface{}{"hash": "a1b2c3d4e5f6789012345", "uploadedAt": time.Now().Add(-2 * time.Hour).Unix()},
-			"INVOICE":  map[string]interface{}{"hash": "x9y8z7w6v5u4t3s2r1q0", "uploadedAt": time.Now().Add(-2 * time.Hour).Unix()},
-			"QUALITY":  map[string]interface{}{"hash": "q1w2e3r4t5y6u7i8o9p0", "uploadedAt": time.Now().Add(-2 * time.Hour).Unix()},
-			"SHIPPING": map[string]interface{}{"hash": "s1h2i3p4p5i6n7g8d9o0", "uploadedAt": time.Now().Add(-2 * time.Hour).Unix()},
-		},
+
+	network := ag.gw.GetNetwork("coffeechannel")
+	contract := network.GetContract("coffee-export")
+
+	result, err := contract.EvaluateTransaction("GetExportRequest", exportID)
+	if err != nil {
+		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to evaluate transaction", err.Error())
+		return
+	}
+
+	var exportRequest map[string]interface{}
+	if err := json.Unmarshal(result, &exportRequest); err != nil {
+		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to unmarshal response", err.Error())
+		return
 	}
 	
-	ag.writeSuccessResponse(w, r, responseData)
+	ag.writeSuccessResponse(w, r, exportRequest)
 }
 
 // systemStatusHandler returns the overall system health status

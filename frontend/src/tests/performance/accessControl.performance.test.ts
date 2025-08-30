@@ -47,7 +47,7 @@ class PerformanceMonitor {
 // Mock data generators
 function generateMockUser(index: number) {
   const organizations = [
-    'National Bank of Ethiopia',
+    'The Mint',
     'Customs Authority', 
     'Coffee Quality Authority',
     'Exporter Bank',
@@ -174,7 +174,7 @@ describe('Access Control Performance Tests', () => {
         
         // Simulate organization route checking
         const ORGANIZATION_ROUTES: Record<string, string[]> = {
-          'National Bank of Ethiopia': ['/nbe-dashboard', '/users', '/compliance', '/audit'],
+          'The Mint': ['/nbe-dashboard', '/users', '/compliance', '/audit'],
           'Customs Authority': ['/customs-dashboard', '/audit'],
           'Coffee Quality Authority': ['/quality-dashboard', '/audit'],
           'Exporter Bank': ['/bank-dashboard', '/audit'],
@@ -390,7 +390,7 @@ describe('Access Control Performance Tests', () => {
               const route = generateMockRoute(i);
               
               const ORGANIZATION_ROUTES: Record<string, string[]> = {
-                'National Bank of Ethiopia': ['/nbe-dashboard', '/users'],
+                'The Mint': ['/nbe-dashboard', '/users'],
                 'Customs Authority': ['/customs-dashboard'],
               };
               
