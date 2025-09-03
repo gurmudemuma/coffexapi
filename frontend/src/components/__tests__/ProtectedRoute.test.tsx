@@ -416,7 +416,7 @@ describe('ProtectedRoute', () => {
       {
         organization: 'Coffee Exporters Association',
         role: 'EXPORTER',
-        allowedPath: '/exporter-dashboard',
+        allowedPath: '/exporter',
         blockedPath: '/nbe-dashboard',
       },
     ];

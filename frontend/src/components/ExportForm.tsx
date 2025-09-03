@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useExport } from '../hooks/useExport';
 import { useExportApprovals } from '../hooks/useExportApprovals';
 import type { ExportDocument } from '../hooks/useExport';
@@ -10,7 +11,6 @@ const ExporterDetailsTab = lazy(() => import('./ExporterDetailsTab'));
 const TradeDetailsTab = lazy(() => import('./TradeDetailsTab'));
 const DocumentsTab = lazy(() => import('./DocumentsTab'));
 
-// Reuse DocumentState from DocumentInputNew
 type DocumentsState = Record<DocumentType, DocumentState>;
 
 type ExporterDetails = {
@@ -45,6 +45,8 @@ type TradeDetails = {
 };
 
 export default function ExportForm() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<
     'exporter' | 'trade' | 'documents'
   >('exporter');
@@ -140,6 +142,53 @@ export default function ExportForm() {
 
   const { submitExport, status } = useExport();
 
+  // Handle tab navigation via query parameters
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab');
+    
+    if (tabParam) {
+      // Map the query parameter to the appropriate tab
+      switch (tabParam) {
+        case 'new-export':
+          setActiveTab('exporter');
+          break;
+        case 'manage':
+          // For manage, we might want to show a different view, but for now we'll default to exporter
+          setActiveTab('exporter');
+          break;
+        default:
+          // Default to exporter tab if invalid parameter
+          setActiveTab('exporter');
+      }
+    }
+  }, [location.search]);
+
+  // Update URL when tab changes
+  const handleTabChange = (tab: 'exporter' | 'trade' | 'documents') => {
+    setActiveTab(tab);
+    
+    // Update the URL to reflect the current tab
+    const searchParams = new URLSearchParams(location.search);
+    
+    // Map the tab to the appropriate query parameter
+    switch (tab) {
+      case 'exporter':
+        searchParams.set('tab', 'new-export');
+        break;
+      case 'trade':
+        searchParams.set('tab', 'trade-details');
+        break;
+      case 'documents':
+        searchParams.set('tab', 'documents');
+        break;
+    }
+    
+    navigate({
+      search: searchParams.toString(),
+    }, { replace: true });
+  };
+
   // Handle form field changes
   const handleExporterDetailsChange = (
     e: React.ChangeEvent<
@@ -207,17 +256,17 @@ export default function ExportForm() {
 
   const nextTab = () => {
     if (activeTab === 'exporter' && isExporterDetailsValid()) {
-      setActiveTab('trade');
+      handleTabChange('trade');
     } else if (activeTab === 'trade' && isTradeDetailsValid()) {
-      setActiveTab('documents');
+      handleTabChange('documents');
     }
   };
 
   const prevTab = () => {
     if (activeTab === 'trade') {
-      setActiveTab('exporter');
+      handleTabChange('exporter');
     } else if (activeTab === 'documents') {
-      setActiveTab('trade');
+      handleTabChange('trade');
     }
   };
 
@@ -474,6 +523,7 @@ export default function ExportForm() {
             onClick={handleNewExport}
             variant="primary"
             size="md"
+            className="bg-[#7B2CBF] hover:bg-[#5A189A]"
           >
             Submit Another Export
           </Button>
@@ -485,7 +535,7 @@ export default function ExportForm() {
   return (
     <div className="max-w-4xl mx-auto p-6 bg-card text-card-foreground rounded-lg shadow">
       <div className="space-y-4 mb-8 text-center">
-        <h1 className="text-3xl font-bold text-foreground">
+        <h1 className="text-3xl font-bold text-[#7B2CBF]">
           Export Documentation
         </h1>
         <p className="text-muted-foreground">
@@ -510,15 +560,15 @@ export default function ExportForm() {
                   variant="outline"
                   onClick={() => {
                     if (isEnabled) {
-                      setActiveTab(tab);
+                      handleTabChange(tab);
                     }
                   }}
                   disabled={!isEnabled}
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                     activeTab === tab
-                      ? 'bg-primary text-white'
+                      ? 'bg-[#7B2CBF] text-white'
                       : isEnabled
-                        ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                        ? 'bg-[#7B2CBF]/10 text-[#7B2CBF] hover:bg-[#7B2CBF]/20'
                         : 'bg-muted text-muted-foreground cursor-not-allowed'
                   }`}
                 >
@@ -527,7 +577,7 @@ export default function ExportForm() {
                 <span
                   className={`mt-2 text-sm font-medium ${
                     activeTab === tab
-                      ? 'text-foreground'
+                      ? 'text-[#7B2CBF]'
                       : 'text-muted-foreground'
                   }`}
                 >
@@ -539,7 +589,7 @@ export default function ExportForm() {
         </div>
         <div className="h-1 bg-muted rounded-full">
           <div
-            className="h-full bg-primary rounded-full transition-all duration-300"
+            className="h-full bg-[#7B2CBF] rounded-full transition-all duration-300"
             style={{
               width:
                 activeTab === 'exporter'
@@ -561,7 +611,7 @@ export default function ExportForm() {
 
         <Suspense fallback={
           <div className="flex items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#7B2CBF]"></div>
             <span className="ml-4 text-muted-foreground">Loading form components...</span>
           </div>
         }>
@@ -595,6 +645,7 @@ export default function ExportForm() {
               <Button
                 variant="outline"
                 onClick={prevTab}
+                className="border-[#7B2CBF] text-[#7B2CBF] hover:bg-[#7B2CBF] hover:text-white"
               >
                 Previous
               </Button>
@@ -605,6 +656,7 @@ export default function ExportForm() {
             <Button
               variant="outline"
               onClick={handleReset}
+              className="border-[#EFB80B] text-[#EFB80B] hover:bg-[#EFB80B] hover:text-white"
             >
               Reset
             </Button>
@@ -617,6 +669,7 @@ export default function ExportForm() {
                   (activeTab === 'exporter' && !isExporterDetailsValid()) ||
                   (activeTab === 'trade' && !isTradeDetailsValid())
                 }
+                className="bg-[#7B2CBF] hover:bg-[#5A189A]"
               >
                 Next
               </Button>
@@ -626,6 +679,7 @@ export default function ExportForm() {
                 type="submit"
                 disabled={!isFormValid || status === 'submitting'}
                 loading={status === 'submitting'}
+                className="bg-[#7B2CBF] hover:bg-[#5A189A]"
               >
                 {status === 'submitting' ? 'Submitting...' : 'Submit Export'}
               </Button>

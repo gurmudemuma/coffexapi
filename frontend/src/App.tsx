@@ -144,8 +144,9 @@ const App: React.FC = () => {
                             <Route path="/nbe" element={<NBEDashboard />} />
                             
                             {/* Export Management */}
-                            <Route path="/exports" element={<ExportManage />} />
-                            <Route path="/exports/new" element={<ExportForm />} />
+                            <Route path="/exports" element={<ExportForm />} />
+                            <Route path="/export/new" element={<ExportForm />} />
+                            <Route path="/export/manage" element={<ExportManage />} />
                             <Route path="/exports/:exportId" element={<ExportDetails />} />
                             
                             {/* NBE Routes */}

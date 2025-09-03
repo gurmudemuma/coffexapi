@@ -99,6 +99,7 @@ export interface NotificationItem {
   message: string;
   timestamp: number;
   read: boolean;
+  path?: string;
   actions?: Array<{
     label: string;
     action: () => void;

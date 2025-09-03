@@ -5,8 +5,8 @@ This document summarizes all the action-taking buttons that have been made funct
 ## 🚀 Export Dashboard (ExportDashboard.tsx)
 
 ### Functional Buttons:
-- **New Export** - Navigates to `/exports/new` or calls `onNewExport` callback
-- **View All Exports** - Navigates to `/exports?tab=manage` or calls `onViewExports` callback  
+- **New Export** - Navigates to `/export/new` or calls `onNewExport` callback
+- **View All Exports** - Navigates to `/export/manage` or calls `onViewExports` callback  
 - **Audit Trail** - Navigates to `/audit` or calls `onViewAuditTrail` callback
 - **View Export Details** - Navigates to `/exports/{exportId}` for individual export details
 

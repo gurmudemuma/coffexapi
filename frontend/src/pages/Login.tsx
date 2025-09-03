@@ -73,12 +73,12 @@ const Login: React.FC = () => {
 
   const routeToOrganizationDashboard = (organization: string) => {
     const dashboardMap: Record<string, string> = {
-      'The Mint': '/nbe',
-      'Customs Authority': '/customs',
-      'Coffee Quality Authority': '/quality',
-      'Exporter Bank': '/bank',
-      'Commercial Bank of Ethiopia': '/bank',
-      'Coffee Exporters Association': '/exporter',
+      'National Bank of Ethiopia': '/nbe-dashboard',
+      'Customs Authority': '/customs-dashboard',
+      'Coffee Quality Authority': '/quality-dashboard',
+      'Exporter Bank': '/bank-dashboard',
+      'Commercial Bank of Ethiopia': '/bank-dashboard',
+      'Coffee Exporters Association': '/exporter-dashboard',
     };
 
     const dashboard = dashboardMap[organization] || '/dashboard';
@@ -86,14 +86,14 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F8F0FE] to-[#7B2CBF]/10 p-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <Coffee className="h-12 w-12 text-green-600" />
+            <Coffee className="h-12 w-12 text-[#7B2CBF]" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-[#7B2CBF] mb-2">
             Coffee Export Platform
           </h1>
           <p className="text-gray-600">
@@ -105,7 +105,7 @@ const Login: React.FC = () => {
         <Card className="shadow-xl">
           <CardContent className="p-6">
             <div className="text-center mb-6">
-              <LockOutlined className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <LockOutlined className="h-8 w-8 text-[#7B2CBF] mx-auto mb-2" />
               <h2 className="text-xl font-semibold text-gray-900">Sign In</h2>
               <p className="text-sm text-gray-600 mt-1">
                 Access your organization's dashboard
@@ -131,7 +131,7 @@ const Login: React.FC = () => {
                   placeholder="Enter your username"
                   required
                   disabled={isLoading}
-                  className="w-full"
+                  className="w-full focus:ring-[#7B2CBF] focus:border-[#7B2CBF]"
                 />
               </div>
 
@@ -148,12 +148,12 @@ const Login: React.FC = () => {
                     placeholder="Enter your password"
                     required
                     disabled={isLoading}
-                    className="w-full pr-10"
+                    className="w-full pr-10 focus:ring-[#7B2CBF] focus:border-[#7B2CBF]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#7B2CBF] hover:text-[#5A189A]"
                     disabled={isLoading}
                   >
                     {showPassword ? (
@@ -168,18 +168,18 @@ const Login: React.FC = () => {
               <Button
                 type="submit"
                 disabled={isLoading || !isFormValid()}
-                className="w-full"
+                className="w-full bg-[#7B2CBF] hover:bg-[#5A189A] text-white"
               >
                 {isLoading ? 'Signing In...' : 'Sign In'}
               </Button>
             </form>
 
             {/* Demo Credentials */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">Demo Credentials</h3>
+            <div className="mt-6 p-4 bg-[#FCF6E3] rounded-lg">
+              <h3 className="text-sm font-medium text-[#B88A05] mb-2">Demo Credentials</h3>
               <div className="space-y-1 text-xs text-gray-600">
                 <div><strong>Exporter:</strong> exporter / password</div>
-                <div><strong>NBE Officer:</strong> nbe / password</div>
+                <div><strong>National Bank of Ethiopia:</strong> nbe / password</div>
                 <div><strong>Quality Inspector:</strong> quality / password</div>
                 <div><strong>Customs Officer:</strong> customs / password</div>
                 <div><strong>Bank Officer:</strong> bank / password</div>
@@ -193,29 +193,26 @@ const Login: React.FC = () => {
           <p className="text-sm text-gray-500 mb-4">Trusted by leading organizations</p>
           <div className="flex justify-center space-x-6">
             <div className="flex flex-col items-center">
-              <AccountBalance className="h-6 w-6 text-blue-600" />
-              <span className="text-xs text-gray-600 mt-1">NBE</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <LocalShipping className="h-6 w-6 text-green-600" />
-              <span className="text-xs text-gray-600 mt-1">Customs</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <VerifiedUser className="h-6 w-6 text-purple-600" />
-              <span className="text-xs text-gray-600 mt-1">Quality</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <BusinessCenter className="h-6 w-6 text-orange-600" />
+              <AccountBalance className="h-6 w-6 text-[#7B2CBF]" />
               <span className="text-xs text-gray-600 mt-1">Bank</span>
             </div>
             <div className="flex flex-col items-center">
-              <Assessment className="h-6 w-6 text-red-600" />
-              <span className="text-xs text-gray-600 mt-1">Exporters</span>
+              <LocalShipping className="h-6 w-6 text-[#EFB80B]" />
+              <span className="text-xs text-gray-600 mt-1">Logistics</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <Shield className="h-6 w-6 text-[#7B2CBF]" />
+              <span className="text-xs text-gray-600 mt-1">Security</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <BusinessCenter className="h-6 w-6 text-[#EFB80B]" />
+              <span className="text-xs text-gray-600 mt-1">Business</span>
             </div>
           </div>
         </div>
       </div>
     </div>
+
   );
 };
 

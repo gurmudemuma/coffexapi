@@ -46,6 +46,7 @@ import {
 } from '../components/ui';
 import { useAuth } from '../store';
 import ApproversPanel from '../components/ApproversPanel';
+import { useDashboardTitle } from '../hooks/useOrganizationTitle';
 
 // Add the organization branding import
 import { ORGANIZATION_BRANDING } from '../config/organizationBranding';
@@ -64,6 +65,28 @@ const NBEDashboard: React.FC = () => {
   const [stats, setStats] = useState<NBEDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
+  
+  // Use organization-specific title and branding
+  const { dashboardTitle, description, orgBranding } = useDashboardTitle();
+  
+  // Fallback branding if orgBranding is null
+  const safeOrgBranding = orgBranding || {
+    name: 'National Bank of Ethiopia',
+    fullName: 'National Bank of Ethiopia',
+    subtitle: 'Financial License Validation Portal',
+    description: 'Secure validation and approval of export licenses and financial documentation for Ethiopian coffee exports',
+    dashboardTitle: 'License Validation Dashboard',
+    portalType: 'Banking Authority',
+    primaryColor: '#8B4513', // Coffee Brown
+    secondaryColor: '#D2691E', // Chocolate Brown
+    accentColor: '#FFD700', // Gold (from original bank colors)
+    backgroundColor: '#f8f9fa', // Light gray
+    textColor: '#000000',
+    logoColor: '#8B4513', // Coffee Brown
+    chartColors: ['#8B4513', '#D2691E', '#FFD700', '#A0522D', '#CD853F'], // Coffee-themed palette
+    gradient: 'linear-gradient(135deg, #8B4513 0%, #D2691E 100%)',
+    boxShadow: '0 4px 6px rgba(139, 69, 19, 0.1)'
+  };
 
   // Enhanced button handlers
   const handleManageLicenses = () => {
@@ -130,8 +153,7 @@ const NBEDashboard: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // Get organization branding
-  const orgBranding = ORGANIZATION_BRANDING['national-bank'];
+
 
   useEffect(() => {
     fetchNBEData();
@@ -151,7 +173,7 @@ const NBEDashboard: React.FC = () => {
       
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.data.organization === 'The Mint') {
+        if (data.success && data.data.organization === 'National Bank of Ethiopia') {
           setStats(data.data.stats);
         } else {
           // Fallback to organization-specific mock data
@@ -163,7 +185,7 @@ const NBEDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error fetching NBE dashboard data:', error);
       // Fallback to NBE-specific mock data (only for NBE users)
-      if (user?.organization === 'The Mint') {
+      if (user?.organization === 'National Bank of Ethiopia') {
         const nbeSpecificStats: NBEDashboardStats = {
           totalLicenses: 2847,
           activeLicenses: 2689,
@@ -198,16 +220,16 @@ const NBEDashboard: React.FC = () => {
   }
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: orgBranding.backgroundColor, minHeight: '100vh', p: 3 }}>
+    <Box sx={{ flexGrow: 1, bgcolor: safeOrgBranding.backgroundColor, minHeight: '100vh', p: 3 }}>
       {/* NBE Header with enhanced branding */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Avatar sx={{ bgcolor: orgBranding.primaryColor, width: 56, height: 56, mr: 2 }}>
+          <Avatar sx={{ bgcolor: safeOrgBranding.primaryColor, width: 56, height: 56, mr: 2 }}>
             <AccountBalance sx={{ fontSize: 32 }} />
           </Avatar>
           <Box>
-            <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: orgBranding.primaryColor, mb: 0 }}>
-              The Mint
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: safeOrgBranding.primaryColor, mb: 0 }}>
+              {safeOrgBranding.name}
             </Typography>
             <Typography variant="h6" color="text.secondary">
               Regulatory Control Center - Welcome, {user?.name}
@@ -234,14 +256,14 @@ const NBEDashboard: React.FC = () => {
       {/* NBE Key Metrics with enhanced branding */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
-          <Card variant="outline" className={`border-2 border-[${orgBranding.primaryColor}] rounded-lg shadow-lg`}>
+          <Card variant="outline" className={`border-2 border-[${safeOrgBranding.primaryColor}] rounded-lg shadow-lg`}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
                   <Typography color="text.secondary" gutterBottom>
                     Total Licenses
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: orgBranding.primaryColor }}>
+                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: safeOrgBranding.primaryColor }}>
                     {stats.totalLicenses.toLocaleString()}
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
@@ -251,7 +273,7 @@ const NBEDashboard: React.FC = () => {
                     </Typography>
                   </Box>
                 </Box>
-                <Avatar sx={{ bgcolor: orgBranding.primaryColor }}>
+                <Avatar sx={{ bgcolor: safeOrgBranding.primaryColor }}>
                   <AccountBalance />
                 </Avatar>
               </Box>
@@ -260,21 +282,21 @@ const NBEDashboard: React.FC = () => {
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card variant="outline" className={`border-2 border-[${orgBranding.accentColor}] rounded-lg shadow-lg`}>
+          <Card variant="outline" className={`border-2 border-[${safeOrgBranding.accentColor}] rounded-lg shadow-lg`}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
                   <Typography color="text.secondary" gutterBottom>
                     Expiring Soon
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: orgBranding.accentColor }}>
+                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: safeOrgBranding.accentColor }}>
                     {stats.expiringSoon}
                   </Typography>
                   <Typography variant="body2" color="warning.main" sx={{ mt: 1 }}>
                     Requires attention
                   </Typography>
                 </Box>
-                <Avatar sx={{ bgcolor: orgBranding.accentColor }}>
+                <Avatar sx={{ bgcolor: safeOrgBranding.accentColor }}>
                   <Schedule />
                 </Avatar>
               </Box>
@@ -306,21 +328,21 @@ const NBEDashboard: React.FC = () => {
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card variant="outline" className={`border-2 border-[${orgBranding.chartColors[3]}] rounded-lg shadow-lg`}>
+          <Card variant="outline" className={`border-2 border-[${safeOrgBranding.chartColors[3]}] rounded-lg shadow-lg`}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
                   <Typography color="text.secondary" gutterBottom>
                     Compliance Rate
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: orgBranding.chartColors[3] }}>
+                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: safeOrgBranding.chartColors[3] }}>
                     {stats.complianceRate}%
                   </Typography>
                   <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
                     Above target (95%)
                   </Typography>
                 </Box>
-                <Avatar sx={{ bgcolor: orgBranding.chartColors[3] }}>
+                <Avatar sx={{ bgcolor: safeOrgBranding.chartColors[3] }}>
                   <Security />
                 </Avatar>
               </Box>
@@ -357,7 +379,7 @@ const NBEDashboard: React.FC = () => {
                       Recent Regulatory Actions
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Monitor NBE-specific coffee export license activities and regulatory compliance for The Mint operations only.
+                      Monitor coffee export license activities and regulatory compliance for National Bank of Ethiopia operations.
                     </Typography>
                     <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
                       <Button variant="outline">
@@ -381,20 +403,20 @@ const NBEDashboard: React.FC = () => {
                     {stats && stats.expiringSoon > 0 && (
                       <Alert variant="warning" className="mb-2">
                         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                          NBE License Expiration Alert
+                          License Expiration Alert
                         </Typography>
                         <Typography variant="body2">
-                          {stats.expiringSoon} export licenses expiring within 30 days require NBE review
+                          {stats.expiringSoon} export licenses expiring within 30 days require review
                         </Typography>
                       </Alert>
                     )}
                     {stats && stats.violationsDetected > 0 && (
                       <Alert variant="error">
                         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                          NBE Compliance Violation
+                          Compliance Violation
                         </Typography>
                         <Typography variant="body2">
-                          {stats.violationsDetected} new regulatory violations require immediate NBE action
+                          {stats.violationsDetected} new regulatory violations require immediate action
                         </Typography>
                       </Alert>
                     )}

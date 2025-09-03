@@ -58,17 +58,32 @@ interface NavItem {
 }
 
 const getNavigationItems = (userRole: string, userOrganization?: string): NavItem[] => {
-  // For Coffee Exporters Association, we skip the generic dashboard since they have a specific Export Dashboard
-  const shouldIncludeGenericDashboard = userOrganization !== 'Coffee Exporters Association';
+  // For Coffee Exporters Association, show specific export-related items instead of generic dashboard
+  const isExporter = userOrganization === 'Coffee Exporters Association';
   
-  const baseItems: NavItem[] = shouldIncludeGenericDashboard ? [
+  const baseItems: NavItem[] = isExporter ? [
+    // For exporters, show specific export-related items
+    {
+      id: 'create-export',
+      label: 'Create Export Request',
+      href: '/export/new',
+      icon: <FileText className="h-4 w-4" />,
+    },
+    {
+      id: 'view-exports',
+      label: 'View All Exports',
+      href: '/export/manage',
+      icon: <FileText className="h-4 w-4" />,
+    }
+  ] : [
+    // For non-exporters, show the general dashboard
     {
       id: 'dashboard',
       label: 'Dashboard',
       href: '/dashboard',
       icon: <Home className="h-4 w-4" />,
-    },
-  ] : [];
+    }
+  ];
 
   // Organization-specific navigation items
   const organizationItems: Record<string, NavItem[]> = {
@@ -162,26 +177,7 @@ const getNavigationItems = (userRole: string, userOrganization?: string): NavIte
       },
     ],
     'Coffee Exporters Association': [
-      {
-        id: 'exporter-dashboard',
-        label: 'Export Dashboard',
-        href: '/exporter-dashboard',
-        icon: <Coffee className="h-4 w-4" />,
-      },
-      {
-        id: 'export-manage',
-        label: 'Manage Exports',
-        href: '/export/manage',
-        icon: <Settings className="h-4 w-4" />,
-        permissions: ['export:read'],
-      },
-      {
-        id: 'audit',
-        label: 'Audit Trail',
-        href: '/audit',
-        icon: <Activity className="h-4 w-4" />,
-        permissions: ['audit:read'],
-      },
+      // Note: intentionally not including compliance, audit trail, user management, or reports
     ],
   };
 
@@ -197,11 +193,10 @@ const getNavigationItems = (userRole: string, userOrganization?: string): NavIte
 // ==============================================================================
 
 interface HeaderProps {
-  onMenuToggle: () => void;
-  isMobileMenuOpen: boolean;
+  // No props needed for now
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuToggle, isMobileMenuOpen }) => {
+const Header: React.FC<HeaderProps> = () => {
   const { user } = useAuth();
   const { logout } = useAuthActions();
   const ui = useUI();
@@ -237,28 +232,18 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, isMobileMenuOpen }) => {
 
   return (
     <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 h-16 flex items-center justify-between px-4 lg:px-6">
-      {/* Logo and Menu Button */}
-      <div className="flex items-center space-x-4">
-        <button
-          onClick={onMenuToggle}
-          className="lg:hidden p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-        >
-          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
-        
-        <div className="flex items-center space-x-2">
-          <Coffee className="h-8 w-8 text-amber-600" />
-          <div className="hidden sm:block">
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Coffee Export Platform
-            </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Blockchain Secured Document Validation
-            </p>
-          </div>
+      {/* Logo */}
+      <div className="flex items-center space-x-2">
+        <Coffee className="h-8 w-8 text-amber-600" />
+        <div className="hidden sm:block">
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Coffee Export Platform
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Blockchain Secured Document Validation
+          </p>
         </div>
       </div>
-
       {/* Header Actions */}
       <div className="flex items-center space-x-3">
         {/* System Status */}
@@ -472,6 +457,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         )}
       >
         <div className="flex flex-col h-full">
+          {/* Sidebar Header with Hamburger Menu */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center space-x-2">
+              <Coffee className="h-6 w-6 text-amber-600" />
+              <span className="font-semibold text-gray-900 dark:text-white">Export Platform</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors lg:hidden"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
             {navigationItems.map((item) => {
@@ -525,7 +524,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const ui = useUI();
   const { toggleSidebar } = useUIActions();
   const systemStatus = useSystemStatus();
@@ -585,7 +584,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
       
       <div className="flex h-screen">
-        {/* Sidebar */}
+        {/* Hamburger Menu Button in Header */}
+        <button
+          onClick={handleMenuToggle}
+          className="fixed top-4 left-4 z-40 p-2 rounded-md bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shadow-md lg:hidden"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        
+        {/* Sidebar - Show for all authenticated users */}
         <Sidebar 
           isOpen={sidebarOpen || isMobileMenuOpen} 
           onClose={() => {
@@ -597,15 +604,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         />
         
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
           {/* Header */}
-          <Header 
-            onMenuToggle={handleMenuToggle}
-            isMobileMenuOpen={isMobileMenuOpen}
-          />
+          <Header />
           
           {/* Main Content */}
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+          <main className="flex-1 overflow-y-auto p-4 lg:p-6 mt-16 lg:mt-0">
             <div className="max-w-7xl mx-auto">
               {children}
             </div>

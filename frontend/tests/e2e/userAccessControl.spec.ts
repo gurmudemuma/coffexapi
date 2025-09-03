@@ -59,7 +59,7 @@ const TEST_USERS = {
     expectedName: 'Coffee Exporter',
     organization: 'Coffee Exporters Association',
     role: 'EXPORTER',
-    allowedRoutes: ['/exporter-dashboard', '/export', '/export/new', '/export/manage', '/documents', '/audit'],
+    allowedRoutes: ['/exporter', '/export', '/export/new', '/export/manage', '/documents', '/audit'],
     blockedRoutes: ['/nbe-dashboard', '/customs-dashboard', '/quality-dashboard', '/bank-dashboard', '/users'],
   },
 };

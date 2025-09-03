@@ -29,7 +29,7 @@ interface ExportDashboardProps {
   stats: ExportStats;
   onNewExport: () => void;
   onViewExports: () => void;
-  onViewAuditTrail: () => void;
+  onViewAuditTrail?: () => void; // Made optional for exporters
   orgBranding: {
     primaryColor: string;
     secondaryColor: string;
@@ -37,6 +37,7 @@ interface ExportDashboardProps {
     chartColors: string[];
   };
   className?: string;
+  showAuditTrail?: boolean; // New prop to control audit trail visibility
 }
 
 const StatCard: React.FC<StatCardProps> = ({ 
@@ -77,7 +78,8 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
   onViewExports,
   onViewAuditTrail,
   orgBranding,
-  className = ''
+  className = '',
+  showAuditTrail = true // Default to true for backward compatibility
 }) => {
   const navigate = useNavigate();
 
@@ -86,7 +88,7 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
     if (onNewExport) {
       onNewExport();
     } else {
-      navigate('/exports/new');
+      navigate('/export/new');
     }
   };
 
@@ -94,7 +96,7 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
     if (onViewExports) {
       onViewExports();
     } else {
-      navigate('/exports?tab=manage');
+      navigate('/export/manage');
     }
   };
 
@@ -166,8 +168,8 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
         />
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      {/* Quick Actions - Only show audit trail for non-exporters */}
+      <div className={`grid gap-4 mb-8 ${showAuditTrail ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
         <Button 
           variant="outline" 
           onClick={handleViewExports}
@@ -178,15 +180,17 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
           <span className="text-sm text-gray-500 mt-1">Manage your export requests</span>
         </Button>
         
-        <Button 
-          variant="outline" 
-          onClick={handleViewAuditTrail}
-          className="h-full p-6 flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-200 hover:border-[${orgBranding.accentColor}] hover:bg-[${orgBranding.accentColor}]/5 transition-colors"
-        >
-          <TrendingUpIcon className="h-8 w-8 mb-2 text-gray-400" />
-          <span className="font-medium">Audit Trail</span>
-          <span className="text-sm text-gray-500 mt-1">View export history and logs</span>
-        </Button>
+        {showAuditTrail && (
+          <Button 
+            variant="outline" 
+            onClick={handleViewAuditTrail}
+            className="h-full p-6 flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-200 hover:border-[${orgBranding.accentColor}] hover:bg-[${orgBranding.accentColor}]/5 transition-colors"
+          >
+            <TrendingUpIcon className="h-8 w-8 mb-2 text-gray-400" />
+            <span className="font-medium">Audit Trail</span>
+            <span className="text-sm text-gray-500 mt-1">View export history and logs</span>
+          </Button>
+        )}
         
         <Button 
           variant="outline" 
@@ -199,57 +203,59 @@ export const ExportDashboard: React.FC<ExportDashboardProps> = ({
         </Button>
       </div>
 
-      {/* Recent Activity Section */}
-      <div className="mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Recent Activity</h2>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={handleViewAuditTrail}
-            className="text-[${orgBranding.primaryColor}] hover:bg-[${orgBranding.primaryColor}]/10"
-          >
-            View All
-          </Button>
-        </div>
-        
-        <Card>
-          <CardContent className="p-0">
-            <div className="divide-y divide-gray-200">
-              {[1, 2, 3].map((item) => (
-                <div key={item} className="p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <AssignmentIcon className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-900">Export #{1000 + item} created</p>
-                      <p className="text-sm text-gray-500">
-                        {item === 1 ? 'Just now' : `${item} hours ago`} • 
-                        <span className="ml-1">
-                          <Badge variant={item % 2 === 0 ? 'success' : 'warning'}>
-                            {item % 2 === 0 ? 'Approved' : 'Pending'}
-                          </Badge>
-                        </span>
-                      </p>
-                    </div>
-                    <div className="ml-auto">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-gray-400 hover:text-gray-600"
-                        onClick={() => handleViewExportDetails(`EXP-${1000 + item}`)}
-                      >
-                        View
-                      </Button>
+      {/* Recent Activity Section - Only show audit trail for non-exporters */}
+      {showAuditTrail && (
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Recent Activity</h2>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleViewAuditTrail}
+              className="text-[${orgBranding.primaryColor}] hover:bg-[${orgBranding.primaryColor}]/10"
+            >
+              View All
+            </Button>
+          </div>
+          
+          <Card>
+            <CardContent className="p-0">
+              <div className="divide-y divide-gray-200">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <AssignmentIcon className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-gray-900">Export #{1000 + item} created</p>
+                        <p className="text-sm text-gray-500">
+                          {item === 1 ? 'Just now' : `${item} hours ago`} • 
+                          <span className="ml-1">
+                            <Badge variant={item % 2 === 0 ? 'success' : 'warning'}>
+                              {item % 2 === 0 ? 'Approved' : 'Pending'}
+                            </Badge>
+                          </span>
+                        </p>
+                      </div>
+                      <div className="ml-auto">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-gray-400 hover:text-gray-600"
+                          onClick={() => handleViewExportDetails(`EXP-${1000 + item}`)}
+                        >
+                          View
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

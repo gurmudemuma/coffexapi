@@ -65,6 +65,7 @@ import { Button } from './components/ui/StandardComponents';
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Login = React.lazy(() => import('./pages/Login'));
 const ExportForm = React.lazy(() => import('./components/ExportForm'));
+const ExportIndex = React.lazy(() => import('./pages/ExportIndex'));
 const UserManagement = React.lazy(() => import('./pages/UserManagement'));
 const ComplianceAlerts = React.lazy(() => import('./pages/ComplianceAlerts'));
 const AuditTrail = React.lazy(() => import('./pages/AuditTrail'));
@@ -375,7 +376,7 @@ const ModernApp: React.FC = () => {
       }}
     >
       <QueryClientProvider client={queryClient}>
-        <Router>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <StoreInitializer>
             <AuthGuard>
               <SystemHealthMonitor />
@@ -393,190 +394,170 @@ const ModernApp: React.FC = () => {
                       } 
                     />
                   
-                  {/* Export Form (Public Access) */}
-                  <Route 
-                    path="/export" 
-                    element={
-                      <Suspense fallback={<Spinner />}>
-                        <ExportForm />
-                      </Suspense>
-                    } 
-                  />
+                    {/* Protected Routes */}
+                    <Route 
+                      path="/dashboard" 
+                      element={
+                        <ProtectedRoute>
+                          <Suspense fallback={<Spinner />}>
+                            <Dashboard />
+                          </Suspense>
+                        </ProtectedRoute>
+                      } 
+                    />
                   
-                  {/* Protected Routes */}
-                  <Route 
-                    path="/dashboard" 
-                    element={
-                      <ProtectedRoute>
-                        <Suspense fallback={<Spinner />}>
-                          <Dashboard />
-                        </Suspense>
-                      </ProtectedRoute>
-                    } 
-                  />
+                    {/* Organization-Specific Dashboard Routes */}
+                    <Route 
+                      path="/nbe-dashboard" 
+                      element={
+                        <ProtectedRoute 
+                          allowedOrganizations={['The Mint']}
+                          allowedRoles={['NBE_ADMIN', 'NBE_OFFICER']}
+                        >
+                          <Suspense fallback={<Spinner />}>
+                            <NBEDashboard />
+                          </Suspense>
+                        </ProtectedRoute>
+                      } 
+                    />
                   
-                  {/* Organization-Specific Dashboard Routes */}
-                  <Route 
-                    path="/nbe-dashboard" 
-                    element={
-                      <ProtectedRoute 
-                        allowedOrganizations={['The Mint']}
-                        allowedRoles={['NBE_ADMIN', 'NBE_OFFICER']}
-                      >
-                        <Suspense fallback={<Spinner />}>
-                          <NBEDashboard />
-                        </Suspense>
-                      </ProtectedRoute>
-                    } 
-                  />
+                    <Route 
+                      path="/customs-dashboard" 
+                      element={
+                        <ProtectedRoute 
+                          allowedOrganizations={['Customs Authority']}
+                          allowedRoles={['CUSTOMS_VALIDATOR']}
+                        >
+                          <Suspense fallback={<Spinner />}>
+                            <CustomsDashboard />
+                          </Suspense>
+                        </ProtectedRoute>
+                      } 
+                    />
                   
-                  <Route 
-                    path="/customs-dashboard" 
-                    element={
-                      <ProtectedRoute 
-                        allowedOrganizations={['Customs Authority']}
-                        allowedRoles={['CUSTOMS_VALIDATOR']}
-                      >
-                        <Suspense fallback={<Spinner />}>
-                          <CustomsDashboard />
-                        </Suspense>
-                      </ProtectedRoute>
-                    } 
-                  />
+                    <Route 
+                      path="/quality-dashboard" 
+                      element={
+                        <ProtectedRoute 
+                          allowedOrganizations={['Coffee Quality Authority']}
+                          allowedRoles={['QUALITY_INSPECTOR']}
+                        >
+                          <Suspense fallback={<Spinner />}>
+                            <QualityDashboard />
+                          </Suspense>
+                        </ProtectedRoute>
+                      } 
+                    />
                   
-                  <Route 
-                    path="/quality-dashboard" 
-                    element={
-                      <ProtectedRoute 
-                        allowedOrganizations={['Coffee Quality Authority']}
-                        allowedRoles={['QUALITY_INSPECTOR']}
-                      >
-                        <Suspense fallback={<Spinner />}>
-                          <QualityDashboard />
-                        </Suspense>
-                      </ProtectedRoute>
-                    } 
-                  />
+                    <Route 
+                      path="/bank-dashboard" 
+                      element={
+                        <ProtectedRoute 
+                          allowedOrganizations={['Exporter Bank', 'Commercial Bank of Ethiopia']}
+                          allowedRoles={['BANK_VALIDATOR']}
+                        >
+                          <Suspense fallback={<Spinner />}>
+                            <BankDashboard />
+                          </Suspense>
+                        </ProtectedRoute>
+                      } 
+                    />
                   
-                  <Route 
-                    path="/bank-dashboard" 
-                    element={
-                      <ProtectedRoute 
-                        allowedOrganizations={['Exporter Bank', 'Commercial Bank of Ethiopia']}
-                        allowedRoles={['BANK_VALIDATOR']}
-                      >
-                        <Suspense fallback={<Spinner />}>
-                          <BankDashboard />
-                        </Suspense>
-                      </ProtectedRoute>
-                    } 
-                  />
+                    {/* Exporter-specific routes */}
+                    <Route 
+                      path="/exporter-dashboard" 
+                      element={
+                        <ProtectedRoute 
+                          allowedOrganizations={['Coffee Exporters Association']}
+                          allowedRoles={['EXPORTER']}
+                        >
+                          <Suspense fallback={<Spinner />}>
+                            <ExporterDashboard />
+                          </Suspense>
+                        </ProtectedRoute>
+                      } 
+                    />
                   
-                  <Route 
-                    path="/exporter-dashboard" 
-                    element={
-                      <ProtectedRoute 
-                        allowedOrganizations={['Coffee Exporters Association']}
-                        allowedRoles={['EXPORTER']}
-                      >
-                        <Suspense fallback={<Spinner />}>
-                          <ExporterDashboard />
-                        </Suspense>
-                      </ProtectedRoute>
-                    } 
-                  />
+                    <Route 
+                      path="/org-dashboard" 
+                      element={
+                        <ProtectedRoute>
+                          <Suspense fallback={<Spinner />}>
+                            <OrganizationRouter />
+                          </Suspense>
+                        </ProtectedRoute>
+                      } 
+                    />
                   
-                  <Route 
-                    path="/org-dashboard" 
-                    element={
-                      <ProtectedRoute>
-                        <Suspense fallback={<Spinner />}>
-                          <OrganizationRouter />
-                        </Suspense>
-                      </ProtectedRoute>
-                    } 
-                  />
+                    {/* Export Management Routes */}
+                    <Route 
+                      path="/export" 
+                      element={
+                        <ProtectedRoute 
+                          allowedOrganizations={['Coffee Exporters Association']}
+                          allowedRoles={['EXPORTER']}
+                        >
+                          <Suspense fallback={<Spinner />}>
+                            <ExportIndex />
+                          </Suspense>
+                        </ProtectedRoute>
+                      } 
+                    />
                   
-                  <Route 
-                    path="/exports" 
-                    element={
-                      <ProtectedRoute>
-                        <Suspense fallback={<Spinner />}>
-                          <ExportForm />
-                        </Suspense>
-                      </ProtectedRoute>
-                    } 
-                  />
+                    <Route 
+                      path="/export/new" 
+                      element={
+                        <ProtectedRoute 
+                          allowedOrganizations={['Coffee Exporters Association']}
+                          allowedRoles={['EXPORTER']}
+                        >
+                          <Suspense fallback={<Spinner />}>
+                            <ExportForm />
+                          </Suspense>
+                        </ProtectedRoute>
+                      } 
+                    />
                   
-                  {/* Exporter-specific routes */}
-                  <Route 
-                    path="/export/new" 
-                    element={
-                      <ProtectedRoute 
-                        allowedOrganizations={['Coffee Exporters Association']}
-                        allowedRoles={['EXPORTER']}
-                      >
-                        <Suspense fallback={<Spinner />}>
-                          <ExportForm />
-                        </Suspense>
-                      </ProtectedRoute>
-                    } 
-                  />
+                    <Route 
+                      path="/export/manage" 
+                      element={
+                        <ProtectedRoute 
+                          allowedOrganizations={['Coffee Exporters Association']}
+                          allowedRoles={['EXPORTER']}
+                        >
+                          <Suspense fallback={<Spinner />}>
+                            <ExportManage />
+                          </Suspense>
+                        </ProtectedRoute>
+                      } 
+                    />
                   
-                  <Route 
-                    path="/export/manage" 
-                    element={
-                      <ProtectedRoute 
-                        allowedOrganizations={['Coffee Exporters Association']}
-                        allowedRoles={['EXPORTER']}
-                      >
-                        <Suspense fallback={<Spinner />}>
-                          <ExportManage />
-                        </Suspense>
-                      </ProtectedRoute>
-                    } 
-                  />
+                    {/* Admin Routes - Only NBE */}
+                    <Route 
+                      path="/users" 
+                      element={
+                        <ProtectedRoute 
+                          requiredPermissions={['user:manage']}
+                          allowedOrganizations={['The Mint']}
+                          allowedRoles={['NBE_ADMIN']}
+                        >
+                          <Suspense fallback={<Spinner />}>
+                            <UserManagement />
+                          </Suspense>
+                        </ProtectedRoute>
+                      } 
+                    />
                   
-                  <Route 
-                    path="/documents" 
-                    element={
-                      <ProtectedRoute 
-                        allowedOrganizations={['Coffee Exporters Association']}
-                        allowedRoles={['EXPORTER']}
-                      >
-                        <Suspense fallback={<Spinner />}>
-                          <ExporterDashboard />
-                        </Suspense>
-                      </ProtectedRoute>
-                    } 
-                  />
-                  
-                  {/* Admin Routes - Only NBE */}
-                  <Route 
-                    path="/users" 
-                    element={
-                      <ProtectedRoute 
-                        requiredPermissions={['user:manage']}
-                        allowedOrganizations={['The Mint']}
-                        allowedRoles={['NBE_ADMIN']}
-                      >
-                        <Suspense fallback={<Spinner />}>
-                          <UserManagement />
-                        </Suspense>
-                      </ProtectedRoute>
-                    } 
-                  />
-                  
-                  <Route 
-                    path="/compliance" 
-                    element={
-                      <ProtectedRoute 
-                        requiredPermissions={['compliance:screen']}
-                        allowedOrganizations={['The Mint']}
-                      >
-                        <Suspense fallback={<Spinner />}>
-                          <ComplianceAlerts />
-                        </Suspense>
+                    <Route 
+                      path="/compliance" 
+                      element={
+                        <ProtectedRoute 
+                          requiredPermissions={['compliance:screen']}
+                          allowedOrganizations={['The Mint']}
+                        >
+                          <Suspense fallback={<Spinner />}>
+                            <ComplianceAlerts />
+                          </Suspense>
                       </ProtectedRoute>
                     } 
                   />

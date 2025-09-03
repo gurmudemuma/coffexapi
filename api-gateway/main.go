@@ -489,6 +489,9 @@ func main() {
 	mux.HandleFunc("/api/submit-export", ag.applyMiddleware(ag.submitExportHandler, orgMiddlewares...))
 	mux.HandleFunc("/api/upload-document", ag.applyMiddleware(ag.uploadDocumentHandler, orgMiddlewares...))
 	
+	// Exporter-specific routes
+	mux.HandleFunc("/api/exports/exporter/", ag.applyMiddleware(ag.getExportsByExporterHandler, middlewares...))
+	
 	// Legacy routes (keeping for compatibility)
 	mux.HandleFunc("/api/documents", ag.applyMiddleware(ag.uploadDocumentHandler, middlewares...))
 	mux.HandleFunc("/api/exports", ag.applyMiddleware(ag.submitExportHandler, middlewares...))
@@ -975,6 +978,45 @@ func (ag *APIGateway) exportStatusHandler(w http.ResponseWriter, r *http.Request
 	ag.writeSuccessResponse(w, r, exportRequest)
 }
 
+// getExportsByExporterHandler returns all exports for a specific exporter
+func (ag *APIGateway) getExportsByExporterHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		ag.writeErrorResponse(w, r, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "Method not allowed", "Only GET method is supported")
+		return
+	}
+	
+	// Extract exporter ID from the URL path
+	path := r.URL.Path
+	prefix := "/api/exports/exporter/"
+	if !strings.HasPrefix(path, prefix) {
+		ag.writeErrorResponse(w, r, http.StatusBadRequest, "INVALID_PATH", "Invalid path", "Path must start with /api/exports/exporter/")
+		return
+	}
+	
+	exporterID := strings.TrimPrefix(path, prefix)
+	if exporterID == "" {
+		ag.writeErrorResponse(w, r, http.StatusBadRequest, "MISSING_EXPORTER_ID", "Missing exporter ID", "Exporter ID must be provided in the path")
+		return
+	}
+
+	network := ag.gw.GetNetwork("coffeechannel")
+	contract := network.GetContract("coffee-export")
+
+	result, err := contract.EvaluateTransaction("GetExportsByExporter", exporterID)
+	if err != nil {
+		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to evaluate transaction", err.Error())
+		return
+	}
+
+	var exports map[string]interface{}
+	if err := json.Unmarshal(result, &exports); err != nil {
+		ag.writeErrorResponse(w, r, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to unmarshal response", err.Error())
+		return
+	}
+	
+	ag.writeSuccessResponse(w, r, exports)
+}
+
 // systemStatusHandler returns the overall system health status
 func (ag *APIGateway) systemStatusHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -1077,7 +1119,7 @@ var ORGANIZATION_CONFIG = map[string]OrganizationConfig{
 		MSP:          "ExporterMSP",
 		DocumentType: "EXPORT",
 		ValidRoles:   []string{"EXPORTER"},
-		APIEndpoints: []string{"/api/submit-export", "/api/export-status", "/api/my-exports"},
+		APIEndpoints: []string{"/api/submit-export", "/api/export-status", "/api/my-exports", "/api/exports/exporter/"},
 	},
 }
 

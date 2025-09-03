@@ -66,9 +66,17 @@ const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Check if user is an exporter
+  const isExporter = user?.organization === 'Coffee Exporters Association' && user?.role === 'EXPORTER';
+
   // Enhanced button handlers
   const handleViewAll = () => {
-    navigate('/audit');
+    // For exporters, navigate to their export management page instead of audit trail
+    if (isExporter) {
+      navigate('/export/manage');
+    } else {
+      navigate('/audit');
+    }
   };
 
   const handleTakeAction = (activityId: string, actionType: string) => {
@@ -87,12 +95,22 @@ const Dashboard: React.FC = () => {
         navigate('/bank/transactions');
         break;
       default:
-        navigate('/compliance');
+        // For exporters, navigate to export management instead of compliance
+        if (isExporter) {
+          navigate('/export/manage');
+        } else {
+          navigate('/compliance');
+        }
     }
   };
 
   const handleViewDetails = (activityId: string) => {
-    navigate(`/audit/${activityId}`);
+    // For exporters, navigate to export details instead of audit details
+    if (isExporter) {
+      navigate(`/exports/${activityId}`);
+    } else {
+      navigate(`/audit/${activityId}`);
+    }
   };
 
   useEffect(() => {
@@ -176,6 +194,7 @@ const Dashboard: React.FC = () => {
           pendingActions: 5,
           completedToday: 3,
           upcomingDeadlines: 2,
+          // Simplified alerts for exporters without compliance-related messages
           alerts: ['Payment request pending approval', 'Quality certificate expires in 7 days']
         };
       case 'NBE_ADMIN':
@@ -247,15 +266,16 @@ const Dashboard: React.FC = () => {
     switch (user?.role) {
       case 'EXPORTER':
         return [
-          { label: 'New Export Request', icon: <Add />, action: () => console.log('New Export') },
-          { label: 'Upload Documents', icon: <DocumentScanner />, action: () => console.log('Upload') },
+          { label: 'New Export Request', icon: <Add />, action: () => navigate('/export/new') },
+          { label: 'Manage Exports', icon: <DocumentScanner />, action: () => navigate('/export/manage') },
           { label: 'Request Payment', icon: <Payment />, action: () => console.log('Payment') },
         ];
       case 'NBE_ADMIN':
       case 'NBE_OFFICER':
         return [
           { label: 'Review Licenses', icon: <Security />, action: () => console.log('Review') },
-          { label: 'Compliance Check', icon: <DocumentScanner />, action: () => console.log('Compliance') },
+          // Only show Compliance Check for non-exporters
+          ...(!isExporter ? [{ label: 'Compliance Check', icon: <DocumentScanner />, action: () => console.log('Compliance') }] : []),
           { label: 'User Management', icon: <AccountBalance />, action: () => console.log('Users') },
         ];
       case 'CUSTOMS_VALIDATOR':
@@ -312,12 +332,15 @@ const Dashboard: React.FC = () => {
           >
             Refresh
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<Download />}
-          >
-            Export Report
-          </Button>
+          {/* Hide export report button for exporters */}
+          {!isExporter && (
+            <Button
+              variant="contained"
+              startIcon={<Download />}
+            >
+              Export Report
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -355,7 +378,7 @@ const Dashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Key Metrics Cards */}
+      {/* Key Metrics Cards - Show simplified version for exporters */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Card>
@@ -363,7 +386,7 @@ const Dashboard: React.FC = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
                   <Typography color="text.secondary" gutterBottom>
-                    Total Documents
+                    {isExporter ? 'Total Exports' : 'Total Documents'}
                   </Typography>
                   <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
                     {stats.totalDocuments.toLocaleString()}
@@ -389,7 +412,7 @@ const Dashboard: React.FC = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
                   <Typography color="text.secondary" gutterBottom>
-                    Pending Validation
+                    {isExporter ? 'Pending Exports' : 'Pending Validation'}
                   </Typography>
                   <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
                     {stats.pendingValidation}
@@ -412,14 +435,16 @@ const Dashboard: React.FC = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
                   <Typography color="text.secondary" gutterBottom>
-                    Approved
+                    {isExporter ? 'Approved Exports' : 'Approved Documents'}
                   </Typography>
                   <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                    {stats.approvedDocuments.toLocaleString()}
+                    {stats.approvedDocuments}
                   </Typography>
-                  <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-                    {approvalRate}% approval rate
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {approvalRate}% approval rate
+                    </Typography>
+                  </Box>
                 </Box>
                 <Avatar sx={{ bgcolor: 'success.main' }}>
                   <CheckCircle />
@@ -435,17 +460,17 @@ const Dashboard: React.FC = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
                   <Typography color="text.secondary" gutterBottom>
-                    Rejected
+                    {isExporter ? 'Total Value' : 'Rejected Documents'}
                   </Typography>
                   <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                    {stats.rejectedDocuments}
+                    {isExporter ? '$45,000' : stats.rejectedDocuments}
                   </Typography>
-                  <Typography variant="body2" color="error.main" sx={{ mt: 1 }}>
-                    {((stats.rejectedDocuments / stats.totalDocuments) * 100).toFixed(1)}% rejection rate
+                  <Typography variant="body2" color="text.secondary">
+                    {isExporter ? 'Combined export value' : 'Requires review'}
                   </Typography>
                 </Box>
-                <Avatar sx={{ bgcolor: 'error.main' }}>
-                  <Warning />
+                <Avatar sx={{ bgcolor: isExporter ? 'info.main' : 'error.main' }}>
+                  {isExporter ? <Coffee /> : <Warning />}
                 </Avatar>
               </Box>
             </CardContent>
@@ -453,142 +478,146 @@ const Dashboard: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* Role-Specific Stats */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="text.secondary" gutterBottom>
-                Pending Actions
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
-                {stats.roleSpecificStats.pendingActions}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Require your attention
-              </Typography>
-            </CardContent>
-          </Card>
+      {/* Role-Specific Stats - Hide for exporters */}
+      {!isExporter && (
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography color="text.secondary" gutterBottom>
+                  Pending Actions
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
+                  {stats.roleSpecificStats.pendingActions}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Require your attention
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography color="text.secondary" gutterBottom>
+                  Completed Today
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                  {stats.roleSpecificStats.completedToday}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Tasks finished
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography color="text.secondary" gutterBottom>
+                  Upcoming Deadlines
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'info.main' }}>
+                  {stats.roleSpecificStats.upcomingDeadlines}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Due this week
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography color="text.secondary" gutterBottom>
+                  System Status
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                  All Systems
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Operational
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="text.secondary" gutterBottom>
-                Completed Today
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                {stats.roleSpecificStats.completedToday}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Tasks finished
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="text.secondary" gutterBottom>
-                Upcoming Deadlines
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'info.main' }}>
-                {stats.roleSpecificStats.upcomingDeadlines}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Due this week
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="text.secondary" gutterBottom>
-                System Status
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                All Systems
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Operational
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      )}
 
-      {/* Charts Section */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} lg={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Document Validation Trends
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={stats.trendsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <RechartsTooltip />
-                  <Line type="monotone" dataKey="documents" stroke="#1976d2" strokeWidth={2} />
-                  <Line type="monotone" dataKey="approved" stroke="#388e3c" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
+      {/* Charts Section - Hide for exporters */}
+      {!isExporter && (
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} lg={8}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Document Validation Trends
+                </Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={stats.trendsData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Line type="monotone" dataKey="documents" stroke="#1976d2" strokeWidth={2} />
+                    <Line type="monotone" dataKey="approved" stroke="#388e3c" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
 
-        <Grid item xs={12} lg={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Validation by Type
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={stats.validationByType}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {stats.validationByType.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <Grid item xs={12} lg={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Validation by Type
+                </Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={stats.validationByType}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {stats.validationByType.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
-      </Grid>
+      )}
 
-      {/* Recent Activity */}
+      {/* Recent Activity - Simplified for exporters */}
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">
-                  Recent Validation Activity
+                  {isExporter ? 'Recent Exports' : 'Recent Validation Activity'}
                 </Typography>
                 <Button size="small" endIcon={<Visibility />} onClick={handleViewAll}>
-                  View All
+                  {isExporter ? 'Manage Exports' : 'View All'}
                 </Button>
               </Box>
               <TableContainer>
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Document Type</TableCell>
-                      <TableCell>Exporter</TableCell>
+                      <TableCell>{isExporter ? 'Export Details' : 'Document Type'}</TableCell>
+                      <TableCell>{isExporter ? 'Destination' : 'Exporter'}</TableCell>
                       <TableCell>Status</TableCell>
-                      <TableCell>Validator</TableCell>
+                      <TableCell>{isExporter ? 'Created' : 'Validator'}</TableCell>
                       <TableCell>Time</TableCell>
                       <TableCell>Actions</TableCell>
                     </TableRow>
@@ -619,7 +648,8 @@ const Dashboard: React.FC = () => {
                               <Visibility />
                             </IconButton>
                           </Tooltip>
-                          {user?.permissions.includes('regulatory:all') && (
+                          {/* Hide regulatory actions for exporters */}
+                          {!isExporter && user?.permissions.includes('regulatory:all') && (
                             <Tooltip title="Take Action">
                               <IconButton 
                                 size="small" 

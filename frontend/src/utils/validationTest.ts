@@ -73,14 +73,17 @@ export const validateNavigation = (): ValidationResult[] => {
   
   // Test 1: Route definitions
   const expectedRoutes = [
+    '/',
+    '/login',
     '/dashboard',
-    '/exporter',
-    '/bank',
-    '/customs',
-    '/quality',
-    '/nbe',
+    '/exporter-dashboard',
+    '/bank-dashboard',
+    '/customs-dashboard',
+    '/quality-dashboard',
+    '/nbe-dashboard',
     '/exports',
-    '/exports/new',
+    '/export/new',
+    '/export/manage',
     '/licenses',
     '/quality/reports',
     '/bank/transfers',

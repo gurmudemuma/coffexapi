@@ -45,6 +45,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, useAuthActions } from '../store';
 import { useNotifications } from '../contexts/NotificationContext';
+import { useOrganizationTitle } from '../hooks/useOrganizationTitle';
 import { formatDistanceToNow } from 'date-fns';
 
 const drawerWidth = 280;
@@ -62,14 +63,28 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user } = useAuth();
   const { logout } = useAuthActions();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { portalName, subtitle, orgBranding, portalType } = useOrganizationTitle();
 
-  const menuItems = [
+  // Check if user is an exporter
+  const isExporter = user?.organization === 'Coffee Exporters Association' && user?.role === 'EXPORTER';
+
+  // Filter menu items based on user role - hide compliance-related items for exporters
+  const menuItems = isExporter ? [
+    // For exporters, show specific export-related items instead of general dashboard
+    { text: 'Create Export Request', icon: <DashboardIcon />, path: '/export/new' },
+    { text: 'View All Exports', icon: <DocumentIcon />, path: '/export/manage' }
+  ] : [
+    // For non-exporters, show the general dashboard
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    // Only show Document Validation for non-exporters
     { text: 'Document Validation', icon: <DocumentIcon />, path: '/validation' },
+    // Only show Compliance Alerts for non-exporters
     { text: 'Compliance Alerts', icon: <AlertIcon />, path: '/alerts' },
     { text: 'User Management', icon: <UsersIcon />, path: '/users', permission: 'user:manage' },
+    // Only show Audit Trail for non-exporters
     { text: 'Audit Trail', icon: <AuditIcon />, path: '/audit' },
-    { text: 'Reports', icon: <ReportsIcon />, path: '/reports' },
+    // Only show Reports for non-exporters
+    { text: 'Reports', icon: <ReportsIcon />, path: '/reports' }
   ];
 
   const handleDrawerToggle = () => {
@@ -130,8 +145,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   };
 
-  // Filter menu items based on user permissions
+  // Filter menu items based on user permissions and role
   const filteredMenuItems = menuItems.filter(item => {
+    // For exporters, hide user management regardless of permissions
+    if (isExporter && item.text === 'User Management') {
+      return false;
+    }
+    
     if (item.permission) {
       return user?.permissions.includes(item.permission);
     }
@@ -142,35 +162,77 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div>
       <Toolbar>
         <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-          <Coffee sx={{ mr: 1, color: 'primary.main' }} />
-          <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold' }}>
-            CoffEx Portal
-          </Typography>
+          <Coffee sx={{ 
+            mr: 1, 
+            color: orgBranding?.primaryColor || 'primary.main'
+          }} />
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h6" noWrap component="div" sx={{ 
+              fontWeight: 'bold',
+              color: orgBranding?.textColor || 'text.primary',
+              fontSize: '1.1rem'
+            }}>
+              {portalName}
+            </Typography>
+            {subtitle && (
+              <Typography variant="caption" sx={{ 
+                color: orgBranding?.secondaryColor || 'text.secondary',
+                fontSize: '0.7rem',
+                lineHeight: 1
+              }}>
+                {subtitle}
+              </Typography>
+            )}
+          </Box>
         </Box>
       </Toolbar>
       <Divider />
       
       {/* User Info */}
-      <Box sx={{ p: 2, bgcolor: 'grey.50' }}>
+      <Box sx={{ p: 2, bgcolor: orgBranding?.backgroundColor || 'grey.50' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Avatar sx={{ width: 40, height: 40, mr: 2, bgcolor: 'primary.main' }}>
+          <Avatar sx={{ 
+            width: 40, 
+            height: 40, 
+            mr: 2, 
+            bgcolor: orgBranding?.primaryColor || 'primary.main'
+          }}>
             {user?.name.charAt(0)}
           </Avatar>
           <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+            <Typography variant="subtitle2" sx={{ 
+              fontWeight: 600,
+              color: orgBranding?.textColor || 'text.primary'
+            }}>
               {user?.name}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{
+              color: orgBranding?.secondaryColor || 'text.secondary'
+            }}>
               {user?.organization}
             </Typography>
+            {portalType && (
+              <Typography variant="caption" sx={{
+                display: 'block',
+                color: orgBranding?.accentColor || 'text.secondary',
+                fontSize: '0.7rem'
+              }}>
+                {portalType}
+              </Typography>
+            )}
           </Box>
         </Box>
         <Chip 
           label={user?.role} 
           size="small" 
-          color="primary" 
-          variant="outlined"
-          sx={{ fontSize: '0.75rem' }}
+          sx={{
+            fontSize: '0.75rem',
+            backgroundColor: orgBranding?.primaryColor || 'primary.main',
+            color: 'white',
+            '&:hover': {
+              backgroundColor: orgBranding?.secondaryColor || 'primary.dark'
+            }
+          }}
         />
       </Box>
       
@@ -183,14 +245,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               onClick={() => navigate(item.path)}
               sx={{
                 '&.Mui-selected': {
-                  backgroundColor: 'primary.main',
+                  backgroundColor: orgBranding?.primaryColor || 'primary.main',
                   color: 'white',
                   '&:hover': {
-                    backgroundColor: 'primary.dark',
+                    backgroundColor: orgBranding?.secondaryColor || 'primary.dark',
                   },
                   '& .MuiListItemIcon-root': {
                     color: 'white',
                   },
+                },
+                '&:hover': {
+                  backgroundColor: orgBranding?.backgroundColor || 'action.hover',
+                  '& .MuiListItemText-root': {
+                    color: orgBranding?.textColor || 'text.primary'
+                  },
+                  '& .MuiListItemIcon-root': {
+                    color: orgBranding?.primaryColor || 'primary.main'
+                  }
                 },
                 mx: 1,
                 borderRadius: 1,
@@ -214,6 +285,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
+          backgroundColor: orgBranding?.primaryColor || 'primary.main',
+          '& .MuiToolbar-root': {
+            background: orgBranding?.gradient || 'inherit'
+          }
         }}
       >
         <Toolbar>
@@ -226,8 +301,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Ethiopia Coffee Export Consortium - Validator Dashboard
+          <Typography variant="h6" noWrap component="div" sx={{ 
+            flexGrow: 1,
+            color: 'white',
+            fontWeight: 'medium'
+          }}>
+            {orgBranding?.dashboardTitle || 'Dashboard'}
           </Typography>
           
           {/* Notifications */}

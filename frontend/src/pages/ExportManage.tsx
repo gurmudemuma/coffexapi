@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../store';
-import { useExports, type ExportStatus } from '../hooks/useExports';
+import { useExports, type ExportStatus, type ExportSummary } from '../hooks/useExports';
 import { ORGANIZATION_BRANDING } from '../config/organizationBranding';
 import { useDebounce } from '../shared/hooks/useDebounce';
 
@@ -33,24 +33,9 @@ import {
   Filter as FilterIcon,
 } from 'lucide-react';
 
-
-
-type ExportSummary = {
-  id: string;
-  exportId: string;
-  productType: string;
-  quantity: number;
-  totalValue: number;
-  currency: string;
-  destination: string;
-  status: ExportStatus;
-  submittedAt?: number;
-  validationProgress: number;
-};
-
 const ExportManage: React.FC = () => {
   const { user } = useAuth();
-  const { exportSummaries, stats, loading, error } = useExports();
+  const { exportSummaries, stats, loading, error, refreshExports } = useExports();
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState('new-export');
@@ -90,11 +75,11 @@ const ExportManage: React.FC = () => {
 
   // Memoized button handlers for better performance
   const handleViewExport = useCallback((exportId: string) => {
-    navigate(`/exports/${exportId}`);
+    navigate(`/export/${exportId}`);
   }, [navigate]);
 
   const handleEditExport = useCallback((exportId: string) => {
-    navigate(`/exports/${exportId}/edit`);
+    navigate(`/export/${exportId}/edit`);
   }, [navigate]);
 
   const handleCreateNewExport = useCallback(() => {
@@ -104,21 +89,13 @@ const ExportManage: React.FC = () => {
   const handleRefreshExports = useCallback(async () => {
     setRefreshLoading(true);
     try {
-      // In a real app, you'd fetch fresh data from the API
-      // Removed artificial delay for better performance
-      console.log('Exports refreshed');
+      await refreshExports();
     } catch (err) {
       console.error('Failed to refresh exports:', err);
     } finally {
       setRefreshLoading(false);
     }
-  }, []);
-
-  const handleExportData = useCallback(() => {
-    // Export exports data as CSV
-    const csvContent = generateExportsCSV(exportSummaries);
-    downloadCSV(csvContent, 'exports-data.csv');
-  }, [exportSummaries]);
+  }, [refreshExports]);
 
   // Memoized CSV generation and download functions
   const generateExportsCSV = useCallback((data: ExportSummary[]) => {
@@ -150,9 +127,15 @@ const ExportManage: React.FC = () => {
     document.body.removeChild(link);
   }, []);
 
+  // Filter exports to only show those belonging to the current user
+  const userFilteredExports = useMemo(() => {
+    if (!user) return [];
+    return exportSummaries.filter((exp: ExportSummary) => exp.exporterId === user.id);
+  }, [exportSummaries, user]);
+
   // Memoized filtered exports for better performance
   const filteredExports = useMemo(() => {
-    return exportSummaries.filter((exp: any) => {
+    return userFilteredExports.filter((exp: ExportSummary) => {
       const matchesSearch = 
         exp.exportId.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
         exp.productType.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
@@ -162,7 +145,33 @@ const ExportManage: React.FC = () => {
       
       return matchesSearch && matchesStatus;
     });
-  }, [exportSummaries, debouncedSearchTerm, statusFilter]);
+  }, [userFilteredExports, debouncedSearchTerm, statusFilter]);
+
+  // Calculate stats for the current user's exports
+  const userStats = useMemo(() => {
+    if (!user) return stats;
+    
+    const userExports = userFilteredExports;
+    const totalExports = userExports.length;
+    const activeExports = userExports.filter((exp: ExportSummary) => ['SUBMITTED', 'VALIDATING'].includes(exp.status)).length;
+    const pendingValidation = userExports.filter((exp: ExportSummary) => exp.status === 'VALIDATING').length;
+    const approvedExports = userExports.filter((exp: ExportSummary) => exp.status === 'APPROVED').length;
+    const totalValue = userExports.reduce((sum: number, exp: ExportSummary) => sum + (exp.totalValue || 0), 0);
+    
+    return {
+      totalExports,
+      activeExports,
+      pendingValidation,
+      approvedExports,
+      totalValue,
+    };
+  }, [userFilteredExports, user, stats]);
+
+  const handleExportData = useCallback(() => {
+    // Export exports data as CSV
+    const csvContent = generateExportsCSV(filteredExports); // Use filteredExports instead of exportSummaries
+    downloadCSV(csvContent, 'exports-data.csv');
+  }, [filteredExports, generateExportsCSV]); // Update dependency
 
   if (loading) {
     return (
@@ -180,7 +189,22 @@ const ExportManage: React.FC = () => {
       <div className="p-6 max-w-7xl mx-auto">
         <Alert variant="error">
           <AlertTitle>Error Loading Exports</AlertTitle>
-          {error.message}
+          <p>{error.message}</p>
+          <div className="mt-4 text-sm">
+            <p className="font-medium">Troubleshooting steps:</p>
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              <li>Check your internet connection</li>
+              <li>Verify that the backend service is running (usually on port 8000)</li>
+              <li>Check that the API_GATEWAY_URL in your .env file is correct</li>
+              <li>Try refreshing the page</li>
+            </ul>
+          </div>
+          <div className="mt-4">
+            <Button onClick={handleRefreshExports} variant="outline">
+              <RefreshIcon className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+          </div>
         </Alert>
       </div>
     );
@@ -201,7 +225,7 @@ const ExportManage: React.FC = () => {
             variant="outline"
             onClick={handleRefreshExports}
             disabled={refreshLoading}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 border-[#7B2CBF] text-[#7B2CBF] hover:bg-[#7B2CBF] hover:text-white"
           >
             <RefreshIcon className={`h-4 w-4 ${refreshLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -209,15 +233,14 @@ const ExportManage: React.FC = () => {
           <Button
             variant="outline"
             onClick={handleExportData}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 border-[#EFB80B] text-[#EFB80B] hover:bg-[#EFB80B] hover:text-white"
           >
             <DownloadIcon className="h-4 w-4" />
             Export Data
           </Button>
           <Button
-            onClick={handleCreateNewExport}
-            className="flex items-center gap-2"
-            style={{ backgroundColor: orgBranding.primaryColor }}
+            onClick={() => navigate('/export/new')}
+            className="flex items-center gap-2 bg-[#7B2CBF] hover:bg-[#5A189A] text-white"
           >
             <PlusIcon className="h-4 w-4" />
             Create New
@@ -225,17 +248,17 @@ const ExportManage: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - now showing stats for current user only */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Exports</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalExports}</p>
+                <p className="text-2xl font-bold text-gray-900">{userStats.totalExports}</p>
               </div>
-              <div className="p-2 rounded-full" style={{ backgroundColor: orgBranding.primaryColor + '20' }}>
-                <PlusIcon className="h-6 w-6" style={{ color: orgBranding.primaryColor }} />
+              <div className="p-2 rounded-full bg-[#7B2CBF] bg-opacity-20">
+                <PlusIcon className="h-6 w-6 text-[#7B2CBF]" />
               </div>
             </div>
           </CardContent>
@@ -246,10 +269,10 @@ const ExportManage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active Exports</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.activeExports}</p>
+                <p className="text-2xl font-bold text-gray-900">{userStats.activeExports}</p>
               </div>
-              <div className="p-2 rounded-full bg-blue-100">
-                <RefreshIcon className="h-6 w-6 text-blue-600" />
+              <div className="p-2 rounded-full bg-[#9D4EDD] bg-opacity-20">
+                <RefreshIcon className="h-6 w-6 text-[#9D4EDD]" />
               </div>
             </div>
           </CardContent>
@@ -260,10 +283,10 @@ const ExportManage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Pending Validation</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.pendingValidation}</p>
+                <p className="text-2xl font-bold text-gray-900">{userStats.pendingValidation}</p>
               </div>
-              <div className="p-2 rounded-full bg-yellow-100">
-                <RefreshIcon className="h-6 w-6 text-yellow-600" />
+              <div className="p-2 rounded-full bg-[#5A189A] bg-opacity-20">
+                <RefreshIcon className="h-6 w-6 text-[#5A189A]" />
               </div>
             </div>
           </CardContent>
@@ -275,11 +298,11 @@ const ExportManage: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Value</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(stats.totalValue, 'USD')}
+                  {formatCurrency(userStats.totalValue, 'USD')}
                 </p>
               </div>
-              <div className="p-2 rounded-full bg-green-100">
-                <DownloadIcon className="h-6 w-6 text-green-600" />
+              <div className="p-2 rounded-full bg-[#EFB80B] bg-opacity-20">
+                <DownloadIcon className="h-6 w-6 text-[#EFB80B]" />
               </div>
             </div>
           </CardContent>
@@ -288,9 +311,19 @@ const ExportManage: React.FC = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="new-export">Create New Export</TabsTrigger>
-          <TabsTrigger value="manage">Manage Exports</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 bg-[#F8F0FE]">
+          <TabsTrigger 
+            value="new-export" 
+            className="data-[state=active]:bg-[#7B2CBF] data-[state=active]:text-white"
+          >
+            Create New Export
+          </TabsTrigger>
+          <TabsTrigger 
+            value="manage" 
+            className="data-[state=active]:bg-[#7B2CBF] data-[state=active]:text-white"
+          >
+            Manage Exports
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="new-export" className="mt-6">
@@ -304,9 +337,8 @@ const ExportManage: React.FC = () => {
                   Start a new coffee export request with all required documentation
                 </p>
                 <Button
-                  onClick={() => navigate('/exports/new')}
-                  className="flex items-center gap-2 mx-auto"
-                  style={{ backgroundColor: orgBranding.primaryColor }}
+                  onClick={() => navigate('/export/new')}
+                  className="flex items-center gap-2 mx-auto bg-[#7B2CBF] hover:bg-[#5A189A] text-white"
                 >
                   <PlusIcon className="h-4 w-4" />
                   Start New Export
@@ -329,7 +361,7 @@ const ExportManage: React.FC = () => {
                       placeholder="Search exports..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#7B2CBF] focus:border-[#7B2CBF]"
                     />
                   </div>
                 </div>
@@ -337,7 +369,7 @@ const ExportManage: React.FC = () => {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as ExportStatus | 'ALL')}
-                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#7B2CBF] focus:border-[#7B2CBF]"
                   >
                     <option value="ALL">All Statuses</option>
                     <option value="DRAFT">Draft</option>
@@ -353,7 +385,7 @@ const ExportManage: React.FC = () => {
                       setSearchTerm('');
                       setStatusFilter('ALL');
                     }}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 border-[#7B2CBF] text-[#7B2CBF] hover:bg-[#7B2CBF] hover:text-white"
                   >
                     <FilterIcon className="h-4 w-4" />
                     Clear
@@ -363,7 +395,7 @@ const ExportManage: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Exports Table */}
+          {/* Exports Table - now showing only current user's exports */}
           <Card>
             <CardContent className="p-0">
               <Table>
@@ -387,8 +419,8 @@ const ExportManage: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                                         filteredExports.map((exp: any) => (
-                      <TableRow key={exp.id} className="hover:bg-gray-50">
+                    filteredExports.map((exp: ExportSummary) => (
+                      <TableRow key={exp.id} className="hover:bg-[#F8F0FE]">
                         <TableCell className="font-medium">{exp.exportId}</TableCell>
                         <TableCell>{exp.productType}</TableCell>
                         <TableCell>{exp.quantity.toLocaleString()} kg</TableCell>
@@ -403,7 +435,7 @@ const ExportManage: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <div className="w-16 bg-gray-200 rounded-full h-2">
                               <div
-                                className="bg-blue-600 h-2 rounded-full"
+                                className="bg-[#7B2CBF] h-2 rounded-full"
                                 style={{ width: `${exp.validationProgress}%` }}
                               ></div>
                             </div>
@@ -418,7 +450,7 @@ const ExportManage: React.FC = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleViewExport(exp.id)}
-                              className="flex items-center gap-1"
+                              className="flex items-center gap-1 text-[#7B2CBF] hover:bg-[#7B2CBF] hover:text-white"
                             >
                               <EyeIcon className="h-4 w-4" />
                               View
@@ -428,7 +460,7 @@ const ExportManage: React.FC = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleEditExport(exp.id)}
-                                className="flex items-center gap-1"
+                                className="flex items-center gap-1 text-[#7B2CBF] hover:bg-[#7B2CBF] hover:text-white"
                               >
                                 <EditIcon className="h-4 w-4" />
                                 Edit

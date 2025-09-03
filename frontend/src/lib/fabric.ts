@@ -1,214 +1,188 @@
-// Mock Fabric connection for development
-// In production, this would connect to actual Hyperledger Fabric network
+import { useAuth } from '../store';
 
-export interface DocumentMetadata {
-  hash: string; // SHA-256 hash of the original document
-  ipfsCid: string; // IPFS Content Identifier
-  ipfsUrl: string; // IPFS Gateway URL
-  iv: string; // Initialization Vector for decryption
-  encrypted: boolean; // Whether the document is encrypted
-  uploadedAt: number; // Timestamp when document was uploaded to IPFS
-  contentType: string; // MIME type of the document
-  size: number; // Size of the document in bytes
-}
+// Types for export data
+export type DocumentMetadata = {
+  hash: string;
+  ipfsCid: string;
+  ipfsUrl: string;
+  iv: string;
+  encrypted: boolean;
+  uploadedAt: number;
+  contentType: string;
+  size: number;
+};
 
-export interface ExportRequest {
+export type ValidationSummary = {
+  totalValidations: number;
+  completedValidations: number;
+  passedValidations: number;
+  failedValidations: number;
+};
+
+export type TradeDetails = {
+  productType: string;
+  quantity: number;
+  unitPrice: number;
+  totalValue: number;
+  currency: string;
+  destination: string;
+  contractNumber: string;
+};
+
+export type ExportRequest = {
   id: string;
   exportId: string;
   exporter: string;
-  status: string;
+  exporterId: string;
+  status: 'DRAFT' | 'SUBMITTED' | 'VALIDATING' | 'APPROVED' | 'REJECTED' | 'PAYMENT_RELEASED';
   submittedAt?: number;
-  tradeDetails?: {
-    productType?: string;
-    quantity?: number;
-    totalValue?: number;
-    currency?: string;
-    destination?: string;
-  };
-  validationSummary?: {
-    totalValidations: number;
-    completedValidations: number;
-  };
+  tradeDetails: TradeDetails;
   documents: Record<string, DocumentMetadata>;
+  validationSummary: ValidationSummary;
   timestamp: number;
-}
+};
 
-export interface FabricContract {
-  // Transaction submission
-  submit: (
-    transactionName: string,
-    ...args: string[]
-  ) => Promise<{
-    getTransactionID: () => string;
-    transactionId: string;
-    status: string;
-    timestamp: string;
-  }>;
+// Contract interface
+export class FabricContract {
+  private apiGatewayUrl: string;
 
-  // Query evaluation
-  evaluate: (transactionName: string, ...args: string[]) => Promise<any>;
-
-  // Document operations
-  submitExport: (
-    exportData: Omit<ExportRequest, 'status' | 'timestamp'>
-  ) => Promise<string>;
-  getDocument: (exportId: string, docType: string) => Promise<DocumentMetadata>;
-  verifyDocument: (exportId: string, docType: string) => Promise<boolean>;
-  updateDocumentStatus: (
-    exportId: string,
-    docType: string,
-    status: string
-  ) => Promise<void>;
-  getExportRequest: (exportId: string) => Promise<ExportRequest>;
-  listExportDocuments: (
-    exportId: string
-  ) => Promise<Record<string, DocumentMetadata>>;
-}
-
-class MockFabricContract {
-  async submit(
-    transactionName: string,
-    ...args: string[]
-  ): Promise<{
-    getTransactionID: () => string;
-    transactionId: string;
-    status: string;
-    timestamp: string;
-  }> {
-    console.log(
-      `Mock Fabric: Submitting transaction ${transactionName} with args:`,
-      args
-    );
-
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const transactionId = `tx-${Date.now()}`;
-
-    // Return an object with getTransactionID method
-    return {
-      getTransactionID: () => transactionId,
-      transactionId,
-      status: 'SUCCESS',
-      timestamp: new Date().toISOString(),
-    };
+  constructor() {
+    // Get API Gateway URL from environment variables
+    this.apiGatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8000';
   }
 
-  async evaluate(transactionName: string, ...args: string[]): Promise<any> {
-    console.log(
-      `Mock Fabric: Evaluating transaction ${transactionName} with args:`,
-      args
-    );
+  // Submit a new export request to the blockchain
+  async submitExport(exportRequest: Omit<ExportRequest, 'status'>): Promise<string> {
+    try {
+      const response = await fetch(`${this.apiGatewayUrl}/api/exports`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(exportRequest),
+      });
 
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+      if (!response.ok) {
+        throw new Error(`Failed to submit export: ${response.statusText}`);
+      }
 
-    // Return mock data based on transaction type
-    switch (transactionName) {
-      case 'GetExportStatus':
-        return {
-          exportId: args[0],
-          status: 'PENDING',
-          validations: {
-            LICENSE: { valid: true, timestamp: new Date().toISOString() },
-            INVOICE: { valid: true, timestamp: new Date().toISOString() },
-            QUALITY: { valid: false, timestamp: new Date().toISOString() },
-            SHIPPING: { valid: true, timestamp: new Date().toISOString() },
-          },
-        };
-      default:
-        return { status: 'SUCCESS', data: 'Mock response' };
+      const result = await response.json();
+      return result.txHash;
+    } catch (error) {
+      console.error('Error submitting export to blockchain:', error);
+      throw error;
+    }
+  }
+
+  // Get all export requests (for filtering on client side)
+  async getAllExports(): Promise<Record<string, ExportRequest>> {
+    try {
+      const response = await fetch(`${this.apiGatewayUrl}/api/exports`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch exports: ${response.statusText}`);
+      }
+
+      const exports = await response.json();
+      return exports;
+    } catch (error) {
+      console.error('Error fetching all exports from blockchain:', error);
+      throw error;
+    }
+  }
+
+  // Get all export requests for a specific exporter
+  async getExportsByExporter(exporterId: string): Promise<Record<string, ExportRequest>> {
+    try {
+      // First get all exports
+      const allExports = await this.getAllExports();
+      
+      // Then filter by exporterId
+      const filteredExports: Record<string, ExportRequest> = {};
+      Object.keys(allExports).forEach(key => {
+        if (allExports[key].exporterId === exporterId) {
+          filteredExports[key] = allExports[key];
+        }
+      });
+      
+      return filteredExports;
+    } catch (error) {
+      console.error('Error filtering exports by exporter:', error);
+      throw error;
+    }
+  }
+
+  // Get a specific export request by ID
+  async getExportRequest(exportId: string): Promise<ExportRequest> {
+    try {
+      const response = await fetch(`${this.apiGatewayUrl}/api/exports/${exportId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch export: ${response.statusText}`);
+      }
+
+      const exportRequest = await response.json();
+      return exportRequest;
+    } catch (error) {
+      console.error('Error fetching export from blockchain:', error);
+      throw error;
+    }
+  }
+
+  // Verify a document's integrity
+  async verifyDocument(exportId: string, docType: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.apiGatewayUrl}/api/exports/${exportId}/documents/${docType}/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to verify document: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result.verified;
+    } catch (error) {
+      console.error('Error verifying document on blockchain:', error);
+      throw error;
+    }
+  }
+
+  // Get document metadata
+  async getDocument(exportId: string, docType: string): Promise<DocumentMetadata> {
+    try {
+      const response = await fetch(`${this.apiGatewayUrl}/api/exports/${exportId}/documents/${docType}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch document: ${response.statusText}`);
+      }
+
+      const document = await response.json();
+      return document;
+    } catch (error) {
+      console.error('Error fetching document from blockchain:', error);
+      throw error;
     }
   }
 }
 
-// Implement the full FabricContract interface
-class FabricContractWrapper implements FabricContract {
-  private mockContract: MockFabricContract;
-
-  constructor() {
-    this.mockContract = new MockFabricContract();
-  }
-
-  async submit(
-    transactionName: string,
-    ...args: string[]
-  ): Promise<{
-    getTransactionID: () => string;
-    transactionId: string;
-    status: string;
-    timestamp: string;
-  }> {
-    return this.mockContract.submit(transactionName, ...args);
-  }
-
-  async evaluate(transactionName: string, ...args: string[]): Promise<any> {
-    return this.mockContract.evaluate(transactionName, ...args);
-  }
-
-  async submitExport(
-    exportData: Omit<ExportRequest, 'status' | 'timestamp'>
-  ): Promise<string> {
-    const tx = await this.submit(
-      'SubmitExport',
-      JSON.stringify({
-        ...exportData,
-        timestamp: Date.now(),
-        status: 'SUBMITTED',
-      })
-    );
-    return tx.transactionId;
-  }
-
-  async getDocument(
-    exportId: string,
-    docType: string
-  ): Promise<DocumentMetadata> {
-    const result = await this.evaluate('GetDocument', exportId, docType);
-    return result as DocumentMetadata;
-  }
-
-  async verifyDocument(exportId: string, docType: string): Promise<boolean> {
-    const result = await this.evaluate('VerifyDocument', exportId, docType);
-    return result as boolean;
-  }
-
-  async updateDocumentStatus(
-    exportId: string,
-    docType: string,
-    status: string
-  ): Promise<void> {
-    await this.submit('UpdateDocumentStatus', exportId, docType, status);
-  }
-
-  async getExportRequest(exportId: string): Promise<ExportRequest> {
-    const result = await this.evaluate('GetExportRequest', exportId);
-    return result as ExportRequest;
-  }
-
-  async listExportDocuments(
-    exportId: string
-  ): Promise<Record<string, DocumentMetadata>> {
-    const result = await this.evaluate('ListExportDocuments', exportId);
-    return result as Record<string, DocumentMetadata>;
-  }
-}
-
-export const contract: FabricContract = new FabricContractWrapper();
-
-// Real Fabric connection would look like this:
-/*
-import { Gateway, Contract } from 'fabric-network';
-
-export async function connectToFabric() {
-  const gateway = new Gateway();
-  await gateway.connect(connectionProfile, {
-    wallet: wallet,
-    identity: 'user1',
-    discovery: { enabled: true }
-  });
-  
-  const network = gateway.getNetwork('mychannel');
-  return network.getContract('coffeeexport');
-}
-*/
+// Export singleton instance
+export const contract = new FabricContract();

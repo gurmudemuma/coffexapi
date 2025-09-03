@@ -245,7 +245,7 @@ export const ManageExports: React.FC<ManageExportsProps> = ({
     if (onCreateNew) {
       onCreateNew();
     } else {
-      navigate('/exports/new');
+      navigate('/export/new');
     }
   };
 

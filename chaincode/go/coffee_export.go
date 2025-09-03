@@ -788,3 +788,26 @@ func (s *SmartContract) GetAllExportRequests(ctx contractapi.TransactionContextI
 
 	return results, nil
 }
+
+// GetExportsByExporter returns all export requests for a specific exporter
+func (s *SmartContract) GetExportsByExporter(ctx contractapi.TransactionContextInterface, exporterID string) (map[string]*ExportRequest, error) {
+	if exporterID == "" {
+		return nil, fmt.Errorf("exporter ID is required")
+	}
+
+	// Get all export requests
+	allExports, err := s.GetAllExportRequests(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all export requests: %v", err)
+	}
+
+	// Filter exports by exporter ID
+	exporterExports := make(map[string]*ExportRequest)
+	for _, export := range allExports {
+		if export.Exporter == exporterID {
+			exporterExports[export.ExportID] = export
+		}
+	}
+
+	return exporterExports, nil
+}

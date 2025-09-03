@@ -3,6 +3,11 @@
 
 export interface OrganizationBranding {
   name: string;
+  fullName: string;
+  subtitle: string;
+  description: string;
+  dashboardTitle: string;
+  portalType: string;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -15,65 +20,91 @@ export interface OrganizationBranding {
 }
 
 export const ORGANIZATION_BRANDING: Record<string, OrganizationBranding> = {
+  // Updated to use purple and yellow colors from the image
   'national-bank': {
-    name: 'The Mint',
-    primaryColor: '#FFD700', // Gold
-    secondaryColor: '#800080', // Purple
-    accentColor: '#000000', // Black
+    name: 'National Bank of Ethiopia',
+    fullName: 'National Bank of Ethiopia',
+    subtitle: 'Financial License Validation Portal',
+    description: 'Secure validation and approval of export licenses and financial documentation for Ethiopian coffee exports',
+    dashboardTitle: 'License Validation Dashboard',
+    portalType: 'Banking Authority',
+    primaryColor: '#7B2CBF', // Purple
+    secondaryColor: '#EFB80B', // Yellow
+    accentColor: '#5A189A', // Dark Purple
     backgroundColor: '#f8f9fa', // Light gray
     textColor: '#000000',
-    logoColor: '#FFD700',
-    chartColors: ['#FFD700', '#800080', '#000000', '#E6E6FA', '#FFFFFF'],
-    gradient: 'linear-gradient(135deg, #FFD700 0%, #800080 100%)',
-    boxShadow: '0 4px 6px rgba(128, 0, 128, 0.1)'
+    logoColor: '#7B2CBF', // Purple
+    chartColors: ['#7B2CBF', '#EFB80B', '#5A189A', '#F4CA16', '#9D4EDD'], // Purple and yellow palette
+    gradient: 'linear-gradient(135deg, #7B2CBF 0%, #5A189A 100%)',
+    boxShadow: '0 4px 6px rgba(123, 44, 191, 0.1)'
   },
   'customs': {
     name: 'Clearance House',
-    primaryColor: '#0000FF', // Blue
-    secondaryColor: '#ADD8E6', // Light Blue
-    accentColor: '#FFFFFF', // White
+    fullName: 'Ethiopian Customs Authority',
+    subtitle: 'Export Clearance & Documentation Portal',
+    description: 'Comprehensive customs clearance, shipping documentation validation, and export compliance management',
+    dashboardTitle: 'Customs Clearance Dashboard',
+    portalType: 'Customs Authority',
+    primaryColor: '#7B2CBF', // Purple
+    secondaryColor: '#EFB80B', // Yellow
+    accentColor: '#5A189A', // Dark Purple
     backgroundColor: '#f1f8e9', // Light green background
-    textColor: '#0000FF',
-    logoColor: '#0000FF',
-    chartColors: ['#0000FF', '#ADD8E6', '#FFFFFF', '#E6E6FA', '#F0F8FF'],
-    gradient: 'linear-gradient(135deg, #0000FF 0%, #ADD8E6 100%)',
-    boxShadow: '0 4px 6px rgba(0, 0, 255, 0.1)'
+    textColor: '#000000',
+    logoColor: '#7B2CBF', // Purple
+    chartColors: ['#7B2CBF', '#EFB80B', '#5A189A', '#F4CA16', '#9D4EDD'], // Purple and yellow palette
+    gradient: 'linear-gradient(135deg, #7B2CBF 0%, #5A189A 100%)',
+    boxShadow: '0 4px 6px rgba(123, 44, 191, 0.1)'
   },
   'quality-authority': {
     name: 'Cup of Quality',
-    primaryColor: '#A52A2A', // Brown
-    secondaryColor: '#D2B48C', // Tan
-    accentColor: '#F5F5DC', // Beige
-    backgroundColor: '#fce4ec', // Light pink background
-    textColor: '#A52A2A',
-    logoColor: '#A52A2A',
-    chartColors: ['#A52A2A', '#D2B48C', '#F5F5DC', '#FAEBD7', '#FFFAF0'],
-    gradient: 'linear-gradient(135deg, #A52A2A 0%, #D2B48C 100%)',
-    boxShadow: '0 4px 6px rgba(165, 42, 42, 0.1)'
+    fullName: 'Ethiopian Coffee Quality Authority',
+    subtitle: 'Coffee Quality Certification Portal',
+    description: 'Professional coffee quality assessment, certification, and grading services for export excellence',
+    dashboardTitle: 'Quality Certification Dashboard',
+    portalType: 'Quality Authority',
+    primaryColor: '#7B2CBF', // Purple
+    secondaryColor: '#EFB80B', // Yellow
+    accentColor: '#5A189A', // Dark Purple
+    backgroundColor: '#FEF6EE', // Light coffee cream background
+    textColor: '#000000',
+    logoColor: '#7B2CBF', // Purple
+    chartColors: ['#7B2CBF', '#EFB80B', '#5A189A', '#F4CA16', '#9D4EDD'], // Purple and yellow palette
+    gradient: 'linear-gradient(135deg, #7B2CBF 0%, #5A189A 100%)',
+    boxShadow: '0 4px 6px rgba(123, 44, 191, 0.1)'
   },
   'exporter-bank': {
     name: 'The Vault',
-    primaryColor: '#FFD700', // Gold
-    secondaryColor: '#800080', // Purple
-    accentColor: '#000000', // Black
-    backgroundColor: '#fff3e0', // Light orange background
+    fullName: 'Commercial Bank of Ethiopia - Export Division',
+    subtitle: 'Trade Finance & Payment Portal',
+    description: 'Secure trade finance, payment processing, and foreign exchange services for coffee export transactions',
+    dashboardTitle: 'Trade Finance Dashboard',
+    portalType: 'Commercial Bank',
+    primaryColor: '#7B2CBF', // Purple
+    secondaryColor: '#EFB80B', // Yellow
+    accentColor: '#5A189A', // Dark Purple
+    backgroundColor: '#FEF6EE', // Light coffee cream background
     textColor: '#000000',
-    logoColor: '#FFD700',
-    chartColors: ['#FFD700', '#800080', '#000000', '#E6E6FA', '#FFFFFF'],
-    gradient: 'linear-gradient(135deg, #FFD700 0%, #800080 100%)',
-    boxShadow: '0 4px 6px rgba(128, 0, 128, 0.1)'
+    logoColor: '#7B2CBF', // Purple
+    chartColors: ['#7B2CBF', '#EFB80B', '#5A189A', '#F4CA16', '#9D4EDD'], // Purple and yellow palette
+    gradient: 'linear-gradient(135deg, #7B2CBF 0%, #5A189A 100%)',
+    boxShadow: '0 4px 6px rgba(123, 44, 191, 0.1)'
   },
   'coffee-exporters': {
     name: 'GreenBean Exporters',
-    primaryColor: '#008000', // Green
-    secondaryColor: '#90EE90', // Light Green
-    accentColor: '#D2B48C', // Tan
-    backgroundColor: '#f1f8e9', // Light green background
-    textColor: '#008000',
-    logoColor: '#008000',
-    chartColors: ['#008000', '#90EE90', '#D2B48C', '#F0E68C', '#F5DEB3'],
-    gradient: 'linear-gradient(135deg, #008000 0%, #90EE90 100%)',
-    boxShadow: '0 4px 6px rgba(0, 128, 0, 0.1)'
+    fullName: 'Ethiopian Coffee Exporters Association',
+    subtitle: 'Export Management & Trading Portal',
+    description: 'Complete coffee export management, documentation submission, and international trade coordination',
+    dashboardTitle: 'Export Management Dashboard',
+    portalType: 'Export Association',
+    primaryColor: '#7B2CBF', // Purple
+    secondaryColor: '#EFB80B', // Yellow
+    accentColor: '#5A189A', // Dark Purple
+    backgroundColor: '#FEF6EE', // Light coffee cream background
+    textColor: '#000000',
+    logoColor: '#7B2CBF', // Purple
+    chartColors: ['#7B2CBF', '#EFB80B', '#5A189A', '#F4CA16', '#9D4EDD'], // Purple and yellow palette
+    gradient: 'linear-gradient(135deg, #7B2CBF 0%, #5A189A 100%)',
+    boxShadow: '0 4px 6px rgba(123, 44, 191, 0.1)'
   }
 };
 
@@ -111,3 +142,28 @@ export const getOrganizationClasses = (organizationType: string, element: string
 };
 
 export default ORGANIZATION_BRANDING;
+
+// Organization name mapping for user organization to branding key
+export const ORGANIZATION_MAPPING: Record<string, string> = {
+  'National Bank of Ethiopia': 'national-bank',
+  'Ethiopian Customs Authority': 'customs',
+  'Customs Authority': 'customs',
+  'Ethiopian Coffee Quality Authority': 'quality-authority',
+  'Coffee Quality Authority': 'quality-authority',
+  'Quality Authority': 'quality-authority',
+  'Commercial Bank of Ethiopia': 'exporter-bank',
+  'Exporter Bank': 'exporter-bank',
+  'Ethiopian Coffee Exporters Association': 'coffee-exporters',
+  'Coffee Exporters Association': 'coffee-exporters'
+};
+
+// Get organization branding by user organization name
+export const getOrganizationBranding = (userOrganization: string): OrganizationBranding => {
+  const brandingKey = ORGANIZATION_MAPPING[userOrganization];
+  return ORGANIZATION_BRANDING[brandingKey] || ORGANIZATION_BRANDING['national-bank'];
+};
+
+// Get organization branding key from user organization name
+export const getOrganizationKey = (userOrganization: string): string => {
+  return ORGANIZATION_MAPPING[userOrganization] || 'national-bank';
+};

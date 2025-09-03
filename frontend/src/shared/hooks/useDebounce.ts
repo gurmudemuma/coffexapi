@@ -37,15 +37,6 @@ export const useDebounce = <T>(value: T, delay: number): T => {
     };
   }, [value, delay]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
   return debouncedValue;
 };
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../store';
 import type { ExportRequest } from '../lib/fabric';
+import { contract } from '../lib/fabric';
 
 export type ExportStatus = 
   | 'DRAFT' 
@@ -21,6 +22,7 @@ export type ExportSummary = {
   status: ExportStatus;
   submittedAt?: number;
   validationProgress: number;
+  exporterId: string; // Added exporterId field for filtering
 };
 
 export type ExportStats = {
@@ -44,96 +46,48 @@ export const useExports = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Mock data for demonstration
-  const mockExports: Record<string, ExportRequest> = {
-    'exp-001': {
-      id: 'exp-001',
-      exportId: 'CE-2024-001',
-      exporter: user?.id || 'user-1',
-      status: 'SUBMITTED',
-      submittedAt: Date.now() - 24 * 60 * 60 * 1000, // 1 day ago
-      tradeDetails: {
-        productType: 'Arabica Coffee Beans',
-        quantity: 5000,
-        totalValue: 150000,
-        currency: 'USD',
-        destination: 'Germany',
-      },
-      validationSummary: {
-        totalValidations: 4,
-        completedValidations: 2,
-      },
-      documents: {},
-      timestamp: Date.now(),
-    },
-    'exp-002': {
-      id: 'exp-002',
-      exportId: 'CE-2024-002',
-      exporter: user?.id || 'user-1',
-      status: 'VALIDATING',
-      submittedAt: Date.now() - 12 * 60 * 60 * 1000, // 12 hours ago
-      tradeDetails: {
-        productType: 'Robusta Coffee Beans',
-        quantity: 3000,
-        totalValue: 90000,
-        currency: 'USD',
-        destination: 'Italy',
-      },
-      validationSummary: {
-        totalValidations: 4,
-        completedValidations: 1,
-      },
-      documents: {},
-      timestamp: Date.now(),
-    },
-    'exp-003': {
-      id: 'exp-003',
-      exportId: 'CE-2024-003',
-      exporter: user?.id || 'user-1',
-      status: 'APPROVED',
-      submittedAt: Date.now() - 48 * 60 * 60 * 1000, // 2 days ago
-      tradeDetails: {
-        productType: 'Arabica Coffee Beans',
-        quantity: 7500,
-        totalValue: 225000,
-        currency: 'USD',
-        destination: 'Netherlands',
-      },
-      validationSummary: {
-        totalValidations: 4,
-        completedValidations: 4,
-      },
-      documents: {},
-      timestamp: Date.now(),
-    },
-  };
-
   const processExports = useCallback((exportsData: Record<string, ExportRequest>) => {
     try {
       if (!user) return [];
 
       // Filter exports to only show those belonging to the current user
       const userExports = Object.values(exportsData).filter(
-        (exportRequest) => exportRequest.exporter === user.id
+        (exportRequest) => exportRequest.exporterId === user.id
       );
 
-      return userExports.map((exportRequest) => ({
-        id: exportRequest.id,
-        exportId: exportRequest.exportId,
-        productType: exportRequest.tradeDetails?.productType || 'N/A',
-        quantity: exportRequest.tradeDetails?.quantity || 0,
-        totalValue: exportRequest.tradeDetails?.totalValue || 0,
-        currency: exportRequest.tradeDetails?.currency || 'USD',
-        destination: exportRequest.tradeDetails?.destination || 'N/A',
-        status: exportRequest.status as ExportStatus,
-        submittedAt: exportRequest.submittedAt,
-        validationProgress:
-          (exportRequest.validationSummary?.totalValidations ?? 0) > 0
-            ? ((exportRequest.validationSummary?.completedValidations ?? 0) /
-                (exportRequest.validationSummary?.totalValidations ?? 1)) *
-              100
-            : 0,
-      }));
+      return userExports.map((exportRequest) => {
+        // Ensure tradeDetails exists
+        const tradeDetails = exportRequest.tradeDetails || {
+          productType: 'N/A',
+          quantity: 0,
+          unitPrice: 0,
+          totalValue: 0,
+          currency: 'USD',
+          destination: 'N/A',
+          contractNumber: 'N/A',
+        };
+        
+        // Calculate validation progress safely
+        const totalValidations = exportRequest.validationSummary?.totalValidations ?? 0;
+        const completedValidations = exportRequest.validationSummary?.completedValidations ?? 0;
+        const validationProgress = totalValidations > 0 
+          ? (completedValidations / totalValidations) * 100 
+          : 0;
+
+        return {
+          id: exportRequest.id,
+          exportId: exportRequest.exportId,
+          productType: tradeDetails.productType || 'N/A',
+          quantity: tradeDetails.quantity || 0,
+          totalValue: tradeDetails.totalValue || 0,
+          currency: tradeDetails.currency || 'USD',
+          destination: tradeDetails.destination || 'N/A',
+          status: exportRequest.status,
+          submittedAt: exportRequest.submittedAt,
+          validationProgress,
+          exporterId: exportRequest.exporterId,
+        };
+      });
     } catch (err) {
       console.error('Error processing exports:', err);
       setError(err instanceof Error ? err : new Error('Failed to process exports'));
@@ -141,8 +95,8 @@ export const useExports = () => {
     }
   }, [user]);
 
-  // Update export summaries and stats when exports or user changes
-  useEffect(() => {
+  // Fetch export data from blockchain
+  const fetchExports = useCallback(async () => {
     if (!user) {
       setExportSummaries([]);
       setStats({
@@ -157,10 +111,13 @@ export const useExports = () => {
     }
 
     setLoading(true);
-    
-    // Process data immediately without artificial delay
+    setError(null);
+
     try {
-      const summaries = processExports(mockExports);
+      // Fetch exports from blockchain for the current user
+      const exportsData = await contract.getExportsByExporter(user.id);
+      
+      const summaries = processExports(exportsData);
       setExportSummaries(summaries);
 
       // Calculate stats
@@ -177,20 +134,34 @@ export const useExports = () => {
         approvedExports,
         totalValue,
       });
-
-      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to load exports'));
+      console.error('Error fetching exports:', err);
+      // Provide more detailed error information
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError(new Error('Network error: Unable to connect to the server. Please check your internet connection and ensure the backend service is running.'));
+      } else {
+        setError(err instanceof Error ? err : new Error('Failed to load exports. Please try again later.'));
+      }
     } finally {
       setLoading(false);
     }
   }, [user, processExports]);
 
+  // Update export summaries and stats when user changes
+  useEffect(() => {
+    fetchExports();
+  }, [user, fetchExports]);
+
+  // Refresh function to manually trigger data refresh
+  const refreshExports = useCallback(() => {
+    fetchExports();
+  }, [fetchExports]);
+
   return {
-    exports: mockExports,
     exportSummaries,
     stats,
     loading,
     error,
+    refreshExports,
   };
 };

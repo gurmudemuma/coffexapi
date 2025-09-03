@@ -21,43 +21,44 @@ interface ProtectedRouteProps {
 // Organization-specific route mappings (aligned with App routes)
 const ORGANIZATION_ROUTES: Record<string, string[]> = {
   'The Mint': [
-    '/nbe',
+    '/nbe-dashboard',
     '/users', // Only NBE admins can manage users
     '/compliance',
     '/audit'
   ],
   'Customs Authority': [
-    '/customs',
+    '/customs-dashboard',
     '/audit'
   ],
   'Coffee Quality Authority': [
-    '/quality',
+    '/quality-dashboard',
     '/audit'
   ],
   'Exporter Bank': [
-    '/bank',
+    '/bank-dashboard',
     '/audit'
   ],
   'Commercial Bank of Ethiopia': [
-    '/bank',
+    '/bank-dashboard',
     '/audit'
   ],
   'Coffee Exporters Association': [
-    '/exporter',
+    '/exporter-dashboard',
     '/exports',
-    '/documents',
-    '/audit'
+    '/export/new',
+    '/export/manage'
+    // Note: explicitly excluding /audit, /compliance, /users, /reports
   ]
 };
 
 // Default home route per organization
 const ORGANIZATION_HOME: Record<string, string> = {
-  'The Mint': '/nbe',
-  'Customs Authority': '/customs',
-  'Coffee Quality Authority': '/quality',
-  'Exporter Bank': '/bank',
-  'Commercial Bank of Ethiopia': '/bank',
-  'Coffee Exporters Association': '/exporter',
+  'The Mint': '/nbe-dashboard',
+  'Customs Authority': '/customs-dashboard',
+  'Coffee Quality Authority': '/quality-dashboard',
+  'Exporter Bank': '/bank-dashboard',
+  'Commercial Bank of Ethiopia': '/bank-dashboard',
+  'Coffee Exporters Association': '/exporter-dashboard',
 };
 
 // Role-specific route restrictions
@@ -67,7 +68,7 @@ const ROLE_RESTRICTIONS: Record<string, string[]> = {
   'CUSTOMS_VALIDATOR': [], // No restrictions within customs routes
   'QUALITY_INSPECTOR': [], // No restrictions within quality routes  
   'BANK_VALIDATOR': [], // No restrictions within bank routes
-  'EXPORTER': [], // No restrictions within exporter routes
+  'EXPORTER': ['/compliance', '/users', '/reports', '/alerts'], // Restrict access to administrative components
 };
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
@@ -130,11 +131,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     
     // Enhanced validation: Detect cross-organization dashboard access attempts
     const isAttemptingCrossOrgAccess = [
-      '/nbe',
-      '/customs',
-      '/quality',
-      '/bank',
-      '/exporter'
+      '/nbe-dashboard',
+      '/customs-dashboard',
+      '/quality-dashboard',
+      '/bank-dashboard',
+      '/exporter-dashboard'
     ].some(orgRoute => currentPath.startsWith(orgRoute)) && !isRouteAllowed;
     
     if (isAttemptingCrossOrgAccess) {
