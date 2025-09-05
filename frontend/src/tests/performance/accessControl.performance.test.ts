@@ -299,6 +299,7 @@ describe('Access Control Performance Tests', () => {
 
   describe('Memory Usage Tests', () => {
     it('should not cause memory leaks with repeated operations', async () => {
+      // @ts-ignore - performance.memory is not standard but available in some browsers
       const initialMemory = performance.memory ? performance.memory.usedJSHeapSize : 0;
       
       // Perform many operations that could potentially leak memory
@@ -323,8 +324,10 @@ describe('Access Control Performance Tests', () => {
         }
       }
 
+      // @ts-ignore - performance.memory is not standard but available in some browsers
       const finalMemory = performance.memory ? performance.memory.usedJSHeapSize : 0;
       
+      // @ts-ignore - performance.memory is not standard but available in some browsers
       if (performance.memory) {
         const memoryIncrease = finalMemory - initialMemory;
         const memoryIncreasePercent = (memoryIncrease / initialMemory) * 100;

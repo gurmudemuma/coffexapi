@@ -241,7 +241,7 @@ global.Blob = class MockBlob {
   }
   
   // Add missing bytes method with correct return type
-  bytes(): Promise<Uint8Array<ArrayBuffer>> {
+  bytes(): Promise<Uint8Array<ArrayBufferLike>> {
     return Promise.resolve(new Uint8Array(new ArrayBuffer(0)));
   }
 };

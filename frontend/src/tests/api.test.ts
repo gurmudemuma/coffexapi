@@ -221,13 +221,17 @@ describe('API Client', () => {
       );
 
       // Simulate successful upload
-      // @ts-ignore
-      onLoadHandler({
-        target: { 
+      const loadEvent = new ProgressEvent('load', {
+        lengthComputable: false,
+      });
+      Object.defineProperty(loadEvent, 'target', {
+        value: { 
           status: 200, 
           responseText: '{"cid":"mock-cid"}' 
         },
-      } as ProgressEvent);
+        writable: true,
+      });
+      onLoadHandler(loadEvent);
 
       // Wait for the upload to complete
       await uploadPromise;

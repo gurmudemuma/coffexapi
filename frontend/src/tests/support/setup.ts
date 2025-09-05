@@ -110,13 +110,13 @@ afterEach(() => {
   sessionStorage.clear();
   
   // Reset console mocks if any
-  if (vi.isMockFunction(console.log)) {
+  if (console.log && vi.isMockFunction(console.log)) {
     console.log.mockReset();
   }
-  if (vi.isMockFunction(console.warn)) {
+  if (console.warn && vi.isMockFunction(console.warn)) {
     console.warn.mockReset();
   }
-  if (vi.isMockFunction(console.error)) {
+  if (console.error && vi.isMockFunction(console.error)) {
     console.error.mockReset();
   }
 });

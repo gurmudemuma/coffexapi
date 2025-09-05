@@ -42,7 +42,7 @@ let dbPromise: Promise<IDBPDatabase<OfflineDB>> | null = null;
 const getDB = async () => {
   if (!dbPromise) {
     dbPromise = openDB<OfflineDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db: IDBPDatabase<OfflineDB>) {
         // Create documents store
         const documentStore = db.createObjectStore('documents', {
           keyPath: 'id',
