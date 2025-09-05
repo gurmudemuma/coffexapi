@@ -489,7 +489,7 @@ const ModernApp: React.FC = () => {
                       } 
                     />
                   
-                    {/* Export Management Routes */}
+                    {/* Export Management Routes - Consolidated under exporter dashboard */}
                     <Route 
                       path="/export" 
                       element={
@@ -527,6 +527,20 @@ const ModernApp: React.FC = () => {
                         >
                           <Suspense fallback={<Spinner />}>
                             <ExportManage />
+                          </Suspense>
+                        </ProtectedRoute>
+                      } 
+                    />
+                  
+                    <Route 
+                      path="/export/:exportId/edit" 
+                      element={
+                        <ProtectedRoute 
+                          allowedOrganizations={['Coffee Exporters Association']}
+                          allowedRoles={['EXPORTER']}
+                        >
+                          <Suspense fallback={<Spinner />}>
+                            <ExportForm />
                           </Suspense>
                         </ProtectedRoute>
                       } 

@@ -30,21 +30,22 @@ The exporter user has the following permissions:
 ## Accessible Routes
 
 The exporter user can access the following routes:
-- `/exporter` - Main exporter dashboard
+- `/exporter-dashboard` - Main exporter dashboard
 - `/export/new` - Create new export request
 - `/export/manage` - Manage existing exports
-- `/documents` - Document management
+- `/export/:exportId/edit` - Edit existing export request
 - `/audit` - Audit trail access
 
 ## Blocked Routes
 
 The exporter user is **blocked** from accessing:
-- `/nbe` - NBE dashboard
-- `/customs` - Customs dashboard
-- `/quality` - Quality dashboard
-- `/bank` - Bank dashboard
+- `/nbe-dashboard` - NBE dashboard
+- `/customs-dashboard` - Customs dashboard
+- `/quality-dashboard` - Quality dashboard
+- `/bank-dashboard` - Bank dashboard
 - `/users` - User management (NBE only)
 - `/compliance` - Compliance monitoring (NBE only)
+- `/reports` - Reports (NBE only)
 
 ## Testing Instructions
 
@@ -54,7 +55,7 @@ The exporter user is **blocked** from accessing:
    - Username: `exporter.user`
    - Password: `exporter123`
 3. Click "Login"
-4. Should redirect to `/exporter`
+4. Should redirect to `/exporter-dashboard`
 
 ### 2. Dashboard Access Test
 1. After login, verify the exporter dashboard displays:
@@ -68,23 +69,21 @@ The exporter user is **blocked** from accessing:
    - ✅ Export Dashboard
    - ✅ Manage Exports
    - ✅ Audit Trail
-   - ❌ New Export (removed to reduce redundancy)
-   - ❌ Documents (removed to reduce redundancy)
    - ❌ NBE Control Center (should not appear)
    - ❌ User Management (should not appear)
    - ❌ Customs Operations (should not appear)
 
 ### 4. Access Control Test
 1. Try to directly access blocked routes:
-   - Navigate to `/nbe`
+   - Navigate to `/nbe-dashboard`
    - Should show "Organization Access Violation" error
    - Navigate to `/users`
    - Should show "Organization Access Violation" error
-   - Navigate to `/customs`
+   - Navigate to `/customs-dashboard`
    - Should show "Organization Access Violation" error
 
 ### 5. Audit Logging Test
-1. Access a blocked route (e.g., `/nbe`)
+1. Access a blocked route (e.g., `/nbe-dashboard`)
 2. Open browser developer tools → Console
 3. Should see audit log entries for the access violation
 4. Check localStorage for `audit_events` key
@@ -102,7 +101,6 @@ The Exporter Dashboard includes:
 
 ### Quick Actions
 - **New Export Request**: Create a new export request
-- **Upload Documents**: Manage export documentation
 - **Manage Exports**: View and edit existing exports
 
 ### Export Management Table
@@ -157,7 +155,7 @@ The system provides clear error messages for:
 
 ### Test Files Updated
 - `src/components/__tests__/ProtectedRoute.test.tsx` - Added exporter test cases
-- `src/e2e/userAccessControl.spec.ts` - Added exporter E2E tests
+- `src/tests/e2e/userAccessControl.spec.ts` - Added exporter E2E tests
 - `load-testing/load-test-data.csv` - Added exporter users for load testing
 
 This integration ensures that coffee exporters have a dedicated, secure workspace within the Coffee Export System while maintaining strict organizational boundaries and comprehensive audit trails.

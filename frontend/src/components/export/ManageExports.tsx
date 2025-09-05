@@ -11,7 +11,6 @@ import {
   TableHead, 
   TableHeader, 
   TableRow, 
-  Input,
   Skeleton,
   Tooltip,
   TooltipProvider,
@@ -24,7 +23,7 @@ import {
   PaginationNext,
   PaginationEllipsis
 } from '../ui';
-import { Select } from '../ui/FormComponents';
+import { FormInput as Input, Select } from '../ui/FormComponents';
 import { 
   Visibility as ViewIcon, 
   Edit as EditIcon, 
@@ -204,6 +203,12 @@ export const ManageExports: React.FC<ManageExportsProps> = ({
     { value: 'PAYMENT_RELEASED', label: 'Payment Released' }
   ];
 
+  // Convert to the format expected by the Select component
+  const selectOptions = statusOptions.map(option => ({
+    value: option.value,
+    label: option.label
+  }));
+
   // Enhanced button handlers
   const handleRefresh = () => {
     if (onRefresh) {
@@ -302,294 +307,232 @@ export const ManageExports: React.FC<ManageExportsProps> = ({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">My Export Requests</h2>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportData} disabled={loading || filteredExports.length === 0}>
-            <DownloadIcon className="mr-2 h-4 w-4" />
-            Export Data
-          </Button>
-          <Button variant="outline" onClick={handleRefresh} disabled={loading}>
-            <RefreshIcon className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      </div>
-
-      {/* Search and Filter Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-4">
-        <div className="relative flex-1">
-          <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search exports..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select
-          value={statusFilter}
-          onValueChange={(value) => setStatusFilter(value as ExportStatus | 'all')}
-        >
-          {statusOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-      </div>
-
-      <div className="space-y-4">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead 
-                className="cursor-pointer hover:bg-gray-50"
-                onClick={() => handleSort('exportId')}
-              >
-                <div className="flex items-center gap-1">
-                  Export ID
-                  <SortIcon className={`h-4 w-4 ${
-                    sortConfig.field === 'exportId' ? 'text-primary-600' : 'text-gray-400'
-                  }`} />
-                </div>
-              </TableHead>
-              
-              <TableHead 
-                className="cursor-pointer hover:bg-gray-50"
-                onClick={() => handleSort('productType')}
-              >
-                <div className="flex items-center gap-1">
-                  Product
-                  <SortIcon className={`h-4 w-4 ${
-                    sortConfig.field === 'productType' ? 'text-primary-600' : 'text-gray-400'
-                  }`} />
-                </div>
-              </TableHead>
-              
-              <TableHead className="text-right">Quantity</TableHead>
-              
-              <TableHead 
-                className="text-right cursor-pointer hover:bg-gray-50"
-                onClick={() => handleSort('totalValue')}
-              >
-                <div className="flex items-center justify-end gap-1">
-                  <SortIcon className={`h-4 w-4 ${
-                    sortConfig.field === 'totalValue' ? 'text-primary-600' : 'text-gray-400'
-                  }`} />
-                  Value
-                </div>
-              </TableHead>
-              
-              <TableHead>Destination</TableHead>
-              
-              <TableHead 
-                className="cursor-pointer hover:bg-gray-50"
-                onClick={() => handleSort('status')}
-              >
-                <div className="flex items-center gap-1">
-                  Status
-                  <SortIcon className={`h-4 w-4 ${
-                    sortConfig.field === 'status' ? 'text-primary-600' : 'text-gray-400'
-                  }`} />
-                </div>
-              </TableHead>
-              
-              <TableHead 
-                className="cursor-pointer hover:bg-gray-50"
-                onClick={() => handleSort('submittedAt')}
-              >
-                <div className="flex items-center gap-1">
-                  Submitted
-                  <SortIcon className={`h-4 w-4 ${
-                    sortConfig.field === 'submittedAt' ? 'text-primary-600' : 'text-gray-400'
-                  }`} />
-                </div>
-              </TableHead>
-              
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedExports.map((exp) => (
-              <TableRow key={exp.id} className="hover:bg-gray-50">
-                <TableCell className="font-medium">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <span className="truncate max-w-[120px] inline-block">
-                          {exp.exportId}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{exp.exportId}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </TableCell>
-                
-                <TableCell className="capitalize">
-                  {exp.productType?.toLowerCase() || 'N/A'}
-                </TableCell>
-                
-                <TableCell className="text-right">
-                  {exp.quantity?.toLocaleString() || '0'}
-                </TableCell>
-                
-                <TableCell className="text-right font-medium">
-                  {exp.currency && exp.totalValue 
-                    ? formatCurrency(exp.totalValue, exp.currency)
-                    : 'N/A'}
-                </TableCell>
-                
-                <TableCell>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <span className="truncate max-w-[120px] inline-block">
-                          {exp.destination || 'N/A'}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{exp.destination || 'N/A'}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </TableCell>
-                
-                <TableCell>
-                  <Badge 
-                    variant={getStatusBadgeVariant(exp.status)}
-                    className={getStatusColor(exp.status)}
-                  >
-                    {exp.status.replace(/_/g, ' ')}
-                  </Badge>
-                </TableCell>
-                
-                <TableCell>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <span className="text-sm text-gray-600">
-                          {exp.submittedAt ? formatDate(exp.submittedAt) : 'N/A'}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{new Date(exp.submittedAt || 0).toLocaleString()}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </TableCell>
-                
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleViewExport(exp.id)}
-                            className="h-8 w-8 p-0 text-gray-600 hover:text-primary-600"
-                          >
-                            <ViewIcon className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>View details</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditExport(exp.id)}
-                            className="h-8 w-8 p-0 text-gray-600 hover:text-primary-600"
-                            disabled={!['DRAFT', 'REJECTED'].includes(exp.status)}
-                          >
-                            <EditIcon className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Edit export</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between px-2 py-4 gap-4">
-            <div className="text-sm text-muted-foreground">
-              Showing <span className="font-medium">{(currentPage - 1) * rowsPerPage + 1}</span> to{' '}
-              <span className="font-medium">
-                {Math.min(currentPage * rowsPerPage, filteredExports.length)}
-              </span>{' '}
-              of <span className="font-medium">{filteredExports.length}</span> exports
-            </div>
-            
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious 
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  />
-                </PaginationItem>
-                
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  // Show first page, last page, current page, and pages around current page
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  
-                  return (
-                    <PaginationItem key={pageNum}>
-                      <Button
-                        variant={currentPage === pageNum ? 'default' : 'ghost'}
-                        className={`w-10 h-10 p-0 ${currentPage === pageNum ? 'font-bold' : ''}`}
-                        onClick={() => setCurrentPage(pageNum)}
-                      >
-                        {pageNum}
-                      </Button>
-                    </PaginationItem>
-                  );
-                })}
-                
-                {totalPages > 5 && currentPage < totalPages - 2 && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-                
-                <PaginationItem>
-                  <PaginationNext 
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+    <Card className={className}>
+      <CardContent className="p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <h2 className="text-2xl font-bold">Manage Exports</h2>
+            <p className="text-muted-foreground">View, edit, and track your export submissions</p>
           </div>
-        )}
-      </div>
-    </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={onCreateNew} className="flex items-center gap-2">
+              <AddIcon className="h-4 w-4" />
+              New Export
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={onRefresh}
+              disabled={loading}
+              className="flex items-center gap-2"
+            >
+              <RefreshIcon className="h-4 w-4" />
+              Refresh
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={onExportData}
+              className="flex items-center gap-2"
+            >
+              <DownloadIcon className="h-4 w-4" />
+              Export
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="md:col-span-2">
+            <Input
+              placeholder="Search exports..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              leftIcon={<SearchIcon className="h-4 w-4" />}
+              className="w-full"
+            />
+          </div>
+          
+          <div>
+            <Select
+              label="Filter by Status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as ExportStatus | 'all')}
+              options={selectOptions}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead 
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => handleSort('exportId')}
+                >
+                  <div className="flex items-center gap-1">
+                    Export ID
+                    <SortIcon className={`h-4 w-4 ${
+                      sortConfig.field === 'exportId' ? 'text-primary-600' : 'text-gray-400'
+                    }`} />
+                  </div>
+                </TableHead>
+              
+                <TableHead 
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => handleSort('productType')}
+                >
+                  <div className="flex items-center gap-1">
+                    Product
+                    <SortIcon className={`h-4 w-4 ${
+                      sortConfig.field === 'productType' ? 'text-primary-600' : 'text-gray-400'
+                    }`} />
+                  </div>
+                </TableHead>
+              
+                <TableHead className="text-right">Quantity</TableHead>
+              
+                <TableHead 
+                  className="text-right cursor-pointer hover:bg-gray-50"
+                  onClick={() => handleSort('totalValue')}
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <SortIcon className={`h-4 w-4 ${
+                      sortConfig.field === 'totalValue' ? 'text-primary-600' : 'text-gray-400'
+                    }`} />
+                    Value
+                  </div>
+                </TableHead>
+              
+                <TableHead>Destination</TableHead>
+              
+                <TableHead 
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center gap-1">
+                    Status
+                    <SortIcon className={`h-4 w-4 ${
+                      sortConfig.field === 'status' ? 'text-primary-600' : 'text-gray-400'
+                    }`} />
+                  </div>
+                </TableHead>
+              
+                <TableHead 
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => handleSort('submittedAt')}
+                >
+                  <div className="flex items-center gap-1">
+                    Submitted
+                    <SortIcon className={`h-4 w-4 ${
+                      sortConfig.field === 'submittedAt' ? 'text-primary-600' : 'text-gray-400'
+                    }`} />
+                  </div>
+                </TableHead>
+              
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedExports.map((exp) => (
+                <TableRow key={exp.exportId}>
+                  <TableCell className="font-medium">{exp.exportId}</TableCell>
+                  <TableCell>{exp.productType}</TableCell>
+                  <TableCell>{formatDate(exp.submittedAt)}</TableCell>
+                  <TableCell>{formatCurrency(exp.totalValue, exp.currency)}</TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusBadgeVariant(exp.status)}>
+                      {exp.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onViewExport(exp.exportId)}
+                      >
+                        <ViewIcon className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onEditExport(exp.exportId)}
+                      >
+                        <EditIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between px-2 py-4 gap-4">
+              <div className="text-sm text-muted-foreground">
+                Showing <span className="font-medium">{(currentPage - 1) * rowsPerPage + 1}</span> to{' '}
+                <span className="font-medium">
+                  {Math.min(currentPage * rowsPerPage, filteredExports.length)}
+                </span>{' '}
+                of <span className="font-medium">{filteredExports.length}</span> exports
+              </div>
+              
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    // Show first page, last page, current page, and pages around current page
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <Button
+                          variant={currentPage === pageNum ? 'default' : 'ghost'}
+                          className={`w-10 h-10 p-0 ${currentPage === pageNum ? 'font-bold' : ''}`}
+                          onClick={() => setCurrentPage(pageNum)}
+                        >
+                          {pageNum}
+                        </Button>
+                      </PaginationItem>
+                    );
+                  })}
+                  
+                  {totalPages > 5 && currentPage < totalPages - 2 && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };

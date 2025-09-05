@@ -22,7 +22,8 @@ export type ExportSummary = {
   status: ExportStatus;
   submittedAt?: number;
   validationProgress: number;
-  exporterId: string; // Added exporterId field for filtering
+  exporterId: string;
+  exporter: string; // Added exporter field for organization filtering
 };
 
 export type ExportStats = {
@@ -50,12 +51,12 @@ export const useExports = () => {
     try {
       if (!user) return [];
 
-      // Filter exports to only show those belonging to the current user
-      const userExports = Object.values(exportsData).filter(
-        (exportRequest) => exportRequest.exporterId === user.id
+      // Filter exports to only show those belonging to the current user's organization
+      const orgExports = Object.values(exportsData).filter(
+        (exportRequest) => exportRequest.exporter === user.organization
       );
 
-      return userExports.map((exportRequest) => {
+      return orgExports.map((exportRequest) => {
         // Ensure tradeDetails exists
         const tradeDetails = exportRequest.tradeDetails || {
           productType: 'N/A',
@@ -86,6 +87,7 @@ export const useExports = () => {
           submittedAt: exportRequest.submittedAt,
           validationProgress,
           exporterId: exportRequest.exporterId,
+          exporter: exportRequest.exporter,
         };
       });
     } catch (err) {
@@ -114,8 +116,8 @@ export const useExports = () => {
     setError(null);
 
     try {
-      // Fetch exports from blockchain for the current user
-      const exportsData = await contract.getExportsByExporter(user.id);
+      // Fetch exports from blockchain for the current user's organization
+      const exportsData = await contract.getExportsByOrganization(user.organization);
       
       const summaries = processExports(exportsData);
       setExportSummaries(summaries);

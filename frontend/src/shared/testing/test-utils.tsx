@@ -127,7 +127,6 @@ const TestProviders: React.FC<TestProvidersProps> = ({
     defaultOptions: {
       queries: {
         retry: false,
-        cacheTime: 0,
         staleTime: 0,
       },
       mutations: {
@@ -187,10 +186,10 @@ export const renderWithProviders = (
  * Wait for loading states to complete
  */
 export const waitForLoadingToFinish = async () => {
-  const { findByTestId } = await import('@testing-library/react');
+  const testingLibrary = await import('@testing-library/react');
   // Wait for any loading spinners to disappear
   try {
-    await findByTestId('loading-spinner');
+    await testingLibrary.findByTestId(document.body, 'loading-spinner');
     // If found, wait for it to disappear
     await new Promise(resolve => setTimeout(resolve, 100));
   } catch {
@@ -210,7 +209,7 @@ export const typeWithDelay = async (element: Element, text: string, delay = 50) 
 /**
  * Simulate file upload
  */
-export const uploadFile = async (input: Element, file: File) => {
+export const uploadFile = async (input: HTMLElement, file: File) => {
   const { userEvent } = await import('@testing-library/user-event');
   const user = userEvent.setup();
   await user.upload(input, file);

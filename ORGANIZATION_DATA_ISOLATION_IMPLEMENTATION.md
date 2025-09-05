@@ -98,11 +98,11 @@ if (expectedOrgType !== organizationType) {
 ```typescript
 // Enhanced validation: Detect cross-organization dashboard access attempts
 const isAttemptingCrossOrgAccess = [
-    '/nbe',
-    '/customs', 
-    '/quality',
-    '/bank',
-    '/exporter'
+    '/nbe-dashboard',
+    '/customs-dashboard', 
+    '/quality-dashboard',
+    '/bank-dashboard',
+    '/exporter-dashboard'
 ].some(orgRoute => currentPath.startsWith(orgRoute)) && !isRouteAllowed;
 
 if (isAttemptingCrossOrgAccess) {

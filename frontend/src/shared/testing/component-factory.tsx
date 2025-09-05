@@ -152,7 +152,7 @@ export const createFormComponentTests = ({
         renderWithProviders(<Component {...defaultTestProps} required />);
         
         const input = screen.getByRole(inputSelector as any);
-        await user.focus(input);
+        await user.click(input);
         await user.tab(); // Focus out
         
         // Check for validation message
@@ -168,7 +168,7 @@ export const createFormComponentTests = ({
         );
         
         const input = screen.getByRole(inputSelector as any);
-        await user.type(input, 'a'.repeat(validationTests.minLength - 1));
+        await user.type(input, 'a'.repeat((validationTests.minLength || 0) - 1));
         await user.tab();
         
         expect(screen.getByText(/minimum.*characters/i)).toBeInTheDocument();

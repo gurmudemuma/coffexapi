@@ -165,6 +165,22 @@ export const useExport = (): UseExportReturn => {
           exportId,
           documents: documentsMetadata,
           exporter: exporterId,
+          exporterId: exporterId,
+          tradeDetails: {
+            productType: '',
+            quantity: 0,
+            unitPrice: 0,
+            totalValue: 0,
+            currency: 'USD',
+            destination: '',
+            contractNumber: '',
+          },
+          validationSummary: {
+            totalValidations: 0,
+            completedValidations: 0,
+            passedValidations: 0,
+            failedValidations: 0,
+          },
           timestamp: Date.now(),
         };
 

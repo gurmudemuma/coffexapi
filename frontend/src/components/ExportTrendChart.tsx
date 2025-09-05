@@ -1,5 +1,6 @@
 import React from 'react';
 import { DailyTrendData, formatTrendDate } from '../utils/exportTrends';
+import { ORGANIZATION_BRANDING } from '../config/organizationBranding';
 
 interface ExportTrendChartProps {
   data: DailyTrendData[];
@@ -14,6 +15,9 @@ const ExportTrendChart: React.FC<ExportTrendChartProps> = ({
   dataType,
   className = '' 
 }) => {
+  // Get organization branding
+  const orgBranding = ORGANIZATION_BRANDING['coffee-exporters'];
+  
   // Find max value for scaling
   const maxValue = Math.max(...data.map(d => dataType === 'count' ? d.count : d.totalValue), 1);
   
@@ -34,7 +38,7 @@ const ExportTrendChart: React.FC<ExportTrendChartProps> = ({
 
   return (
     <div className={`bg-white rounded-lg border border-gray-200 p-4 ${className}`}>
-      <h3 className="text-lg font-semibold text-[#7B2CBF] mb-4">{title}</h3>
+      <h3 className="text-lg font-semibold mb-4" style={{ color: orgBranding.primaryColor }}>{title}</h3>
       
       <div className="flex items-end justify-between h-40 gap-2 mt-6">
         {data.map((item, index) => {
@@ -45,15 +49,27 @@ const ExportTrendChart: React.FC<ExportTrendChartProps> = ({
             <div key={index} className="flex flex-col items-center flex-1">
               <div className="flex flex-col items-center w-full">
                 <div 
-                  className={`w-full rounded-t transition-colors ${dataType === 'value' ? 'bg-[#EFB80B] hover:bg-[#F4CA16]' : 'bg-[#7B2CBF] hover:bg-[#9D4EDD]'}`}
-                  style={{ height: `${height}%` }}
+                  className="w-full rounded-t transition-colors"
+                  style={{ 
+                    height: `${height}%`,
+                    backgroundColor: dataType === 'value' 
+                      ? orgBranding.accentColor 
+                      : orgBranding.primaryColor 
+                  }}
                 />
                 <div className="text-xs text-gray-500 mt-2 text-center">
                   {formatTrendDate(item.date, 'day')}
                 </div>
               </div>
               
-              <div className={`text-xs font-medium mt-1 ${dataType === 'value' ? 'text-[#B88A05]' : 'text-[#7B2CBF]'}`}>
+              <div 
+                className="text-xs font-medium mt-1"
+                style={{ 
+                  color: dataType === 'value' 
+                    ? orgBranding.accentColor 
+                    : orgBranding.primaryColor 
+                }}
+              >
                 {formatValue(value)}
               </div>
             </div>

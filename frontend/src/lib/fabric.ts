@@ -117,6 +117,27 @@ export class FabricContract {
     }
   }
 
+  // Get all export requests for a specific organization
+  async getExportsByOrganization(organization: string): Promise<Record<string, ExportRequest>> {
+    try {
+      // First get all exports
+      const allExports = await this.getAllExports();
+      
+      // Then filter by organization
+      const filteredExports: Record<string, ExportRequest> = {};
+      Object.keys(allExports).forEach(key => {
+        if (allExports[key].exporter === organization) {
+          filteredExports[key] = allExports[key];
+        }
+      });
+      
+      return filteredExports;
+    } catch (error) {
+      console.error('Error filtering exports by organization:', error);
+      throw error;
+    }
+  }
+
   // Get a specific export request by ID
   async getExportRequest(exportId: string): Promise<ExportRequest> {
     try {

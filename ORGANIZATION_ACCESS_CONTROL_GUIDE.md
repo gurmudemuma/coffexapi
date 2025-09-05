@@ -25,14 +25,14 @@ The `ProtectedRoute` component has been significantly enhanced with multi-layere
 - **Audit Logging Integration**: All violations are logged
 
 #### Organization Route Mappings:
-```typescript
+```
 const ORGANIZATION_ROUTES: Record<string, string[]> = {
   'National Bank of Ethiopia': ['/nbe', '/users', '/compliance', '/audit'],
-  'Customs Authority': ['/customs', '/audit'],
-  'Coffee Quality Authority': ['/quality', '/audit'],
-  'Exporter Bank': ['/bank', '/audit'],
-  'Commercial Bank of Ethiopia': ['/bank', '/audit'],
-  'Coffee Exporters Association': ['/exporter', '/exports', '/audit']
+  'Customs Authority': ['/customs-dashboard', '/audit'],
+  'Coffee Quality Authority': ['/quality-dashboard', '/audit'],
+  'Exporter Bank': ['/bank-dashboard', '/audit'],
+  'Commercial Bank of Ethiopia': ['/bank-dashboard', '/audit'],
+  'Coffee Exporters Association': ['/exporter-dashboard', '/export', '/export/new', '/export/manage', '/export/:exportId/edit', '/audit']
 };
 ```
 

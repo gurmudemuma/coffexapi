@@ -318,7 +318,7 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({
                 Clear Filters
               </Button>
               <Button
-                variant="primary"
+                variant="default"
                 size="sm"
                 onClick={() => setShowFilters(false)}
               >

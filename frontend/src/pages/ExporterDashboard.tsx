@@ -12,7 +12,7 @@ import {
 
 import { useAuth } from '../store';
 import { ORGANIZATION_BRANDING } from '../config/organizationBranding';
-import { SimplifiedExporterDashboard } from '../components/export/SimplifiedExporterDashboard';
+import { UnifiedExporterDashboard } from '../components/export/UnifiedExporterDashboard';
 
 const ExporterDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -66,13 +66,9 @@ const ExporterDashboard: React.FC = () => {
     );
   }
 
-  // For exporters, show a simplified dashboard focused only on core export tasks
+  // For exporters, show the unified dashboard with all export functionality
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <SimplifiedExporterDashboard
-        orgBranding={orgBranding}
-      />
-    </div>
+    <UnifiedExporterDashboard />
   );
 };
 

@@ -21,6 +21,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Rating,
 } from '@mui/material';
 import {
   VerifiedUser,

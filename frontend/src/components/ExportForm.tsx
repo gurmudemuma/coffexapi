@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useExport } from '../hooks/useExport';
 import { useExportApprovals } from '../hooks/useExportApprovals';
 import type { ExportDocument } from '../hooks/useExport';
 import { ExportStatus } from './ExportStatus';
 import type { DocumentType, DocumentState } from './DocumentInput';
 import { Button } from './ui/StandardComponents';
+import { ORGANIZATION_BRANDING } from '../config/organizationBranding';
 
 const ExporterDetailsTab = lazy(() => import('./ExporterDetailsTab'));
 const TradeDetailsTab = lazy(() => import('./TradeDetailsTab'));
@@ -47,9 +48,15 @@ type TradeDetails = {
 export default function ExportForm() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { exportId } = useParams<{ exportId?: string }>();
   const [activeTab, setActiveTab] = useState<
     'exporter' | 'trade' | 'documents'
   >('exporter');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [loadingExport, setLoadingExport] = useState(false);
+
+  // Get organization branding
+  const orgBranding = ORGANIZATION_BRANDING['coffee-exporters'];
 
   const [exporterDetails, setExporterDetails] = useState<ExporterDetails>({
     companyName: '',
@@ -140,7 +147,15 @@ export default function ExportForm() {
     documents: Record<DocumentType, { name: string; hash: string }>;
   } | null>(null);
 
-  const { submitExport, status } = useExport();
+  const { submitExport, getExportRequest, status } = useExport();
+
+  // Check if we're in edit mode
+  useEffect(() => {
+    if (exportId) {
+      setIsEditMode(true);
+      loadExistingExport(exportId);
+    }
+  }, [exportId]);
 
   // Handle tab navigation via query parameters
   useEffect(() => {
@@ -187,6 +202,21 @@ export default function ExportForm() {
     navigate({
       search: searchParams.toString(),
     }, { replace: true });
+  };
+
+  // Load existing export data for editing
+  const loadExistingExport = async (id: string) => {
+    setLoadingExport(true);
+    try {
+      const exportRequest = await getExportRequest(id);
+      // TODO: Populate form fields with existing data
+      // This would require mapping the exportRequest data to the form state
+      console.log('Loaded export data:', exportRequest);
+    } catch (error) {
+      console.error('Failed to load export data:', error);
+    } finally {
+      setLoadingExport(false);
+    }
   };
 
   // Handle form field changes
@@ -523,7 +553,8 @@ export default function ExportForm() {
             onClick={handleNewExport}
             variant="primary"
             size="md"
-            className="bg-[#7B2CBF] hover:bg-[#5A189A]"
+            className="hover:bg-[#5A189A]"
+            style={{ backgroundColor: orgBranding.primaryColor }}
           >
             Submit Another Export
           </Button>
@@ -535,11 +566,13 @@ export default function ExportForm() {
   return (
     <div className="max-w-4xl mx-auto p-6 bg-card text-card-foreground rounded-lg shadow">
       <div className="space-y-4 mb-8 text-center">
-        <h1 className="text-3xl font-bold text-[#7B2CBF]">
-          Export Documentation
+        <h1 className="text-3xl font-bold" style={{ color: orgBranding.primaryColor }}>
+          {isEditMode ? "Edit Export Documentation" : "Export Documentation"}
         </h1>
         <p className="text-muted-foreground">
-          Complete all required information for your export process
+          {isEditMode 
+            ? "Edit the information for your export process" 
+            : "Complete all required information for your export process"}
         </p>
       </div>
 
@@ -564,22 +597,29 @@ export default function ExportForm() {
                     }
                   }}
                   disabled={!isEnabled}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                    activeTab === tab
-                      ? 'bg-[#7B2CBF] text-white'
-                      : isEnabled
-                        ? 'bg-[#7B2CBF]/10 text-[#7B2CBF] hover:bg-[#7B2CBF]/20'
-                        : 'bg-muted text-muted-foreground cursor-not-allowed'
-                  }`}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors"
+                  style={{ 
+                    backgroundColor: activeTab === tab 
+                      ? orgBranding.primaryColor 
+                      : isEnabled 
+                        ? `${orgBranding.primaryColor}20` 
+                        : undefined, 
+                    color: activeTab === tab 
+                      ? 'white' 
+                      : isEnabled 
+                        ? orgBranding.primaryColor 
+                        : undefined 
+                  }}
                 >
                   {index + 1}
                 </Button>
                 <span
-                  className={`mt-2 text-sm font-medium ${
-                    activeTab === tab
-                      ? 'text-[#7B2CBF]'
-                      : 'text-muted-foreground'
-                  }`}
+                  className="mt-2 text-sm font-medium"
+                  style={{ 
+                    color: activeTab === tab 
+                      ? orgBranding.primaryColor 
+                      : undefined 
+                  }}
                 >
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </span>
@@ -589,8 +629,9 @@ export default function ExportForm() {
         </div>
         <div className="h-1 bg-muted rounded-full">
           <div
-            className="h-full bg-[#7B2CBF] rounded-full transition-all duration-300"
+            className="h-full rounded-full transition-all duration-300"
             style={{
+              backgroundColor: orgBranding.primaryColor,
               width:
                 activeTab === 'exporter'
                   ? '16.66%'
@@ -611,7 +652,7 @@ export default function ExportForm() {
 
         <Suspense fallback={
           <div className="flex items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#7B2CBF]"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2" style={{ borderColor: orgBranding.primaryColor }}></div>
             <span className="ml-4 text-muted-foreground">Loading form components...</span>
           </div>
         }>
@@ -645,7 +686,7 @@ export default function ExportForm() {
               <Button
                 variant="outline"
                 onClick={prevTab}
-                className="border-[#7B2CBF] text-[#7B2CBF] hover:bg-[#7B2CBF] hover:text-white"
+                className="hover:text-white" style={{ borderColor: orgBranding.primaryColor, color: orgBranding.primaryColor }}
               >
                 Previous
               </Button>
@@ -656,7 +697,7 @@ export default function ExportForm() {
             <Button
               variant="outline"
               onClick={handleReset}
-              className="border-[#EFB80B] text-[#EFB80B] hover:bg-[#EFB80B] hover:text-white"
+              className="hover:text-white" style={{ borderColor: orgBranding.accentColor, color: orgBranding.accentColor }}
             >
               Reset
             </Button>
@@ -669,7 +710,8 @@ export default function ExportForm() {
                   (activeTab === 'exporter' && !isExporterDetailsValid()) ||
                   (activeTab === 'trade' && !isTradeDetailsValid())
                 }
-                className="bg-[#7B2CBF] hover:bg-[#5A189A]"
+                className="hover:bg-[#5A189A]"
+                style={{ backgroundColor: orgBranding.primaryColor }}
               >
                 Next
               </Button>
@@ -677,11 +719,18 @@ export default function ExportForm() {
               <Button
                 variant="primary"
                 type="submit"
-                disabled={!isFormValid || status === 'submitting'}
-                loading={status === 'submitting'}
-                className="bg-[#7B2CBF] hover:bg-[#5A189A]"
+                disabled={!isFormValid || status === 'submitting' || loadingExport}
+                loading={status === 'submitting' || loadingExport}
+                className="hover:bg-[#5A189A]"
+                style={{ backgroundColor: orgBranding.primaryColor }}
               >
-                {status === 'submitting' ? 'Submitting...' : 'Submit Export'}
+                {loadingExport 
+                  ? "Loading..." 
+                  : status === 'submitting' 
+                    ? 'Submitting...' 
+                    : isEditMode 
+                      ? 'Update Export' 
+                      : 'Submit Export'}
               </Button>
             )}
           </div>

@@ -152,6 +152,11 @@ describe('Organization-Specific Navigation', () => {
         role: 'BANK_VALIDATOR',
         expectedItems: ['Dashboard', 'Banking Operations', 'Audit Trail'],
       },
+      {
+        organization: 'Coffee Exporters Association',
+        role: 'EXPORTER',
+        expectedItems: ['Exporter Dashboard', 'Create Export Request', 'View All Exports'],
+      },
     ];
 
     organizationTestCases.forEach(({ organization, role, expectedItems }) => {

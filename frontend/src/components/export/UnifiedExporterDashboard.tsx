@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../store';
-import { useExports, type ExportStatus, type ExportSummary } from '../hooks/useExports';
-import { ORGANIZATION_BRANDING } from '../config/organizationBranding';
-import { useDebounce } from '../shared/hooks/useDebounce';
+import { useAuth } from '../../store';
+import { useExports, type ExportStatus, type ExportSummary } from '../../hooks/useExports';
+import { ORGANIZATION_BRANDING } from '../../config/organizationBranding';
+import { useDebounce } from '../../shared/hooks/useDebounce';
 
 import {
   Card,
@@ -21,7 +21,9 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '../components/ui';
+  Input,
+  Select,
+} from '../ui';
 
 import {
   Plus as PlusIcon,
@@ -32,14 +34,67 @@ import {
   Search as SearchIcon,
   Filter as FilterIcon,
   Coffee as CoffeeIcon,
+  FileText as AssignmentIcon,
+  Clock as PendingIcon,
+  CheckCircle as CheckCircleIcon,
+  DollarSign as MoneyIcon,
+  TrendingUp as TrendingUpIcon,
+  List as ListIcon
 } from 'lucide-react';
 
-interface ExportManageProps {
+interface UnifiedExporterDashboardProps {
   className?: string;
+  viewMode?: 'full' | 'simplified' | 'stats-only';
 }
 
-const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
-  console.log('ExportManage component rendered');
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  color: string;
+  trend?: {
+    value: number;
+    isPositive: boolean;
+  };
+}
+
+const StatCard: React.FC<StatCardProps> = ({ 
+  title, 
+  value, 
+  icon, 
+  color,
+  trend 
+}) => (
+  <Card className="border-l-4" style={{ borderLeftColor: color }}>
+    <CardContent className="p-4">
+      <div className="flex justify-between items-start">
+        <div>
+          <p className="text-sm font-medium text-gray-500">{title}</p>
+          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          {trend && (
+            <div className="flex items-center mt-1">
+              <span className={`text-xs font-medium ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
+              </span>
+              <span className="text-xs text-gray-500 ml-1">vs last month</span>
+            </div>
+          )}
+        </div>
+        <div className="p-2 rounded-lg" style={{ backgroundColor: `${color}20` }}>
+          {React.cloneElement(icon as React.ReactElement, { 
+            className: "h-6 w-6", 
+            style: { color } 
+          })}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+export const UnifiedExporterDashboard: React.FC<UnifiedExporterDashboardProps> = ({
+  className = '',
+  viewMode = 'full'
+}) => {
   const { user } = useAuth();
   const { exportSummaries, stats, loading, error, refreshExports } = useExports();
   const navigate = useNavigate();
@@ -88,9 +143,13 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
     navigate(`/export/${exportId}/edit`);
   }, [navigate]);
 
-  const handleCreateNewExport = useCallback(() => {
-    setActiveTab('new-export');
-  }, []);
+  const handleNewExport = useCallback(() => {
+    navigate('/export/new');
+  }, [navigate]);
+
+  const handleViewExports = useCallback(() => {
+    navigate('/export/manage');
+  }, [navigate]);
 
   const handleRefreshExports = useCallback(async () => {
     setRefreshLoading(true);
@@ -149,13 +208,13 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
 
   const handleExportData = useCallback(() => {
     // Export exports data as CSV
-    const csvContent = generateExportsCSV(filteredExports); // Use filteredExports instead of exportSummaries
+    const csvContent = generateExportsCSV(filteredExports);
     downloadCSV(csvContent, 'exports-data.csv');
-  }, [filteredExports, generateExportsCSV]); // Update dependency
+  }, [filteredExports, generateExportsCSV]);
 
   if (loading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className={`p-6 max-w-7xl mx-auto ${className}`}>
         <div className="animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
           <div className="h-64 bg-gray-200 rounded"></div>
@@ -166,7 +225,7 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
 
   if (error) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className={`p-6 max-w-7xl mx-auto ${className}`}>
         <Alert variant="error">
           <AlertTitle>Error Loading Exports</AlertTitle>
           <p>{error.message}</p>
@@ -190,6 +249,211 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
     );
   }
 
+  // Simplified view - only show welcome content and action cards
+  if (viewMode === 'simplified') {
+    return (
+      <div className={`space-y-6 ${className}`}>
+        {/* Header */}
+        <div className="flex flex-col items-center justify-center text-center mb-8">
+          <div className="flex items-center gap-2 mb-2">
+            <CoffeeIcon className="h-8 w-8" style={{ color: orgBranding.primaryColor }} />
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Exporter Panel</h1>
+          </div>
+          <p className="text-gray-600 max-w-2xl">
+            Secure, efficient, and transparent coffee export documentation management
+          </p>
+        </div>
+
+        {/* Professional Welcome Content with Improved Branding */}
+        <div className="max-w-4xl mx-auto">
+          <Card className="border border-gray-200 shadow-sm">
+            <CardContent className="p-8">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Exporter Dashboard</h2>
+                <p className="text-gray-600 max-w-3xl mx-auto">
+                  Manage your coffee export documentation efficiently through our blockchain-secured platform. 
+                  Follow the steps below to initiate new exports or monitor existing requests.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div className="p-6 rounded-lg border transition-all duration-200 hover:shadow-md" 
+                     style={{ 
+                       backgroundColor: 'white',
+                       borderColor: orgBranding.primaryColor,
+                       boxShadow: `0 0 0 1px ${orgBranding.primaryColor}`
+                     }}>
+                  <div className="flex items-center mb-4">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full mr-3"
+                         style={{ backgroundColor: `${orgBranding.primaryColor}20` }}>
+                      <span className="font-bold" style={{ color: orgBranding.primaryColor }}>1</span>
+                    </div>
+                    <h3 className="font-semibold text-lg" style={{ color: orgBranding.primaryColor }}>
+                      Create Export Request
+                    </h3>
+                  </div>
+                  <p className="mb-4 text-gray-700">
+                    Begin a new export process by providing essential shipment details and uploading required documentation.
+                  </p>
+                  <ul className="space-y-2">
+                    <li className="flex items-start">
+                      <span className="text-green-500 mr-2">✓</span>
+                      <span className="text-gray-600">Complete export application form</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-green-500 mr-2">✓</span>
+                      <span className="text-gray-600">Upload quality certificates</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-green-500 mr-2">✓</span>
+                      <span className="text-gray-600">Submit shipping documents</span>
+                    </li>
+                  </ul>
+                  <div className="mt-4">
+                    <Button
+                      onClick={handleNewExport}
+                      className="flex items-center gap-2"
+                      style={{ backgroundColor: orgBranding.primaryColor }}
+                    >
+                      <PlusIcon className="h-4 w-4" />
+                      Start New Export
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="p-6 rounded-lg border transition-all duration-200 hover:shadow-md" 
+                     style={{ 
+                       backgroundColor: 'white',
+                       borderColor: orgBranding.secondaryColor,
+                       boxShadow: `0 0 0 1px ${orgBranding.secondaryColor}`
+                     }}>
+                  <div className="flex items-center mb-4">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full mr-3"
+                         style={{ backgroundColor: `${orgBranding.secondaryColor}20` }}>
+                      <span className="font-bold" style={{ color: orgBranding.secondaryColor }}>2</span>
+                    </div>
+                    <h3 className="font-semibold text-lg" style={{ color: orgBranding.secondaryColor }}>
+                      Manage Existing Exports
+                    </h3>
+                  </div>
+                  <p className="mb-4 text-gray-700">
+                    Track the progress of your export requests and access validated documentation.
+                  </p>
+                  <ul className="space-y-2">
+                    <li className="flex items-start">
+                      <span className="text-green-500 mr-2">✓</span>
+                      <span className="text-gray-600">Monitor validation status</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-green-500 mr-2">✓</span>
+                      <span className="text-gray-600">View approval history</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-green-500 mr-2">✓</span>
+                      <span className="text-gray-600">Download certified documents</span>
+                    </li>
+                  </ul>
+                  <div className="mt-4">
+                    <Button
+                      onClick={handleViewExports}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                      style={{ 
+                        borderColor: orgBranding.primaryColor,
+                        color: orgBranding.primaryColor
+                      }}
+                    >
+                      <ListIcon className="h-4 w-4" />
+                      View Exports
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                <h3 className="font-semibold text-gray-900 mb-3">Platform Benefits</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-start">
+                    <div className="mr-3 mt-1">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: orgBranding.primaryColor }}></div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 text-sm">Enhanced Security</h4>
+                      <p className="text-gray-600 text-sm">Blockchain-secured documentation prevents fraud</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="mr-3 mt-1">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: orgBranding.secondaryColor }}></div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 text-sm">Real-time Tracking</h4>
+                      <p className="text-gray-600 text-sm">Monitor export progress at every stage</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="mr-3 mt-1">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: orgBranding.accentColor }}></div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 text-sm">Regulatory Compliance</h4>
+                      <p className="text-gray-600 text-sm">Ensure adherence to international trade standards</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-8 text-center">
+                <p className="text-gray-500 text-sm">
+                  For technical support or assistance with export documentation, contact our dedicated team at support@coffeeexport.com
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Stats-only view - show only the statistics cards
+  if (viewMode === 'stats-only') {
+    return (
+      <div className={`space-y-6 ${className}`}>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Total Exports"
+            value={stats.totalExports}
+            icon={<AssignmentIcon />}
+            color={orgBranding.primaryColor}
+            trend={{ value: 12, isPositive: true }}
+          />
+          <StatCard
+            title="In Progress"
+            value={stats.activeExports}
+            icon={<PendingIcon />}
+            color={orgBranding.accentColor}
+            trend={{ value: 5, isPositive: false }}
+          />
+          <StatCard
+            title="Approved"
+            value={stats.approvedExports}
+            icon={<CheckCircleIcon />}
+            color="#10B981" // Green-500
+            trend={{ value: 8, isPositive: true }}
+          />
+          <StatCard
+            title="Total Value"
+            value={formatCurrency(stats.totalValue, 'USD')}
+            icon={<MoneyIcon />}
+            color={orgBranding.chartColors?.[2] || '#3B82F6'}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Full view - show complete dashboard with tabs
   return (
     <div className={`p-6 max-w-7xl mx-auto ${className}`}>
       {/* Header */}
@@ -202,61 +466,101 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
           Secure, efficient, and transparent coffee export documentation management
         </p>
       </div>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Export Management</h2>
-              <p className="text-gray-600">
-                Manage your coffee export requests and track their validation progress
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                onClick={handleRefreshExports}
-                disabled={refreshLoading}
-                className="flex items-center gap-2"
-                style={{ borderColor: orgBranding.primaryColor, color: orgBranding.primaryColor }}
-              >
-                <RefreshIcon className={`h-4 w-4 ${refreshLoading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleExportData}
-                className="flex items-center gap-2" style={{ borderColor: orgBranding.accentColor, color: orgBranding.accentColor }}
-              >
-                <DownloadIcon className="h-4 w-4" />
-                Export Data
-              </Button>
-              <Button
-                onClick={() => navigate('/export/new')}
-                className="flex items-center gap-2"
-                style={{ backgroundColor: orgBranding.primaryColor }}
-              >
-                <PlusIcon className="h-4 w-4" />
-                Create New
-              </Button>
-            </div>
-          </div>
+
+      {/* Action Bar */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Export Management</h2>
+          <p className="text-gray-600">
+            Manage your coffee export requests and track their validation progress
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={handleRefreshExports}
+            disabled={refreshLoading}
+            className="flex items-center gap-2"
+            style={{ 
+              borderColor: orgBranding.primaryColor,
+              color: orgBranding.primaryColor
+            }}
+          >
+            <RefreshIcon className={`h-4 w-4 ${refreshLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExportData}
+            className="flex items-center gap-2"
+            style={{ 
+              borderColor: orgBranding.accentColor,
+              color: orgBranding.accentColor
+            }}
+          >
+            <DownloadIcon className="h-4 w-4" />
+            Export Data
+          </Button>
+          <Button
+            onClick={handleNewExport}
+            className="flex items-center gap-2"
+            style={{ backgroundColor: orgBranding.primaryColor }}
+          >
+            <PlusIcon className="h-4 w-4" />
+            Create New
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard
+          title="Total Exports"
+          value={stats.totalExports}
+          icon={<AssignmentIcon />}
+          color={orgBranding.primaryColor}
+          trend={{ value: 12, isPositive: true }}
+        />
+        <StatCard
+          title="In Progress"
+          value={stats.activeExports}
+          icon={<PendingIcon />}
+          color={orgBranding.accentColor}
+          trend={{ value: 5, isPositive: false }}
+        />
+        <StatCard
+          title="Approved"
+          value={stats.approvedExports}
+          icon={<CheckCircleIcon />}
+          color="#10B981" // Green-500
+          trend={{ value: 8, isPositive: true }}
+        />
+        <StatCard
+          title="Total Value"
+          value={formatCurrency(stats.totalValue, 'USD')}
+          icon={<MoneyIcon />}
+          color={orgBranding.chartColors?.[2] || '#3B82F6'}
+        />
+      </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 bg-[#F8F0FE]">
           <TabsTrigger 
             value="dashboard" 
-            className="data-[state='active']:bg-[#7B2CBF] data-[state='active']:text-white"
+            className="data-[state=active]:bg-[#7B2CBF] data-[state=active]:text-white"
           >
             Dashboard
           </TabsTrigger>
           <TabsTrigger 
             value="new-export" 
-            className="data-[state='active']:bg-[#7B2CBF] data-[state='active']:text-white"
+            className="data-[state=active]:bg-[#7B2CBF] data-[state=active]:text-white"
           >
             Create New Export
           </TabsTrigger>
           <TabsTrigger 
             value="manage" 
-            className="data-[state='active']:bg-[#7B2CBF] data-[state='active']:text-white"
+            className="data-[state=active]:bg-[#7B2CBF] data-[state=active]:text-white"
           >
             Manage Exports
           </TabsTrigger>
@@ -273,67 +577,6 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
                     Manage your coffee export documentation efficiently through our blockchain-secured platform. 
                     Follow the steps below to initiate new exports or monitor existing requests.
                   </p>
-                </div>
-                
-                {/* Stats Cards - now using stats from the hook */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-600">Total Exports</p>
-                          <p className="text-2xl font-bold text-gray-900">{stats.totalExports}</p>
-                        </div>
-                        <div className="p-2 rounded-full" style={{ backgroundColor: `${orgBranding.primaryColor}20` }}>
-                          <PlusIcon className="h-6 w-6" style={{ color: orgBranding.primaryColor }} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-600">Active Exports</p>
-                          <p className="text-2xl font-bold text-gray-900">{stats.activeExports}</p>
-                        </div>
-                        <div className="p-2 rounded-full" style={{ backgroundColor: `${orgBranding.secondaryColor}20` }}>
-                          <RefreshIcon className="h-6 w-6" style={{ color: orgBranding.secondaryColor }} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-600">Pending Validation</p>
-                          <p className="text-2xl font-bold text-gray-900">{stats.pendingValidation}</p>
-                        </div>
-                        <div className="p-2 rounded-full" style={{ backgroundColor: `${orgBranding.accentColor}20` }}>
-                          <RefreshIcon className="h-6 w-6" style={{ color: orgBranding.accentColor }} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-600">Total Value</p>
-                          <p className="text-2xl font-bold text-gray-900">
-                            {formatCurrency(stats.totalValue, 'USD')}
-                          </p>
-                        </div>
-                        <div className="p-2 rounded-full" style={{ backgroundColor: `${orgBranding.accentColor}20` }}>
-                          <DownloadIcon className="h-6 w-6" style={{ color: orgBranding.accentColor }} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
@@ -371,8 +614,9 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
                     </ul>
                     <div className="mt-4">
                       <Button
-                        onClick={() => navigate('/export/new')}
-                        className="flex items-center gap-2" style={{ backgroundColor: orgBranding.primaryColor }}
+                        onClick={handleNewExport}
+                        className="flex items-center gap-2"
+                        style={{ backgroundColor: orgBranding.primaryColor }}
                       >
                         <PlusIcon className="h-4 w-4" />
                         Start New Export
@@ -414,12 +658,15 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
                     </ul>
                     <div className="mt-4">
                       <Button
-                        onClick={() => navigate('/export/manage')}
+                        onClick={handleViewExports}
                         variant="outline"
                         className="flex items-center gap-2"
-                        style={{ borderColor: orgBranding.primaryColor, color: orgBranding.primaryColor }}
+                        style={{ 
+                          borderColor: orgBranding.primaryColor,
+                          color: orgBranding.primaryColor
+                        }}
                       >
-                        <EyeIcon className="h-4 w-4" />
+                        <ListIcon className="h-4 w-4" />
                         View Exports
                       </Button>
                     </div>
@@ -480,7 +727,7 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
                   Start a new coffee export request with all required documentation
                 </p>
                 <Button
-                  onClick={() => navigate('/export/new')}
+                  onClick={handleNewExport}
                   className="flex items-center gap-2 mx-auto"
                   style={{ backgroundColor: orgBranding.primaryColor }}
                 >
@@ -500,12 +747,12 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
                 <div className="flex-1">
                   <div className="relative">
                     <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <input
+                    <Input
                       type="text"
                       placeholder="Search exports..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#7B2CBF] focus:border-[#7B2CBF]"
+                      className="w-full pl-10 pr-4 py-2"
                     />
                   </div>
                 </div>
@@ -513,8 +760,7 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as ExportStatus | 'ALL')}
-                    className="px-4 py-2 border border-gray-300 rounded-md"
-                    style={{ borderColor: orgBranding.primaryColor }}
+                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2" style={{ borderColor: orgBranding.primaryColor }}
                   >
                     <option value="ALL">All Statuses</option>
                     <option value="DRAFT">Draft</option>
@@ -531,7 +777,10 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
                       setStatusFilter('ALL');
                     }}
                     className="flex items-center gap-2"
-                    style={{ borderColor: orgBranding.primaryColor, color: orgBranding.primaryColor }}
+                    style={{ 
+                      borderColor: orgBranding.primaryColor,
+                      color: orgBranding.primaryColor
+                    }}
                   >
                     <FilterIcon className="h-4 w-4" />
                     Clear
@@ -541,7 +790,7 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
             </CardContent>
           </Card>
 
-          {/* Exports Table - now using filteredExports */}
+          {/* Exports Table */}
           <Card>
             <CardContent className="p-0">
               <Table>
@@ -566,7 +815,7 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
                     </TableRow>
                   ) : (
                     filteredExports.map((exp: ExportSummary) => (
-                      <TableRow key={exp.id} className="hover:bg-[#F8F0FE]">
+                      <TableRow key={exp.id} >
                         <TableCell className="font-medium">{exp.exportId}</TableCell>
                         <TableCell>{exp.productType}</TableCell>
                         <TableCell>{exp.quantity.toLocaleString()} kg</TableCell>
@@ -596,7 +845,8 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleViewExport(exp.id)}
-                              className="flex items-center gap-1 text-[#7B2CBF] hover:bg-[#7B2CBF] hover:text-white"
+                              className="flex items-center gap-1"
+                              style={{ color: orgBranding.primaryColor }}
                             >
                               <EyeIcon className="h-4 w-4" />
                               View
@@ -606,7 +856,8 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleEditExport(exp.id)}
-                                className="flex items-center gap-1 text-[#7B2CBF] hover:bg-[#7B2CBF] hover:text-white"
+                                className="flex items-center gap-1"
+                                style={{ color: orgBranding.primaryColor }}
                               >
                                 <EditIcon className="h-4 w-4" />
                                 Edit
@@ -626,5 +877,3 @@ const ExportManage: React.FC<ExportManageProps> = ({ className = '' }) => {
     </div>
   );
 };
-
-export default React.memo(ExportManage);

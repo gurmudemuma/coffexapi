@@ -4,4 +4,4 @@ export { default as useLocalStorage } from './useLocalStorage';
 export { default as useDebounce } from './useDebounce';
 
 // Re-export existing hooks from main hooks directory
-export { default as useOfflineStatus } from '../../hooks/useOfflineStatus';
+export { useOfflineStatus } from '../../hooks/useOfflineStatus';

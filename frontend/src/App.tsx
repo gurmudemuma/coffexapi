@@ -137,7 +137,6 @@ const App: React.FC = () => {
                             <Route path="/dashboard" element={<Dashboard />} />
                             
                             {/* Organization-specific Dashboards */}
-                            <Route path="/exporter" element={<ExporterDashboard />} />
                             <Route path="/bank" element={<BankDashboard />} />
                             <Route path="/customs" element={<CustomsDashboard />} />
                             <Route path="/quality" element={<QualityDashboard />} />
@@ -147,6 +146,7 @@ const App: React.FC = () => {
                             <Route path="/exports" element={<ExportForm />} />
                             <Route path="/export/new" element={<ExportForm />} />
                             <Route path="/export/manage" element={<ExportManage />} />
+                            <Route path="/export/:exportId/edit" element={<ExportForm />} />
                             <Route path="/exports/:exportId" element={<ExportDetails />} />
                             
                             {/* NBE Routes */}

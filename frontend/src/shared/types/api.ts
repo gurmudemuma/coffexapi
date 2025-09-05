@@ -60,6 +60,44 @@ export interface User extends BaseEntity {
 }
 
 /**
+ * Export-related Types
+ */
+export type ExportStatus = 'DRAFT' | 'SUBMITTED' | 'VALIDATING' | 'APPROVED' | 'REJECTED' | 'PAYMENT_RELEASED';
+
+export type DocumentType = 'license' | 'invoice' | 'qualityCert' | 'other';
+
+export interface ExporterDetails {
+  companyName: string;
+  registrationNumber: string;
+  taxId: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  country: string;
+  postalCode: string;
+}
+
+export interface TradeDetails {
+  productName: string;
+  productDescription: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  totalValue: number;
+  currency: string;
+  countryOfOrigin: string;
+  destinationCountry: string;
+  incoterms: string;
+  shippingDate: string;
+  expectedDeliveryDate: string;
+  paymentTerms: string;
+  paymentMethod: string;
+  specialInstructions?: string;
+}
+
+/**
  * Export-related API Types
  */
 export interface CreateExportRequest {
@@ -159,10 +197,4 @@ export interface AuditLogEntry extends BaseEntity {
 /**
  * Re-export types from other modules
  */
-export type { 
-  ExportStatus, 
-  ExportRequest, 
-  ExporterDetails, 
-  TradeDetails, 
-  DocumentType 
-} from '../types/export';
+// Removed the problematic re-export

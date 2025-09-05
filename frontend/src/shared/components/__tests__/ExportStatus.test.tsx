@@ -15,8 +15,8 @@ import {
   createInteractiveComponentTests,
   createLoadingStateTests
 } from '../../testing';
-import { ExportStatus } from '../ExportStatus';
-import type { OrganizationApproval, DocumentWithMetadata } from '../ExportStatus';
+import { ExportStatus } from '../../../components/export/ExportStatus';
+import type { OrganizationApproval, DocumentWithMetadata } from '../../../components/export/ExportStatus';
 
 // ==============================================================================
 // Mock Data

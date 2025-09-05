@@ -127,17 +127,16 @@ Object.defineProperty(navigator, 'geolocation', {
 });
 
 // Mock File API
-global.File = class MockFile {
+global.File = class MockFile extends Blob {
   name: string;
-  size: number;
-  type: string;
   lastModified: number;
+  webkitRelativePath: string;
   
   constructor(chunks: any[], filename: string, options: any = {}) {
+    super(chunks, options);
     this.name = filename;
-    this.size = 0;
-    this.type = options.type || '';
     this.lastModified = Date.now();
+    this.webkitRelativePath = '';
   }
   
   arrayBuffer(): Promise<ArrayBuffer> {
@@ -153,40 +152,58 @@ global.File = class MockFile {
   }
 };
 
-global.FileReader = class MockFileReader {
+const MockFileReader = class extends EventTarget {
   result: string | ArrayBuffer | null = null;
-  error: any = null;
+  error: DOMException | null = null;
   readyState: number = 0;
-  onload: ((event: any) => void) | null = null;
-  onerror: ((event: any) => void) | null = null;
-  onabort: ((event: any) => void) | null = null;
-  onloadstart: ((event: any) => void) | null = null;
-  onloadend: ((event: any) => void) | null = null;
-  onprogress: ((event: any) => void) | null = null;
+  onload: ((ev: ProgressEvent) => any) | null = null;
+  onerror: ((ev: ProgressEvent) => any) | null = null;
+  onabort: ((ev: ProgressEvent) => any) | null = null;
+  onloadstart: ((ev: ProgressEvent) => any) | null = null;
+  onloadend: ((ev: ProgressEvent) => any) | null = null;
+  onprogress: ((ev: ProgressEvent) => any) | null = null;
   
-  readAsText() {
+  readAsText(blob: Blob, encoding?: string): void {
     this.result = '';
     this.readyState = 2;
-    if (this.onload) this.onload({ target: this });
+    if (this.onload) this.onload(new ProgressEvent('load'));
   }
   
-  readAsDataURL() {
+  readAsDataURL(blob: Blob): void {
     this.result = 'data:text/plain;base64,';
     this.readyState = 2;
-    if (this.onload) this.onload({ target: this });
+    if (this.onload) this.onload(new ProgressEvent('load'));
   }
   
-  readAsArrayBuffer() {
+  readAsArrayBuffer(blob: Blob): void {
     this.result = new ArrayBuffer(0);
     this.readyState = 2;
-    if (this.onload) this.onload({ target: this });
+    if (this.onload) this.onload(new ProgressEvent('load'));
   }
   
-  abort() {
+  readAsBinaryString(blob: Blob): void {
+    this.result = '';
     this.readyState = 2;
-    if (this.onabort) this.onabort({ target: this });
+    if (this.onload) this.onload(new ProgressEvent('load'));
+  }
+  
+  abort(): void {
+    this.readyState = 2;
+    if (this.onabort) this.onabort(new ProgressEvent('abort'));
   }
 };
+
+// Add static properties
+(MockFileReader as any).EMPTY = 0;
+(MockFileReader as any).LOADING = 1;
+(MockFileReader as any).DONE = 2;
+
+// Add static properties to prototype
+(MockFileReader.prototype as any).EMPTY = 0;
+(MockFileReader.prototype as any).LOADING = 1;
+(MockFileReader.prototype as any).DONE = 2;
+
+global.FileReader = MockFileReader as any;
 
 // ==============================================================================
 // URL and Blob Mocking
@@ -211,8 +228,21 @@ global.Blob = class MockBlob {
     return Promise.resolve('');
   }
   
-  slice() {
+  slice(start?: number, end?: number, contentType?: string): Blob {
     return new MockBlob();
+  }
+  
+  stream(): ReadableStream {
+    return new ReadableStream();
+  }
+  
+  get [Symbol.toStringTag](): string {
+    return 'Blob';
+  }
+  
+  // Add missing bytes method with correct return type
+  bytes(): Promise<Uint8Array<ArrayBuffer>> {
+    return Promise.resolve(new Uint8Array(new ArrayBuffer(0)));
   }
 };
 
@@ -253,4 +283,4 @@ declare global {
 }
 
 // Make vi globally available
-global.vi = vi;
+(global as any).vi = vi;

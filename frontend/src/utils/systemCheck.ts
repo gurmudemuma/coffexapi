@@ -40,7 +40,7 @@ export const runSystemCheck = (): SystemCheckResult[] => {
   
   // Check 2: Navigation Routes
   const expectedRoutes = [
-    '/dashboard', '/exporter', '/bank', '/customs', '/quality', '/nbe',
+    '/dashboard', '/exporter-dashboard', '/bank', '/customs', '/quality', '/nbe',
     '/exports', '/licenses', '/quality/reports'
   ];
   

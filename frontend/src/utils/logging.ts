@@ -398,7 +398,7 @@ export class MetricsCollector {
     const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
 
     return {
-      pageLoadTime: navigation ? navigation.loadEventEnd - navigation.navigationStart : 0,
+      pageLoadTime: navigation ? navigation.loadEventEnd - (navigation as any).startTime : 0,
       firstContentfulPaint: this.getPerformanceMetric('first-contentful-paint'),
       largestContentfulPaint: this.getPerformanceMetric('largest-contentful-paint'),
       firstInputDelay: this.getPerformanceMetric('first-input-delay'),

@@ -59,8 +59,8 @@ const TEST_USERS = {
     expectedName: 'Coffee Exporter',
     organization: 'Coffee Exporters Association',
     role: 'EXPORTER',
-    allowedRoutes: ['/exporter', '/export', '/export/new', '/export/manage', '/documents', '/audit'],
-    blockedRoutes: ['/nbe-dashboard', '/customs-dashboard', '/quality-dashboard', '/bank-dashboard', '/users'],
+    allowedRoutes: ['/exporter-dashboard', '/export', '/export/new', '/export/manage', '/export/:exportId/edit'],
+    blockedRoutes: ['/nbe-dashboard', '/customs-dashboard', '/quality-dashboard', '/bank-dashboard', '/users', '/compliance', '/reports'],
   },
 };
 
@@ -198,7 +198,9 @@ test.describe('User Access Control E2E Tests', () => {
       // Should show Exporter-specific navigation items
       await expect(page.locator('[data-testid="nav-export-dashboard"]')).toBeVisible();
       await expect(page.locator('[data-testid="nav-manage-exports"]')).toBeVisible();
-      await expect(page.locator('[data-testid="nav-audit-trail"]')).toBeVisible();
+      
+      // Should not show audit trail for exporters (not their activity)
+      await expect(page.locator('[data-testid="nav-audit-trail"]')).not.toBeVisible();
       
       // Should not show removed navigation items
       await expect(page.locator('[data-testid="nav-new-export"]')).not.toBeVisible();

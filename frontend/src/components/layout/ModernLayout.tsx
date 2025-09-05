@@ -64,6 +64,12 @@ const getNavigationItems = (userRole: string, userOrganization?: string): NavIte
   const baseItems: NavItem[] = isExporter ? [
     // For exporters, show specific export-related items
     {
+      id: 'exporter-dashboard',
+      label: 'Exporter Dashboard',
+      href: '/exporter-dashboard',
+      icon: <Home className="h-4 w-4" />,
+    },
+    {
       id: 'create-export',
       label: 'Create Export Request',
       href: '/export/new',
@@ -87,7 +93,7 @@ const getNavigationItems = (userRole: string, userOrganization?: string): NavIte
 
   // Organization-specific navigation items
   const organizationItems: Record<string, NavItem[]> = {
-    'National Bank of Ethiopia': [
+    'The Mint': [
       {
         id: 'nbe-dashboard',
         label: 'NBE Control Center',
@@ -177,7 +183,7 @@ const getNavigationItems = (userRole: string, userOrganization?: string): NavIte
       },
     ],
     'Coffee Exporters Association': [
-      // Note: intentionally not including compliance, audit trail, user management, or reports
+      // Intentionally left empty as exporters should only see base items
     ],
   };
 
