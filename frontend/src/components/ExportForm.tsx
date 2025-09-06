@@ -274,10 +274,11 @@ export default function ExportForm() {
           file: doc.file!,
           type: type,
           metadata: {
-            hash: '', // This will be calculated by the upload function
+            hash: doc.cid || '', // Use IPFS CID as hash
             ipfsCid: doc.cid!,
             ipfsUrl: doc.url!,
             iv: doc.iv!,
+            key: doc.key!, // Include encryption key for document viewing
             encrypted: !!doc.key,
             contentType: doc.file!.type,
             size: doc.file!.size,
@@ -309,6 +310,15 @@ export default function ExportForm() {
           {} as Record<DocumentType, { name: string; hash: string }>
         ),
       });
+
+      // Dispatch custom event for portal integration
+      const exportSuccessEvent = new CustomEvent('exportSubmissionSuccess', {
+        detail: {
+          exportId: result.exportId,
+          txHash: result.txHash
+        }
+      });
+      window.dispatchEvent(exportSuccessEvent);
     } catch (err) {
       console.error('Error submitting export:', err);
       setFormError(
@@ -467,7 +477,24 @@ export default function ExportForm() {
           isLoading={approvalsLoading}
         />
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex justify-center space-x-4">
+          <button
+            onClick={() => {
+              // Check if we're in the portal context by dispatching an event
+              const portalNavigateEvent = new CustomEvent('portalNavigateToTracking');
+              window.dispatchEvent(portalNavigateEvent);
+              
+              // Fallback to direct navigation if not in portal
+              setTimeout(() => {
+                if (window.location.pathname !== '/export') {
+                  window.location.href = '/dashboard';
+                }
+              }, 100);
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            View Dashboard
+          </button>
           <button
             onClick={handleNewExport}
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"

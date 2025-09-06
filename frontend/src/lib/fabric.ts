@@ -6,6 +6,7 @@ export interface DocumentMetadata {
   ipfsCid: string; // IPFS Content Identifier
   ipfsUrl: string; // IPFS Gateway URL
   iv: string; // Initialization Vector for decryption
+  key: string; // Encryption key for decryption
   encrypted: boolean; // Whether the document is encrypted
   uploadedAt: number; // Timestamp when document was uploaded to IPFS
   contentType: string; // MIME type of the document
@@ -136,15 +137,44 @@ class FabricContractWrapper implements FabricContract {
   async submitExport(
     exportData: Omit<ExportRequest, 'status' | 'timestamp'>
   ): Promise<string> {
-    const tx = await this.submit(
-      'SubmitExport',
-      JSON.stringify({
-        ...exportData,
-        timestamp: Date.now(),
-        status: 'SUBMITTED',
-      })
-    );
-    return tx.transactionId;
+    console.log('Submitting export to API Gateway:', exportData);
+    
+    // Send to API Gateway first to store the data
+    try {
+      const response = await fetch('http://localhost:8000/api/exports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...exportData,
+          timestamp: Date.now(),
+          status: 'SUBMITTED',
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API Gateway error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Export stored in API Gateway:', result);
+      
+      // Also submit to blockchain (mock for now)
+      const tx = await this.submit(
+        'SubmitExport',
+        JSON.stringify({
+          ...exportData,
+          timestamp: Date.now(),
+          status: 'SUBMITTED',
+        })
+      );
+      
+      return tx.transactionId;
+    } catch (error) {
+      console.error('Error submitting export:', error);
+      throw error;
+    }
   }
 
   async getDocument(

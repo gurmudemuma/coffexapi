@@ -223,8 +223,11 @@ describe('API Client', () => {
       // Simulate successful upload
       // @ts-ignore
       onLoadHandler({
-        target: { status: 200, responseText: '{"cid":"mock-cid"}' },
-      });
+        target: {
+          status: 200, 
+          responseText: '{"cid":"mock-cid"}'
+        } as XMLHttpRequest,
+      } as ProgressEvent);
 
       // Wait for the upload to complete
       await uploadPromise;

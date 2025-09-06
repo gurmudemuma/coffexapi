@@ -5,11 +5,11 @@ WORKDIR /app
 RUN apk add --no-cache git
 
 COPY go.mod go.sum ./
-COPY vendor ./vendor
+RUN go mod download
 
 COPY . .
 
-RUN go build -mod=vendor -o /api-gateway
+RUN go build -o /api-gateway
 
 EXPOSE 8000
 

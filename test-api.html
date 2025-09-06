@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test</h1>
+    <button onclick="testAPI()">Test Exporter Bank API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            try {
+                console.log('Testing API...');
+                const response = await fetch('http://localhost:8000/api/approval-channels/pending?org=exporter-bank', {
+                    headers: {
+                        'X-User-Role': 'APPROVER',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('API Response:', data);
+                    document.getElementById('result').innerHTML = 
+                        '<h2>Success!</h2><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                } else {
+                    const error = await response.text();
+                    console.error('API Error:', error);
+                    document.getElementById('result').innerHTML = 
+                        '<h2>Error!</h2><p>Status: ' + response.status + '</p><p>' + error + '</p>';
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                document.getElementById('result').innerHTML = 
+                    '<h2>Network Error!</h2><p>' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>

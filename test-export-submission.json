@@ -1,0 +1,42 @@
+{
+  "exportId": "EXP-TEST-1756467000000",
+  "exporter": "Test Coffee Exporter",
+  "documents": {
+    "license": {
+      "hash": "test-license-hash-123",
+      "ipfsCid": "QmTestLicenseHash123456789",
+      "ipfsUrl": "https://ipfs.io/ipfs/QmTestLicenseHash123456789",
+      "iv": "test-iv-for-license",
+      "encrypted": true,
+      "contentType": "application/pdf",
+      "size": 102400
+    },
+    "invoice": {
+      "hash": "test-invoice-hash-456",
+      "ipfsCid": "QmTestInvoiceHash123456789",
+      "ipfsUrl": "https://ipfs.io/ipfs/QmTestInvoiceHash123456789",
+      "iv": "test-iv-for-invoice",
+      "encrypted": true,
+      "contentType": "application/pdf",
+      "size": 204800
+    },
+    "qualityCert": {
+      "hash": "test-quality-hash-789",
+      "ipfsCid": "QmTestQualityHash123456789",
+      "ipfsUrl": "https://ipfs.io/ipfs/QmTestQualityHash123456789",
+      "iv": "test-iv-for-quality",
+      "encrypted": true,
+      "contentType": "application/pdf",
+      "size": 153600
+    },
+    "other": {
+      "hash": "test-shipping-hash-012",
+      "ipfsCid": "QmTestShippingHash123456789",
+      "ipfsUrl": "https://ipfs.io/ipfs/QmTestShippingHash123456789",
+      "iv": "test-iv-for-shipping",
+      "encrypted": true,
+      "contentType": "application/pdf",
+      "size": 76800
+    }
+  }
+}

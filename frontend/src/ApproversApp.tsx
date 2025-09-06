@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import ApproversPanel from './components/ApproversPanel';
+import React, { useState, useEffect } from 'react';
+import { MultiChannelApproversPanel } from './components/MultiChannelApproversPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { Button } from './components/ui/button';
 import { Badge } from './components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import { 
   Building, 
   Shield, 
@@ -12,57 +13,124 @@ import {
   LogOut, 
   Bell,
   Settings,
-  User
+  User,
+  Crown
 } from 'lucide-react';
+import { toast } from 'sonner';
 
-type OrganizationType = 'national-bank' | 'customs' | 'quality-authority' | 'exporter-bank';
+type OrganizationType = 'national-bank' | 'customs' | 'coffee-authority' | 'exporter-bank';
+type UserRole = 'APPROVER' | 'BANK_SUPERVISOR' | 'BANK';
 
-const ORGANIZATIONS = {
+interface UserInfo {
+  name: string;
+  role: string;
+  organization: string;
+  userRole: UserRole;
+}
+
+interface OrganizationConfig {
+  name: string;
+  icon: React.ComponentType<any>;
+  color: string;
+  description: string;
+  allowedRoles: UserRole[];
+  channelDescription: string;
+}
+
+const ORGANIZATIONS: Record<OrganizationType, OrganizationConfig> = {
   'national-bank': {
     name: 'National Bank',
     icon: Building,
     color: 'blue',
-    description: 'License Validation Authority'
+    description: 'License Validation Authority',
+    allowedRoles: ['APPROVER'],
+    channelDescription: 'Private channel for export license validation and regulatory oversight'
   },
   'customs': {
     name: 'Customs Authority',
     icon: Shield, 
     color: 'green',
-    description: 'Shipping Documentation Authority'
+    description: 'Shipping Documentation Authority',
+    allowedRoles: ['APPROVER'],
+    channelDescription: 'Secure channel for import/export documentation and customs verification'
   },
-  'quality-authority': {
+  'coffee-authority': {
     name: 'Coffee Quality Authority',
     icon: Award,
     color: 'purple', 
-    description: 'Quality Certification Authority'
+    description: 'Quality Certification Authority',
+    allowedRoles: ['APPROVER'],
+    channelDescription: 'Dedicated channel for coffee quality certification and standards compliance'
   },
   'exporter-bank': {
     name: 'Exporter Bank',
     icon: Truck,
     color: 'orange',
-    description: 'Invoice Validation Authority'
+    description: 'Invoice Validation & Banking Supervision',
+    allowedRoles: ['APPROVER', 'BANK', 'BANK_SUPERVISOR'],
+    channelDescription: 'Multi-role channel for invoice validation and global banking supervision'
   }
 };
 
 export default function ApproversApp() {
   const [selectedOrg, setSelectedOrg] = useState<OrganizationType | null>(null);
-  const [user, setUser] = useState({
+  const [selectedRole, setSelectedRole] = useState<UserRole>('APPROVER');
+  const [user, setUser] = useState<UserInfo>({
     name: 'John Doe',
     role: 'Senior Validator',
-    organization: ''
+    organization: '',
+    userRole: 'APPROVER'
   });
 
   const handleOrgSelection = (orgType: OrganizationType) => {
     setSelectedOrg(orgType);
+    // Reset role to first available for this organization
+    const firstRole = ORGANIZATIONS[orgType].allowedRoles[0];
+    setSelectedRole(firstRole);
     setUser(prev => ({
       ...prev,
-      organization: ORGANIZATIONS[orgType].name
+      organization: ORGANIZATIONS[orgType].name,
+      userRole: firstRole,
+      role: getRoleDisplayName(firstRole)
     }));
+  };
+
+  const handleRoleChange = (role: UserRole) => {
+    setSelectedRole(role);
+    setUser(prev => ({
+      ...prev,
+      userRole: role,
+      role: getRoleDisplayName(role)
+    }));
+    toast.success(`Switched to ${getRoleDisplayName(role)} mode`);
+  };
+
+  const getRoleDisplayName = (role: UserRole): string => {
+    switch (role) {
+      case 'APPROVER': return 'Document Approver';
+      case 'BANK': return 'Bank Officer';
+      case 'BANK_SUPERVISOR': return 'Bank Supervisor';
+      default: return 'User';
+    }
+  };
+
+  const getRoleIcon = (role: UserRole) => {
+    switch (role) {
+      case 'BANK_SUPERVISOR': return Crown;
+      case 'BANK': return Building;
+      default: return User;
+    }
   };
 
   const handleLogout = () => {
     setSelectedOrg(null);
-    setUser(prev => ({ ...prev, organization: '' }));
+    setSelectedRole('APPROVER');
+    setUser({
+      name: 'John Doe',
+      role: 'Senior Validator',
+      organization: '',
+      userRole: 'APPROVER'
+    });
   };
 
   if (!selectedOrg) {
@@ -73,25 +141,27 @@ export default function ApproversApp() {
           <div className="text-center mb-12">
             <div className="inline-block px-6 py-2 bg-blue-100 rounded-full mb-4">
               <span className="text-sm font-semibold text-blue-800">
-                COFFEE EXPORT PLATFORM
+                MULTI-CHANNEL COFFEE EXPORT PLATFORM
               </span>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
               Document Approval System
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Secure blockchain-based document validation for coffee export stakeholders
+              Secure blockchain-based document validation with dedicated private channels for each organization
             </p>
           </div>
 
           {/* Organization Selection */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">
-              Select Your Organization
+              Select Your Organization Channel
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {Object.entries(ORGANIZATIONS).map(([key, org]) => {
                 const Icon = org.icon;
+                const hasMultipleRoles = org.allowedRoles.length > 1;
+                
                 return (
                   <Card 
                     key={key}
@@ -99,14 +169,26 @@ export default function ApproversApp() {
                     onClick={() => handleOrgSelection(key as OrganizationType)}
                   >
                     <CardContent className="p-6 text-center">
-                      <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-${org.color}-100 flex items-center justify-center`}>
+                      <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-${org.color}-100 flex items-center justify-center relative`}>
                         <Icon className={`w-8 h-8 text-${org.color}-600`} />
+                        {hasMultipleRoles && (
+                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
+                            <Crown className="w-3 h-3 text-white" />
+                          </div>
+                        )}
                       </div>
                       <h3 className="font-bold text-lg mb-2">{org.name}</h3>
                       <p className="text-sm text-gray-600 mb-4">{org.description}</p>
-                      <Badge variant={org.color as any} className="text-xs">
-                        Document Validator
-                      </Badge>
+                      <div className="flex flex-wrap gap-1 justify-center mb-3">
+                        {org.allowedRoles.map(role => (
+                          <Badge key={role} variant="outline" className="text-xs">
+                            {getRoleDisplayName(role)}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {org.channelDescription}
+                      </p>
                     </CardContent>
                   </Card>
                 );
@@ -117,34 +199,34 @@ export default function ApproversApp() {
           {/* System Features */}
           <div className="mt-16">
             <h3 className="text-xl font-bold text-center text-gray-900 mb-8">
-              Platform Features
+              Multi-Channel Platform Features
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
                   <Shield className="w-6 h-6 text-green-600" />
                 </div>
-                <h4 className="font-semibold mb-2">Secure Validation</h4>
+                <h4 className="font-semibold mb-2">Private Approval Channels</h4>
                 <p className="text-sm text-gray-600">
-                  Blockchain-secured document authentication and approval workflow
+                  Each organization has a dedicated private channel for document approval workflows
                 </p>
               </div>
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Bell className="w-6 h-6 text-blue-600" />
+                  <Crown className="w-6 h-6 text-blue-600" />
                 </div>
-                <h4 className="font-semibold mb-2">Real-time Notifications</h4>
+                <h4 className="font-semibold mb-2">Bank Supervisor Oversight</h4>
                 <p className="text-sm text-gray-600">
-                  Instant alerts for new documents requiring validation
+                  Global visibility and monitoring of all export approvals and progress
                 </p>
               </div>
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-purple-100 flex items-center justify-center">
                   <Award className="w-6 h-6 text-purple-600" />
                 </div>
-                <h4 className="font-semibold mb-2">Audit Trail</h4>
+                <h4 className="font-semibold mb-2">Role-Based Access</h4>
                 <p className="text-sm text-gray-600">
-                  Complete immutable record of all validation decisions
+                  Granular permissions ensure users only see documents relevant to their role
                 </p>
               </div>
             </div>
@@ -152,8 +234,8 @@ export default function ApproversApp() {
 
           {/* Footer */}
           <div className="mt-16 text-center text-sm text-gray-500">
-            <p>© 2024 Coffee Export Platform. All rights reserved.</p>
-            <p className="mt-1">Powered by Hyperledger Fabric</p>
+            <p>© 2024 Multi-Channel Coffee Export Platform. All rights reserved.</p>
+            <p className="mt-1">Powered by Hyperledger Fabric with Private Data Collections</p>
           </div>
         </div>
       </div>
@@ -162,6 +244,8 @@ export default function ApproversApp() {
 
   const currentOrg = ORGANIZATIONS[selectedOrg];
   const Icon = currentOrg.icon;
+  const RoleIcon = getRoleIcon(selectedRole);
+  const canChangeRole = currentOrg.allowedRoles.length > 1;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -180,14 +264,40 @@ export default function ApproversApp() {
             </div>
 
             <div className="flex items-center space-x-4">
+              {/* Role Selector for organizations with multiple roles */}
+              {canChangeRole && (
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Role:</span>
+                  <Select value={selectedRole} onValueChange={(value) => handleRoleChange(value as UserRole)}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currentOrg.allowedRoles.map(role => (
+                        <SelectItem key={role} value={role}>
+                          <div className="flex items-center space-x-2">
+                            <RoleIcon className="w-4 h-4" />
+                            <span>{getRoleDisplayName(role)}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <Button variant="outline" size="sm">
                 <Bell className="w-4 h-4 mr-2" />
                 Notifications
               </Button>
               
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                  <User className="w-4 h-4 text-gray-600" />
+                <div className={`w-8 h-8 rounded-full ${
+                  selectedRole === 'BANK_SUPERVISOR' ? 'bg-yellow-100' : 'bg-gray-200'
+                } flex items-center justify-center`}>
+                  <RoleIcon className={`w-4 h-4 ${
+                    selectedRole === 'BANK_SUPERVISOR' ? 'text-yellow-600' : 'text-gray-600'
+                  }`} />
                 </div>
                 <div className="text-sm">
                   <p className="font-medium text-gray-900">{user.name}</p>
@@ -209,7 +319,10 @@ export default function ApproversApp() {
       </div>
 
       {/* Main Content */}
-      <ApproversPanel organizationType={selectedOrg} />
+      <MultiChannelApproversPanel 
+        organizationType={selectedOrg} 
+        userRole={selectedRole}
+      />
     </div>
   );
 }

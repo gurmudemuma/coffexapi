@@ -1,0 +1,46 @@
+{
+  "exportId": "TEST-MULTI-001",
+  "exporter": "Multi-Channel Test Coffee Co.",
+  "documents": {
+    "license": {
+      "hash": "test_license_hash_123",
+      "ipfsCid": "QmTestLicense123",
+      "ipfsUrl": "http://localhost:8090/ipfs/QmTestLicense123",
+      "iv": "test_iv_license",
+      "key": "test_key_license",
+      "encrypted": true,
+      "contentType": "application/pdf",
+      "size": 1024
+    },
+    "invoice": {
+      "hash": "test_invoice_hash_456",
+      "ipfsCid": "QmTestInvoice456", 
+      "ipfsUrl": "http://localhost:8090/ipfs/QmTestInvoice456",
+      "iv": "test_iv_invoice",
+      "key": "test_key_invoice",
+      "encrypted": true,
+      "contentType": "application/pdf",
+      "size": 2048
+    },
+    "qualityCert": {
+      "hash": "test_quality_hash_789",
+      "ipfsCid": "QmTestQuality789",
+      "ipfsUrl": "http://localhost:8090/ipfs/QmTestQuality789", 
+      "iv": "test_iv_quality",
+      "key": "test_key_quality",
+      "encrypted": true,
+      "contentType": "application/pdf",
+      "size": 1536
+    },
+    "other": {
+      "hash": "test_shipping_hash_012",
+      "ipfsCid": "QmTestShipping012",
+      "ipfsUrl": "http://localhost:8090/ipfs/QmTestShipping012",
+      "iv": "test_iv_shipping", 
+      "key": "test_key_shipping",
+      "encrypted": true,
+      "contentType": "application/pdf",
+      "size": 2560
+    }
+  }
+}

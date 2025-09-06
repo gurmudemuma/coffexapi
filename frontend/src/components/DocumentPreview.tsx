@@ -1,5 +1,7 @@
 import React from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { getFileIcon } from '@/utils/format';
+import { formatFileSize } from '@/utils/format';
 
 interface DocumentPreviewProps {
   file: File;
@@ -20,10 +22,6 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     }
     return null;
   }, [file]);
-
-  import { getFileIcon } from '@/utils/format';
-
-  import { formatFileSize } from '@/utils/format';
 
   return (
     <div

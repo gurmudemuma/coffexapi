@@ -1,5 +1,5 @@
-import { ChangeEvent, useRef, useState, useEffect } from 'react';
 import { Upload, FileText, Loader2, Lock, X } from 'lucide-react';
+import { useState, useRef, useEffect, ChangeEvent } from 'react';
 
 // Simple utility for conditional class names
 const cn = (...classes: (string | undefined)[]) =>
@@ -95,6 +95,25 @@ export function DocumentInput({
     }));
 
     try {
+      // Validate file type for PDFs
+      if (accept.includes('.pdf') && !file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+        throw new Error('Please upload a valid PDF file');
+      }
+      
+      // Validate file content for PDFs by checking file header
+      if (accept.includes('.pdf')) {
+        const arrayBuffer = await file.arrayBuffer();
+        const header = new Uint8Array(arrayBuffer.slice(0, 4));
+        const pdfHeader = [0x25, 0x50, 0x44, 0x46]; // %PDF
+        const isPDF = pdfHeader.every((byte, index) => byte === header[index]);
+        
+        if (!isPDF) {
+          throw new Error('File is not a valid PDF. Please ensure you are uploading a proper PDF file.');
+        }
+        
+        console.log('PDF file validation passed:', file.name);
+      }
+      
       // Generate encryption key
       const key = generateEncryptionKey();
       
