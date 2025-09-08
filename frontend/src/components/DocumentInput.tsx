@@ -7,8 +7,8 @@ const cn = (...classes: (string | undefined)[]) =>
 
 import {
   uploadToIPFS,
-  generateEncryptionKey,
 } from '@/services/ipfsService';
+import { uploadRealDocument } from '@/services/realDocumentService';
 
 export type DocumentType = 'license' | 'invoice' | 'qualityCert' | 'other';
 
@@ -114,24 +114,27 @@ export function DocumentInput({
         console.log('PDF file validation passed:', file.name);
       }
       
-      // Generate encryption key
-      const key = generateEncryptionKey();
-      
-      // Upload to IPFS
-      const { cid, url, iv } = await uploadToIPFS(file, { 
-        encrypt: true,
-        onProgress: (progress) => {
-          // Handle progress updates if needed
-          console.log(`Upload progress: ${progress}%`);
-        },
+      // Dual storage: upload both unencrypted (for approvers) and encrypted (for security)
+      const realUpload = await uploadRealDocument(file, {
+        onProgress: (phase, progress) => {
+          console.log(`${phase} ${Math.round(progress * 100)}%`);
+        }
       });
+
+      if (!realUpload.success) {
+        throw new Error(realUpload.error || 'Dual upload failed');
+      }
+
+      // Prefer unencrypted CID for approver viewing
+      const cid = realUpload.unencryptedCid || realUpload.encryptedCid || null;
+      const url = cid ? `http://localhost:8090/ipfs/${cid}` : null;
 
       const newState: DocumentState = {
         file,
         cid,
         url,
-        iv,
-        key,
+        iv: null,
+        key: null,
         loading: false,
         error: null,
         name: file.name,

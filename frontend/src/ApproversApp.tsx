@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { MultiChannelApproversPanel } from './components/MultiChannelApproversPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
@@ -94,6 +95,17 @@ export default function ApproversApp() {
       role: getRoleDisplayName(firstRole)
     }));
   };
+
+  // Auto-select organization from URL query (?org=customs | national-bank | coffee-authority | exporter-bank)
+  const location = useLocation();
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const orgParam = params.get('org') as OrganizationType | null;
+    if (orgParam && Object.keys(ORGANIZATIONS).includes(orgParam)) {
+      handleOrgSelection(orgParam as OrganizationType);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleRoleChange = (role: UserRole) => {
     setSelectedRole(role);

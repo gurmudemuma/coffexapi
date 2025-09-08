@@ -3,21 +3,20 @@
  */
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000/api';
 
 function setAuthToken(token: string) {
-  document.cookie = `authToken=${token}; path=/; secure; SameSite=Strict`;
+  try {
+    localStorage.setItem('authToken', token);
+  } catch {}
 }
 
 function getAuthToken() {
-  const cookies = document.cookie.split(';');
-  for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === 'authToken') {
-      return value;
-    }
+  try {
+    return localStorage.getItem('authToken');
+  } catch {
+    return null;
   }
-  return null;
 }
 
 /**
@@ -46,7 +45,8 @@ async function request<T = any>(
   const config: RequestInit = {
     ...options,
     headers,
-    credentials: 'include',
+    // Avoid cross-origin cookies to prevent CORS credential errors
+    // credentials: 'include',
   };
 
   try {
@@ -96,10 +96,16 @@ export async function uploadFile(
     loaded: number;
     total: number;
     percent: number;
-  }) => void
+  }) => void,
+  extraFields?: Record<string, string | boolean | number>
 ): Promise<any> {
   const formData = new FormData();
   formData.append(fieldName, file);
+  if (extraFields) {
+    Object.entries(extraFields).forEach(([k, v]) => {
+      formData.append(k, String(v));
+    });
+  }
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();

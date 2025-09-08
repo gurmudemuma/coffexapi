@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ExporterPortal from './components/ExporterPortal';
 import ApproversApp from './ApproversApp';
+import Login from './components/Login';
 
 // Exporter Interface Component
 function ExporterApp() {
@@ -89,10 +90,11 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/exporter" element={<ExporterApp />} />
         <Route path="/export" element={<ExporterApp />} />
         <Route path="/approvers" element={<ApproversApp />} />
+        <Route path="/login" element={<Login />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

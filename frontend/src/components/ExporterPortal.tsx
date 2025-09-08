@@ -90,70 +90,76 @@ export const ExporterPortal: React.FC<ExporterPortalProps> = ({
             {/* Overview Tab */}
             <TabsContent value="overview" className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <Card className="hover:shadow-md transition-shadow cursor-pointer" 
-                      onClick={() => setActiveTab('submit')}>
+                <Card className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => setActiveTab('submit')}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xl font-semibold">Submit New Export</CardTitle>
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Plus className="w-6 h-6 text-blue-600" />
+                    <CardTitle className="text-xl font-semibold">Create Export Request</CardTitle>
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: '#7B2CBF20' }}>
+                      <Plus className="w-6 h-6" style={{ color: '#7B2CBF' }} />
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600 mb-4">
-                      Start a new export document submission with blockchain validation
+                    <p className="text-gray-700 mb-4">
+                      Begin a new export process by providing shipment details and uploading required documents.
                     </p>
-                    <Button className="w-full">
+                    <ul className="space-y-2 text-gray-600 text-sm mb-4">
+                      <li className="flex items-start"><span className="text-green-500 mr-2">✓</span> Complete export application form</li>
+                      <li className="flex items-start"><span className="text-green-500 mr-2">✓</span> Upload quality certificates</li>
+                      <li className="flex items-start"><span className="text-green-500 mr-2">✓</span> Submit shipping documents</li>
+                    </ul>
+                    <Button className="w-full" style={{ backgroundColor: '#7B2CBF' }}>
                       <Plus className="w-4 h-4 mr-2" />
-                      Create New Export
+                      Start New Export
                     </Button>
                   </CardContent>
                 </Card>
 
-                <Card className="hover:shadow-md transition-shadow cursor-pointer" 
-                      onClick={() => setActiveTab('requests')}>
+                <Card className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => setActiveTab('requests')}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xl font-semibold">Track Requests</CardTitle>
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                      <Activity className="w-6 h-6 text-purple-600" />
+                    <CardTitle className="text-xl font-semibold">Manage Existing Exports</CardTitle>
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: '#EFB80B20' }}>
+                      <Activity className="w-6 h-6" style={{ color: '#EFB80B' }} />
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600 mb-4">
-                      Monitor the status and progress of your submitted export requests
+                    <p className="text-gray-700 mb-4">
+                      Track validation progress, view approval history, and download certified documents.
                     </p>
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full" style={{ borderColor: '#7B2CBF', color: '#7B2CBF' }}>
                       <Activity className="w-4 h-4 mr-2" />
-                      View Dashboard
+                      View Exports
                     </Button>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Quick Stats */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <FileText className="w-5 h-5 mr-2" />
-                    Quick Stats
-                  </CardTitle>
+                  <CardTitle>Platform Benefits</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <p className="text-2xl font-bold text-blue-600">--</p>
-                      <p className="text-sm text-gray-600">Total Exports</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="flex items-start">
+                      <div className="w-2 h-2 rounded-full mt-2 mr-3" style={{ backgroundColor: '#7B2CBF' }} />
+                      <div>
+                        <h4 className="font-medium text-gray-900 text-sm">Enhanced Security</h4>
+                        <p className="text-gray-600 text-sm">Blockchain-secured documentation prevents fraud</p>
+                      </div>
                     </div>
-                    <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <p className="text-2xl font-bold text-yellow-600">--</p>
-                      <p className="text-sm text-gray-600">Pending</p>
+                    <div className="flex items-start">
+                      <div className="w-2 h-2 rounded-full mt-2 mr-3" style={{ backgroundColor: '#EFB80B' }} />
+                      <div>
+                        <h4 className="font-medium text-gray-900 text-sm">Real-time Tracking</h4>
+                        <p className="text-gray-600 text-sm">Monitor export progress at every stage</p>
+                      </div>
                     </div>
-                    <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <p className="text-2xl font-bold text-green-600">--</p>
-                      <p className="text-sm text-gray-600">Approved</p>
-                    </div>
-                    <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <p className="text-2xl font-bold text-red-600">--</p>
-                      <p className="text-sm text-gray-600">Action Required</p>
+                    <div className="flex items-start">
+                      <div className="w-2 h-2 rounded-full mt-2 mr-3" style={{ backgroundColor: '#10B981' }} />
+                      <div>
+                        <h4 className="font-medium text-gray-900 text-sm">Regulatory Compliance</h4>
+                        <p className="text-gray-600 text-sm">Ensure adherence to international trade standards</p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

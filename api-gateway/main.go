@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -100,6 +103,10 @@ var (
 	exportsMutex       = sync.RWMutex{}
 	completedApprovals = make(map[string]CompletedApproval)
 	approvalsMutex     = sync.RWMutex{}
+	documentStorage    = make(map[string][]byte) // Encrypted/original documents
+	documentMetadata   = make(map[string]map[string]interface{})
+	documentMutex      = sync.RWMutex{}
+	unencryptedStorage = make(map[string][]byte) // Unencrypted documents for approver access
 )
 
 // enableCORS adds CORS headers to allow cross-origin requests
@@ -168,6 +175,7 @@ func uploadDocumentHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"cid": "mock-cid"})
 }
 
+// submitExportHandler handles export submissions and ensures approvers can access documents
 func submitExportHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -252,6 +260,79 @@ func submitExportHandler(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 					exportData.Documents[docType] = document
+
+					// Store unencrypted version for approver access
+					// This ensures approvers can view documents without manual decryption
+					if document.IPFSCID != "" {
+						// Process document synchronously to ensure it's available immediately
+						log.Printf("Processing document %s for export %s", document.IPFSCID, exportID)
+
+						// Try to fetch and decrypt the document for approver access
+						if document.Encrypted && document.Key != "" && document.IV != "" {
+							log.Printf("Document %s is encrypted, attempting to decrypt", document.IPFSCID)
+							unencryptedBytes, err := fetchAndDecryptDocument(document.IPFSCID, document.Key, document.IV)
+							if err == nil {
+								// Store the unencrypted version for approver access
+								documentMutex.Lock()
+								unencryptedStorage[document.IPFSCID] = unencryptedBytes
+								documentMetadata[document.IPFSCID] = map[string]interface{}{
+									"fileName":     fmt.Sprintf("%s-%s.pdf", exportID, docType),
+									"fileSize":     len(unencryptedBytes),
+									"contentType":  "application/pdf",
+									"uploadTime":   time.Now(),
+									"exportId":     exportID,
+									"documentType": docType,
+									"encrypted":    false,
+								}
+								documentMutex.Unlock()
+								log.Printf("Stored unencrypted version of document %s for approver access (size: %d)", document.IPFSCID, len(unencryptedBytes))
+							} else {
+								log.Printf("Warning: Could not fetch/decrypt document %s for approver access: %v", document.IPFSCID, err)
+
+								// Even if decryption fails, try to fetch the encrypted version for fallback
+								documentBytes, fetchErr := fetchDocumentFromIPFS(document.IPFSCID)
+								if fetchErr == nil {
+									documentMutex.Lock()
+									unencryptedStorage[document.IPFSCID] = documentBytes
+									documentMetadata[document.IPFSCID] = map[string]interface{}{
+										"fileName":     fmt.Sprintf("%s-%s.pdf", exportID, docType),
+										"fileSize":     len(documentBytes),
+										"contentType":  document.ContentType,
+										"uploadTime":   time.Now(),
+										"exportId":     exportID,
+										"documentType": docType,
+										"encrypted":    true, // Mark as encrypted
+									}
+									documentMutex.Unlock()
+									log.Printf("Stored encrypted version of document %s for approver access (decryption failed) (size: %d)", document.IPFSCID, len(documentBytes))
+								} else {
+									log.Printf("Warning: Could not fetch document %s for approver access: %v", document.IPFSCID, fetchErr)
+								}
+							}
+						} else {
+							// For non-encrypted documents, try to fetch and store directly
+							// This ensures all documents are available for approvers
+							log.Printf("Document %s is not encrypted, fetching directly", document.IPFSCID)
+							documentBytes, err := fetchDocumentFromIPFS(document.IPFSCID)
+							if err == nil {
+								documentMutex.Lock()
+								unencryptedStorage[document.IPFSCID] = documentBytes
+								documentMetadata[document.IPFSCID] = map[string]interface{}{
+									"fileName":     fmt.Sprintf("%s-%s.pdf", exportID, docType),
+									"fileSize":     len(documentBytes),
+									"contentType":  document.ContentType,
+									"uploadTime":   time.Now(),
+									"exportId":     exportID,
+									"documentType": docType,
+									"encrypted":    false,
+								}
+								documentMutex.Unlock()
+								log.Printf("Stored document %s for approver access (size: %d)", document.IPFSCID, len(documentBytes))
+							} else {
+								log.Printf("Warning: Could not fetch document %s for approver access: %v", document.IPFSCID, err)
+							}
+						}
+					}
 				}
 			}
 		}
@@ -267,11 +348,87 @@ func submitExportHandler(w http.ResponseWriter, r *http.Request) {
 	// Return success response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]string{
+	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":   "accepted",
 		"exportId": exportID,
 		"message":  fmt.Sprintf("Export submitted with %d documents", len(exportData.Documents)),
 	})
+}
+
+// fetchAndDecryptDocument fetches a document from IPFS and decrypts it
+func fetchAndDecryptDocument(cid, key, iv string) ([]byte, error) {
+	log.Printf("Attempting to fetch and decrypt document %s", cid)
+
+	// Try to fetch from local IPFS gateway
+	ipfsURL := fmt.Sprintf("http://localhost:8090/ipfs/%s", cid)
+	log.Printf("Fetching document from IPFS URL: %s", ipfsURL)
+	resp, err := http.Get(ipfsURL)
+
+	if err != nil {
+		// Fallback to public gateway
+		log.Printf("Local IPFS fetch failed, trying public gateway for %s", cid)
+		ipfsURL = fmt.Sprintf("https://ipfs.io/ipfs/%s", cid)
+		resp, err = http.Get(ipfsURL)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch document from IPFS: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch document from IPFS: status %d", resp.StatusCode)
+	}
+
+	// Read the encrypted data
+	log.Printf("Successfully fetched document %s from IPFS, reading data", cid)
+	encryptedData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read document data: %v", err)
+	}
+
+	log.Printf("Read %d bytes of encrypted data for document %s", len(encryptedData), cid)
+
+	// Decrypt the data
+	log.Printf("Attempting to decrypt document %s with key length %d and IV length %d", cid, len(key), len(iv))
+	decryptedData, err := decryptDocument(encryptedData, key, iv)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt document: %v", err)
+	}
+
+	log.Printf("Successfully decrypted document %s, result size: %d bytes", cid, len(decryptedData))
+
+	return decryptedData, nil
+}
+
+// fetchDocumentFromIPFS fetches a document from IPFS without decryption
+func fetchDocumentFromIPFS(cid string) ([]byte, error) {
+	// Try to fetch from local IPFS gateway
+	ipfsURL := fmt.Sprintf("http://localhost:8090/ipfs/%s", cid)
+	resp, err := http.Get(ipfsURL)
+
+	if err != nil {
+		// Fallback to public gateway
+		ipfsURL = fmt.Sprintf("https://ipfs.io/ipfs/%s", cid)
+		resp, err = http.Get(ipfsURL)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch document from IPFS: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch document from IPFS: status %d", resp.StatusCode)
+	}
+
+	// Read the data
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read document data: %v", err)
+	}
+
+	return data, nil
 }
 
 // pendingApprovalsHandler returns pending approvals for the organization
@@ -539,11 +696,6 @@ func getDisplayDocType(docType string) string {
 }
 
 // Database document storage
-var (
-	documentStorage  = make(map[string][]byte) // In-memory document storage
-	documentMetadata = make(map[string]map[string]interface{})
-	documentMutex    = sync.RWMutex{}
-)
 
 // uploadDocumentToDbHandler handles document uploads to database storage
 func uploadDocumentToDbHandler(w http.ResponseWriter, r *http.Request) {
@@ -575,12 +727,47 @@ func uploadDocumentToDbHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate document ID
+	// Generate document ID (allow override with provided CID)
+	overrideID := r.FormValue("overrideId")
+	ipfsCid := r.FormValue("ipfsCid")
 	documentID := fmt.Sprintf("doc_%d_%d", time.Now().UnixNano(), handler.Size)
+	if overrideID != "" {
+		documentID = overrideID
+	} else if ipfsCid != "" {
+		documentID = ipfsCid
+	}
+
+	// Check if this is an encrypted document by looking for encryption parameters
+	iv := r.FormValue("iv")
+	key := r.FormValue("key")
+	encrypted := r.FormValue("encrypted") == "true"
 
 	// Store document and metadata
 	documentMutex.Lock()
-	documentStorage[documentID] = fileBytes
+
+	if encrypted && iv != "" && key != "" {
+		// This is an encrypted document, store both encrypted and unencrypted versions
+		// Store the encrypted version
+		documentStorage[documentID] = fileBytes
+
+		// Try to decrypt and store the unencrypted version for approver access
+		unencryptedBytes, err := decryptDocument(fileBytes, key, iv)
+		if err == nil {
+			unencryptedStorage[documentID] = unencryptedBytes
+			log.Printf("Stored both encrypted and unencrypted versions of document: %s", documentID)
+		} else {
+			log.Printf("Warning: Could not decrypt document %s for approver access: %v", documentID, err)
+			// Still store the encrypted version
+			documentStorage[documentID] = fileBytes
+		}
+	} else {
+		// This is an unencrypted document, store it directly
+		documentStorage[documentID] = fileBytes
+		unencryptedStorage[documentID] = fileBytes // Also store in unencrypted storage
+		log.Printf("Stored unencrypted document: %s", documentID)
+	}
+
+	// Store metadata
 	documentMetadata[documentID] = map[string]interface{}{
 		"fileName":     handler.Filename,
 		"fileSize":     handler.Size,
@@ -588,7 +775,12 @@ func uploadDocumentToDbHandler(w http.ResponseWriter, r *http.Request) {
 		"uploadTime":   time.Now(),
 		"exportId":     r.FormValue("exportId"),
 		"documentType": r.FormValue("documentType"),
+		"encrypted":    encrypted,
+		"iv":           iv,
+		"key":          key,
+		"ipfsCid":      ipfsCid,
 	}
+
 	documentMutex.Unlock()
 
 	log.Printf("Document uploaded successfully: %s (%s, %d bytes)", documentID, handler.Filename, handler.Size)
@@ -609,17 +801,17 @@ func viewDocumentHandler(w http.ResponseWriter, r *http.Request) {
 	// Expected formats:
 	// /api/documents/{documentHash}?action=view
 	// /api/documents/{documentHash}/{action}
-	
+
 	path := strings.TrimPrefix(r.URL.Path, "/api/documents/")
 	pathParts := strings.Split(path, "/")
-	
+
 	if len(pathParts) == 0 || pathParts[0] == "" {
 		http.Error(w, "Document hash is required", http.StatusBadRequest)
 		return
 	}
-	
+
 	documentHash := pathParts[0]
-	
+
 	// Get action from URL parameter or path
 	action := r.URL.Query().Get("action")
 	if action == "" && len(pathParts) > 1 {
@@ -628,26 +820,53 @@ func viewDocumentHandler(w http.ResponseWriter, r *http.Request) {
 	if action == "" {
 		action = "view" // Default action
 	}
-	
+
 	fmt.Printf("Document viewing request: hash=%s, action=%s\n", documentHash, action)
-	
+
 	// Get user role and organization for access control
 	userRole := r.Header.Get("X-User-Role")
 	organization := r.Header.Get("X-Organization")
-	
+
 	fmt.Printf("Access request from role=%s, org=%s\n", userRole, organization)
-	
-	// Method 1: Try to find document in submitted exports
+
+	// Method 1: Check unencrypted storage first (for approver access)
+	documentMutex.RLock()
+	unencryptedBytes, unencryptedExists := unencryptedStorage[documentHash]
+	metadata, metaExists := documentMetadata[documentHash]
+	documentMutex.RUnlock()
+
+	if unencryptedExists && metaExists {
+		// Serve from unencrypted storage for approver access
+		contentType := "application/pdf"
+		if ct, ok := metadata["contentType"].(string); ok && ct != "" {
+			contentType = ct
+		}
+
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(unencryptedBytes)))
+
+		if action == "download" {
+			fileName := "document.pdf"
+			if fn, ok := metadata["fileName"].(string); ok {
+				fileName = fn
+			}
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
+		}
+
+		w.Write(unencryptedBytes)
+		fmt.Printf("Document %s served from unencrypted storage for approver access\n", documentHash)
+		return
+	}
+
+	// Method 2: Try to find document in submitted exports
 	exportsMutex.RLock()
 	var foundDocument *DocumentInfo
-	var exportID string
-	
-	for eID, exportData := range submittedExports {
+
+	for _, exportData := range submittedExports {
 		for _, docInfo := range exportData.Documents {
 			// Check both hash and IPFS CID
 			if docInfo.Hash == documentHash || docInfo.IPFSCID == documentHash {
 				foundDocument = &docInfo
-				exportID = eID
 				break
 			}
 		}
@@ -656,24 +875,24 @@ func viewDocumentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	exportsMutex.RUnlock()
-	
+
 	if foundDocument == nil {
-		// Method 2: Check database storage
+		// Method 3: Check database storage (encrypted version)
 		documentMutex.RLock()
 		fileBytes, exists := documentStorage[documentHash]
 		metadata, metaExists := documentMetadata[documentHash]
 		documentMutex.RUnlock()
-		
+
 		if exists && metaExists {
 			// Serve from database storage
 			contentType := "application/pdf"
 			if ct, ok := metadata["contentType"].(string); ok && ct != "" {
 				contentType = ct
 			}
-			
+
 			w.Header().Set("Content-Type", contentType)
 			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(fileBytes)))
-			
+
 			if action == "download" {
 				fileName := "document.pdf"
 				if fn, ok := metadata["fileName"].(string); ok {
@@ -681,12 +900,12 @@ func viewDocumentHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
 			}
-			
+
 			w.Write(fileBytes)
 			fmt.Printf("Document %s served from database storage\n", documentHash)
 			return
 		}
-		
+
 		// Document not found
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -698,15 +917,100 @@ func viewDocumentHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	
-	// Found document in exports - handle IPFS access
-	fmt.Printf("Found document in export %s: CID=%s, Encrypted=%t\n", exportID, foundDocument.IPFSCID, foundDocument.Encrypted)
-	
-	// Method 3: Try IPFS access with decryption if available
+
+	// Found document in exports - check if we have an unencrypted version for approvers
+	documentMutex.RLock()
+	unencryptedBytes, unencryptedExists = unencryptedStorage[foundDocument.IPFSCID]
+	documentMutex.RUnlock()
+
+	if unencryptedExists {
+		// Serve unencrypted version for approver access
+		contentType := "application/pdf"
+		if foundDocument.ContentType != "" {
+			contentType = foundDocument.ContentType
+		}
+
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(unencryptedBytes)))
+
+		if action == "download" {
+			fileName := fmt.Sprintf("document-%s.pdf", foundDocument.IPFSCID[:8])
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
+		}
+
+		w.Write(unencryptedBytes)
+		fmt.Printf("Unencrypted document %s served for approver access\n", foundDocument.IPFSCID)
+		return
+	}
+
+	// Method 4: Try IPFS access with decryption if available
 	if foundDocument.Encrypted && foundDocument.Key != "" && foundDocument.IV != "" {
 		fmt.Printf("Attempting decryption access for encrypted document\n")
-		
-		// For now, return instructions for decryption since we don't have the decryption logic in Go
+
+		// For approvers, we should provide a way to access the document without manual decryption
+		// Let's try to fetch and decrypt the document server-side for approver access
+		if userRole == "APPROVER" || userRole == "BANK_SUPERVISOR" || userRole == "BANK" {
+			fmt.Printf("Approver access detected, attempting server-side decryption\n")
+
+			// Try to fetch from local IPFS gateway
+			ipfsURL := fmt.Sprintf("http://localhost:8090/ipfs/%s", foundDocument.IPFSCID)
+			resp, err := http.Get(ipfsURL)
+
+			if err != nil {
+				// Fallback to public gateway
+				ipfsURL = fmt.Sprintf("https://ipfs.io/ipfs/%s", foundDocument.IPFSCID)
+				resp, err = http.Get(ipfsURL)
+			}
+
+			if err == nil && resp.StatusCode == http.StatusOK {
+				// Read the encrypted data
+				encryptedData, err := io.ReadAll(resp.Body)
+				resp.Body.Close()
+
+				if err == nil {
+					// Try to decrypt server-side for approver access
+					decryptedData, err := decryptDocument(encryptedData, foundDocument.Key, foundDocument.IV)
+					if err == nil {
+						// Successfully decrypted, serve to approver
+						contentType := "application/pdf"
+						if foundDocument.ContentType != "" {
+							contentType = foundDocument.ContentType
+						}
+
+						w.Header().Set("Content-Type", contentType)
+						w.Header().Set("Content-Length", fmt.Sprintf("%d", len(decryptedData)))
+
+						if action == "download" {
+							fileName := fmt.Sprintf("document-%s.pdf", foundDocument.IPFSCID[:8])
+							w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
+						}
+
+						w.Write(decryptedData)
+
+						// Also store the decrypted version for future access
+						documentMutex.Lock()
+						unencryptedStorage[foundDocument.IPFSCID] = decryptedData
+						documentMetadata[foundDocument.IPFSCID] = map[string]interface{}{
+							"fileName":     fmt.Sprintf("document-%s.pdf", foundDocument.IPFSCID[:8]),
+							"fileSize":     len(decryptedData),
+							"contentType":  contentType,
+							"uploadTime":   time.Now(),
+							"exportId":     "", // We don't have export ID here
+							"documentType": "", // We don't have document type here
+							"encrypted":    false,
+						}
+						documentMutex.Unlock()
+
+						fmt.Printf("Document %s decrypted and served to approver\n", foundDocument.IPFSCID)
+						return
+					} else {
+						fmt.Printf("Server-side decryption failed: %v\n", err)
+					}
+				}
+			}
+		}
+
+		// For non-approvers or if server-side decryption fails, return instructions for frontend decryption
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success":   false,
@@ -719,35 +1023,59 @@ func viewDocumentHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	
-	// Method 4: Try direct IPFS access (unencrypted)
-	fmt.Printf("Attempting direct IPFS access for unencrypted document\n")
-	
-	// Try to fetch from local IPFS gateway
-	ipfsURL := fmt.Sprintf("http://localhost:8090/ipfs/%s", foundDocument.IPFSCID)
-	resp, err := http.Get(ipfsURL)
-	
-	if err != nil {
-		// Fallback to public gateway
-		ipfsURL = fmt.Sprintf("https://ipfs.io/ipfs/%s", foundDocument.IPFSCID)
+
+	// Method 5: Try multiple IPFS gateways (unencrypted)
+	fmt.Printf("Attempting direct IPFS access via multiple gateways for unencrypted document\n")
+
+	gateways := []string{
+		"http://localhost:8090/ipfs/%s",
+		"http://localhost:8080/ipfs/%s",
+		"https://ipfs.io/ipfs/%s",
+		"https://cloudflare-ipfs.com/ipfs/%s",
+		"https://gateway.pinata.cloud/ipfs/%s",
+	}
+
+	var resp *http.Response
+	var err error
+	var lastStatus int
+	for _, tpl := range gateways {
+		ipfsURL := fmt.Sprintf(tpl, foundDocument.IPFSCID)
 		resp, err = http.Get(ipfsURL)
+		if err == nil && resp != nil && resp.StatusCode == http.StatusOK {
+			defer resp.Body.Close()
+			// Successfully retrieved from IPFS
+			contentType := "application/pdf"
+			if foundDocument.ContentType != "" {
+				contentType = foundDocument.ContentType
+			}
+
+			w.Header().Set("Content-Type", contentType)
+			if contentLength := resp.Header.Get("Content-Length"); contentLength != "" {
+				w.Header().Set("Content-Length", contentLength)
+			}
+
+			if action == "download" {
+				fileName := fmt.Sprintf("document-%s.pdf", foundDocument.IPFSCID[:8])
+				w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
+			}
+
+			w.WriteHeader(http.StatusOK)
+			_, copyErr := io.Copy(w, resp.Body)
+			if copyErr != nil {
+				fmt.Printf("Error copying response: %v\n", copyErr)
+			}
+			fmt.Printf("Document %s served from IPFS successfully via %s\n", documentHash, tpl)
+			return
+		}
+		if resp != nil {
+			lastStatus = resp.StatusCode
+			resp.Body.Close()
+		}
 	}
-	
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": false,
-			"error":   "IPFS access failed",
-			"message": "Unable to retrieve document from IPFS",
-			"ipfsCid": foundDocument.IPFSCID,
-		})
-		return
-	}
-	defer resp.Body.Close()
-	
-	if resp.StatusCode != http.StatusOK {
-		w.Header().Set("Content-Type", "application/json")
+
+	// If we reach here, all gateways failed
+	w.Header().Set("Content-Type", "application/json")
+	if lastStatus == http.StatusNotFound {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
@@ -757,31 +1085,143 @@ func viewDocumentHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	
-	// Successfully retrieved from IPFS
-	contentType := "application/pdf"
-	if foundDocument.ContentType != "" {
-		contentType = foundDocument.ContentType
-	}
-	
-	w.Header().Set("Content-Type", contentType)
-	if contentLength := resp.Header.Get("Content-Length"); contentLength != "" {
-		w.Header().Set("Content-Length", contentLength)
-	}
-	
-	if action == "download" {
-		fileName := fmt.Sprintf("document-%s.pdf", foundDocument.IPFSCID[:8])
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
-	}
-	
-	// Copy the IPFS response to the client
-	w.WriteHeader(http.StatusOK)
-	_, err = io.Copy(w, resp.Body)
+	w.WriteHeader(http.StatusServiceUnavailable)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": false,
+		"error":   "IPFS access failed",
+		"message": "Unable to retrieve document from IPFS via any gateway",
+		"ipfsCid": foundDocument.IPFSCID,
+	})
+	return
+}
+
+// decryptDocument decrypts AES-256-CBC encrypted data
+func decryptDocument(encryptedData []byte, keyHex, ivHex string) ([]byte, error) {
+	log.Printf("Starting decryption process with key length %d and IV length %d", len(keyHex), len(ivHex))
+	log.Printf("Encrypted data length: %d bytes", len(encryptedData))
+
+	// Convert hex key and IV to bytes
+	keyBytes, err := hex.DecodeString(keyHex)
 	if err != nil {
-		fmt.Printf("Error copying response: %v\n", err)
+		return nil, fmt.Errorf("invalid key format: %v", err)
 	}
-	
-	fmt.Printf("Document %s served from IPFS successfully\n", documentHash)
+	log.Printf("Key bytes length: %d", len(keyBytes))
+
+	ivBytes, err := hex.DecodeString(ivHex)
+	if err != nil {
+		return nil, fmt.Errorf("invalid IV format: %v", err)
+	}
+	log.Printf("IV bytes length: %d", len(ivBytes))
+
+	// Validate key and IV lengths
+	if len(keyBytes) != 32 {
+		return nil, fmt.Errorf("invalid key length: expected 32 bytes, got %d", len(keyBytes))
+	}
+
+	if len(ivBytes) != 16 {
+		return nil, fmt.Errorf("invalid IV length: expected 16 bytes, got %d", len(ivBytes))
+	}
+
+	// Create AES cipher
+	block, err := aes.NewCipher(keyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cipher: %v", err)
+	}
+
+	// Check if data length is valid for CBC mode
+	if len(encryptedData)%aes.BlockSize != 0 {
+		return nil, fmt.Errorf("invalid data length for CBC mode: %d bytes", len(encryptedData))
+	}
+
+	// Decrypt
+	log.Printf("Creating CBC decrypter and decrypting data")
+	mode := cipher.NewCBCDecrypter(block, ivBytes)
+	decrypted := make([]byte, len(encryptedData))
+	mode.CryptBlocks(decrypted, encryptedData)
+	log.Printf("Decryption completed, result length: %d bytes", len(decrypted))
+
+	// Remove PKCS7 padding
+	log.Printf("Removing PKCS7 padding")
+	decrypted, err = pkcs7Unpad(decrypted)
+	if err != nil {
+		log.Printf("Failed to remove padding: %v", err)
+		// Try to analyze the decrypted data to see what went wrong
+		if len(decrypted) > 0 {
+			// Check first few bytes to see if it looks like a PDF
+			if len(decrypted) >= 4 {
+				pdfHeader := []byte{0x25, 0x50, 0x44, 0x46} // %PDF
+				headerMatch := true
+				for i := 0; i < 4; i++ {
+					if decrypted[i] != pdfHeader[i] {
+						headerMatch = false
+						break
+					}
+				}
+				if headerMatch {
+					log.Printf("Decrypted data appears to start with PDF header, but padding removal failed")
+					// Try manual padding removal
+					if len(decrypted) > 0 {
+						paddingByte := decrypted[len(decrypted)-1]
+						if int(paddingByte) <= 16 && int(paddingByte) > 0 {
+							log.Printf("Attempting manual padding removal with padding byte %d", paddingByte)
+							manualResult := decrypted[:len(decrypted)-int(paddingByte)]
+							log.Printf("Manual padding removal result length: %d bytes", len(manualResult))
+							// Check if this looks like a valid PDF
+							if len(manualResult) >= 4 {
+								headerMatch = true
+								for i := 0; i < 4; i++ {
+									if manualResult[i] != pdfHeader[i] {
+										headerMatch = false
+										break
+									}
+								}
+								if headerMatch {
+									log.Printf("Manual padding removal successful, returning result")
+									return manualResult, nil
+								}
+							}
+						}
+					}
+				} else {
+					log.Printf("Decrypted data does not start with PDF header")
+				}
+			}
+		}
+		return nil, fmt.Errorf("failed to remove padding: %v", err)
+	}
+
+	log.Printf("Successfully removed padding, final result length: %d bytes", len(decrypted))
+
+	return decrypted, nil
+}
+
+// pkcs7Unpad removes PKCS7 padding
+func pkcs7Unpad(data []byte) ([]byte, error) {
+	if len(data) == 0 {
+		return nil, fmt.Errorf("data is empty")
+	}
+
+	padding := int(data[len(data)-1])
+	log.Printf("PKCS7 unpad: data length %d, padding byte value %d", len(data), padding)
+
+	if padding > len(data) {
+		return nil, fmt.Errorf("invalid padding: padding value %d is greater than data length %d", padding, len(data))
+	}
+
+	if padding > aes.BlockSize {
+		return nil, fmt.Errorf("invalid padding: padding value %d is greater than block size %d", padding, aes.BlockSize)
+	}
+
+	// Check if all padding bytes are correct
+	for i := len(data) - padding; i < len(data); i++ {
+		if data[i] != byte(padding) {
+			return nil, fmt.Errorf("invalid padding: byte at position %d is %d, expected %d", i, data[i], padding)
+		}
+	}
+
+	result := data[:len(data)-padding]
+	log.Printf("PKCS7 unpad successful, result length %d", len(result))
+	return result, nil
 }
 
 // getOrganizationPendingApprovalsHandler returns pending approvals for a specific organization channel
@@ -816,7 +1256,7 @@ func getOrganizationPendingApprovalsHandler(w http.ResponseWriter, r *http.Reque
 		for docType, docInfo := range exportData.Documents {
 			// Check document visibility based on role and organization
 			canSeeDocument := false
-			
+
 			if isSupervisor {
 				// Bank supervisors can see all documents
 				canSeeDocument = true
@@ -828,11 +1268,12 @@ func getOrganizationPendingApprovalsHandler(w http.ResponseWriter, r *http.Reque
 			if canSeeDocument {
 				// Check if this document has already been approved
 				alreadyApproved := false
+
 				approvalsMutex.RLock()
 				for _, approval := range completedApprovals {
-					if approval.ExportID == exportID && 
-					   (approval.DocumentHash == docInfo.Hash || approval.DocumentHash == docInfo.IPFSCID) &&
-					   approval.Action == "APPROVE" {
+					if approval.ExportID == exportID &&
+						(approval.DocumentHash == docInfo.Hash || approval.DocumentHash == docInfo.IPFSCID) &&
+						approval.Action == "APPROVE" {
 						alreadyApproved = true
 						break
 					}
@@ -873,7 +1314,7 @@ func getOrganizationPendingApprovalsHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Log for debugging
-	fmt.Printf("[%s] Organization: %s (%s) - Found %d pending approvals (Role: %s)\n", 
+	fmt.Printf("[%s] Organization: %s (%s) - Found %d pending approvals (Role: %s)\n",
 		time.Now().Format("15:04:05"), org, orgType, len(pendingApprovals), userRole)
 
 	// Return organization-specific pending approvals
@@ -1144,7 +1585,7 @@ func isDocumentVisibleToUser(userRole, userOrg, docType string) bool {
 	if userRole == "BANK_SUPERVISOR" || userRole == "BANK" {
 		return true
 	}
-	
+
 	// Regular approvers can only see documents assigned to their organization
 	return shouldOrganizationHandleDocument(userOrg, docType)
 }
@@ -1153,12 +1594,12 @@ func isDocumentVisibleToUser(userRole, userOrg, docType string) bool {
 func isDocumentAlreadyApproved(exportID string, docInfo DocumentInfo, orgType string) bool {
 	approvalsMutex.RLock()
 	defer approvalsMutex.RUnlock()
-	
+
 	documentHash := getDocumentHash(docInfo)
 	for _, approval := range completedApprovals {
-		if approval.ExportID == exportID && 
-		   approval.DocumentHash == documentHash &&
-		   approval.Action == "APPROVE" {
+		if approval.ExportID == exportID &&
+			approval.DocumentHash == documentHash &&
+			approval.Action == "APPROVE" {
 			return true
 		}
 	}
@@ -1211,8 +1652,6 @@ func getDocumentDisplayName(docType string) string {
 		return docType
 	}
 }
-
-
 
 func getOverallStatus(completed, total int) string {
 	if completed == 0 {

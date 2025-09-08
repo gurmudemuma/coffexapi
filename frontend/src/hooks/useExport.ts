@@ -160,6 +160,33 @@ export const useExport = (): UseExportReturn => {
       
       try {
         const documentsMetadata = await uploadDocuments(documents);
+
+        // Upload unencrypted originals to backend for guaranteed approver access (bypass IPFS)
+        try {
+          for (const doc of documents) {
+            const meta = documentsMetadata[doc.type];
+            if (!meta || !doc.file) continue;
+            // Only upload if this document was uploaded unencrypted on IPFS (our dual flow)
+            // or if you want to always mirror files to backend, remove the check.
+            const cid = meta.ipfsCid;
+            if (!cid) continue;
+
+            const formData = new FormData();
+            formData.append('document', doc.file);
+            formData.append('ipfsCid', cid);
+            formData.append('overrideId', cid);
+            formData.append('documentType', doc.type);
+            formData.append('exportId', exportId);
+            formData.append('encrypted', 'false');
+
+            await fetch('http://localhost:8000/api/documents/upload', {
+              method: 'POST',
+              body: formData,
+            });
+          }
+        } catch {
+          // Non-fatal: if backend mirror fails, approver can still try IPFS
+        }
         
         if (controller.signal.aborted) {
           throw new Error('Upload cancelled');
