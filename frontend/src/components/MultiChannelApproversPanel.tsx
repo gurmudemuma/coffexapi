@@ -130,19 +130,12 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
       const url = `http://localhost:8000/api/approval-channels/pending?org=${organizationType}`;
       console.log(`[DEBUG] Making request to: ${url}`);
       
-      // First try without headers to test basic connectivity
-      try {
-        console.log('[DEBUG] Testing basic connectivity without headers...');
-        const testResponse = await fetch(url);
-        console.log(`[DEBUG] Basic test response: ${testResponse.status}`);
-      } catch (error) {
-        console.log('[DEBUG] Basic connectivity test failed:', error);
-      }
-      
       const response = await fetch(url, {
         headers: {
           'X-User-Role': userRole,
           'Content-Type': 'application/json'
+          // Add Authorization header if token exists
+          // 'Authorization': `Bearer ${getAuthToken()}`,
         }
       });
       
@@ -161,9 +154,12 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
       } else {
         const errorText = await response.text();
         console.error('[ERROR] Failed to fetch pending approvals:', response.statusText, errorText);
+        // Show error to user
+        toast.error('Failed to load pending approvals. Please try again.');
       }
     } catch (error) {
       console.error('[ERROR] Network error fetching pending approvals:', error);
+      toast.error('Network error occurred while loading approvals.');
     } finally {
       setLoading(false);
     }
@@ -183,6 +179,8 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
             'X-User-Role': userRole,
             'X-Organization': organizationType,
             'Content-Type': 'application/json'
+            // Add Authorization header if token exists
+            // 'Authorization': `Bearer ${getAuthToken()}`,
           }
         }
       );
@@ -236,22 +234,19 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
               console.log('[DEBUG] Is valid PDF:', isPDF);
               
               if (isPDF) {
-                // Create object URL and download the file
+                // Create object URL and open in new tab
                 const url = window.URL.createObjectURL(blob);
                 console.log('[DEBUG] Created object URL:', url);
                 
-                // Create a temporary link to download the file
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `document-${approval.documentHash}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                // Open in new tab
+                window.open(url, '_blank');
                 
-                // Clean up the object URL
-                window.URL.revokeObjectURL(url);
+                // Clean up the object URL after a delay
+                setTimeout(() => {
+                  window.URL.revokeObjectURL(url);
+                }, 1000);
                 
-                toast.success('Document decrypted and downloaded successfully');
+                toast.success('Document opened successfully');
                 return;
               } else {
                 console.warn('[WARN] Decrypted blob is not a valid PDF, trying direct IPFS access');
@@ -261,6 +256,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
             }
           } catch (decryptError) {
             console.error('[ERROR] Decryption failed:', decryptError);
+            toast.error('Failed to decrypt document. Please try again.');
           }
         }
         
@@ -293,28 +289,29 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
         console.log('[DEBUG] Direct blob size:', blob.size);
         console.log('[DEBUG] Direct blob type:', blob.type);
         
-        // Create object URL and download the file
+        // Create object URL and open in new tab
         const url = window.URL.createObjectURL(blob);
         console.log('[DEBUG] Created object URL:', url);
         
-        // Create a temporary link to download the file
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `document-${approval.documentHash}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        // Open in new tab
+        window.open(url, '_blank');
         
-        // Clean up the object URL
-        window.URL.revokeObjectURL(url);
+        // Clean up the object URL after a delay
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 1000);
         
-        toast.success('Document downloaded successfully');
+        toast.success('Document opened successfully');
         return;
       } else {
         console.warn('[WARN] API Gateway response not OK:', response.status);
+        const errorText = await response.text();
+        console.error('[ERROR] API Gateway error:', errorText);
+        toast.error('Failed to access document. Please try again.');
       }
     } catch (error) {
       console.warn('[WARN] Primary document access failed:', error);
+      toast.error('Error accessing document. Please try again.');
     }
 
     // Fallback: Try direct IPFS access through multiple gateways using documentHash as CID

@@ -29,8 +29,8 @@ interface DashboardMetrics {
   pendingApproval: number;
   approved: number;
   rejected: number;
-  recentRequests: ExporterRequest[];
-  notifications: DashboardNotification[];
+  recentRequests?: ExporterRequest[];
+  notifications?: DashboardNotification[];
 }
 
 interface ExporterRequest {
@@ -98,10 +98,12 @@ interface DashboardNotification {
 
 interface ExporterDashboardProps {
   exporterName?: string;
+  initialStatusFilter?: string | null;
 }
 
 export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({ 
-  exporterName = "Coffee Exporter Co." 
+  exporterName = "Coffee Exporter Co.",
+  initialStatusFilter = null
 }) => {
   const [dashboardData, setDashboardData] = useState<DashboardMetrics | null>(null);
   const [allRequests, setAllRequests] = useState<ExporterRequest[]>([]);
@@ -110,7 +112,7 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   
   // Filters and search
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter || 'all');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Fetch dashboard data
@@ -122,8 +124,26 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
       );
       
       if (response.ok) {
-        const data = await response.json();
-        setDashboardData(data);
+        const data: any = await response.json();
+        console.log('ExporterDashboard API Response:', data); // Log the actual response
+        
+        // Handle different possible API response formats with more robust mapping
+        const normalizedData: DashboardMetrics = {
+          totalRequests: data.totalRequests ?? data.total_requests ?? data.total ?? 0,
+          pendingApproval: data.pendingApproval ?? data.pending_approval ?? data.pending ?? 0,
+          approved: data.approved ?? data.approved_count ?? 0,
+          rejected: data.rejected ?? data.requires_action ?? data.rejected_count ?? 0,
+          recentRequests: data.recentRequests ?? [],
+          notifications: data.notifications ?? []
+        };
+        
+        // Ensure all values are numbers
+        normalizedData.totalRequests = Number(normalizedData.totalRequests) || 0;
+        normalizedData.pendingApproval = Number(normalizedData.pendingApproval) || 0;
+        normalizedData.approved = Number(normalizedData.approved) || 0;
+        normalizedData.rejected = Number(normalizedData.rejected) || 0;
+        
+        setDashboardData(normalizedData);
       } else {
         console.error('Failed to fetch dashboard data:', response.statusText);
         toast.error('Failed to load dashboard data');
@@ -195,6 +215,13 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
 
     return () => clearInterval(interval);
   }, [exporterName]);
+
+  useEffect(() => {
+    // Update status filter when initialStatusFilter changes
+    if (initialStatusFilter !== null) {
+      setStatusFilter(initialStatusFilter);
+    }
+  }, [initialStatusFilter]);
 
   useEffect(() => {
     fetchRequests();

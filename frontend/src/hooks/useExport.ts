@@ -159,6 +159,9 @@ export const useExport = (): UseExportReturn => {
       abortControllerRef.current = controller;
       
       try {
+        // Generate exportId first so it can be used in document uploads
+        const exportId = `EXP-${Date.now()}`;
+        
         const documentsMetadata = await uploadDocuments(documents);
 
         // Upload unencrypted originals to backend for guaranteed approver access (bypass IPFS)
@@ -192,7 +195,6 @@ export const useExport = (): UseExportReturn => {
           throw new Error('Upload cancelled');
         }
         
-        const exportId = `EXP-${Date.now()}`;
         const exportRequest: Omit<ExportRequest, 'status'> = {
           exportId,
           documents: documentsMetadata,
