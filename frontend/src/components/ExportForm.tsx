@@ -447,20 +447,20 @@ export default function ExportForm() {
   if (submittedExport) {
     return (
       <div className="max-w-3xl mx-auto p-6">
-        <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-lg border border-green-200 dark:border-green-800">
+        <div className="mb-6 p-4 bg-green-50 text-green-800 rounded-lg border border-green-200">
           <p className="font-medium">Export submitted successfully!</p>
           <p className="text-sm mt-1">Transaction: {submittedExport.txHash}</p>
           {submittedExport?.txHash && (
-            <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+            <div className="mt-4 text-sm text-purple-600">
               Transaction:{' '}
-              <span className="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+              <span className="font-mono text-xs bg-purple-50 px-2 py-1 rounded border border-purple-200">
                 {submittedExport.txHash}
               </span>
               <button
                 onClick={() =>
                   navigator.clipboard.writeText(submittedExport.txHash || '')
                 }
-                className="ml-2 text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
+                className="ml-2 text-purple-600 hover:text-purple-800"
                 title="Copy to clipboard"
               >
                 📋
@@ -491,13 +491,13 @@ export default function ExportForm() {
                 }
               }, 100);
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
           >
             View Dashboard
           </button>
           <button
             onClick={handleNewExport}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+            className="px-4 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-600 transition-colors font-medium"
           >
             Submit Another Export
           </button>
@@ -507,12 +507,12 @@ export default function ExportForm() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-card text-card-foreground rounded-lg shadow">
+    <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow border border-purple-200">
       <div className="space-y-4 mb-8 text-center">
-        <h1 className="text-3xl font-bold text-foreground">
+        <h1 className="text-3xl font-bold text-black">
           Export Documentation
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-purple-600">
           Complete all required information for your export process
         </p>
       </div>
@@ -539,10 +539,10 @@ export default function ExportForm() {
                   }}
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                     activeTab === tab
-                      ? 'bg-primary text-white'
+                      ? 'bg-purple-600 text-white'
                       : isEnabled
-                        ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                        : 'bg-muted text-muted-foreground cursor-not-allowed'
+                        ? 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
                 >
                   {index + 1}
@@ -550,8 +550,8 @@ export default function ExportForm() {
                 <span
                   className={`mt-2 text-sm font-medium ${
                     activeTab === tab
-                      ? 'text-foreground'
-                      : 'text-muted-foreground'
+                      ? 'text-black'
+                      : 'text-purple-600'
                   }`}
                 >
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -560,9 +560,9 @@ export default function ExportForm() {
             );
           })}
         </div>
-        <div className="h-1 bg-muted rounded-full">
+        <div className="h-1 bg-purple-200 rounded-full">
           <div
-            className="h-full bg-primary rounded-full transition-all duration-300"
+            className="h-full bg-purple-600 rounded-full transition-all duration-300"
             style={{
               width:
                 activeTab === 'exporter'
@@ -577,15 +577,15 @@ export default function ExportForm() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {formError && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500">
-            <p className="text-red-700 dark:text-red-300">{formError}</p>
+          <div className="p-4 bg-red-50 border-l-4 border-red-500 border border-red-200 rounded-lg">
+            <p className="text-red-700">{formError}</p>
           </div>
         )}
 
         <Suspense fallback={
           <div className="flex items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-            <span className="ml-4 text-muted-foreground">Loading form components...</span>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
+            <span className="ml-4 text-purple-600">Loading form components...</span>
           </div>
         }>
           {activeTab === 'exporter' && (
@@ -618,7 +618,7 @@ export default function ExportForm() {
               <button
                 type="button"
                 onClick={prevTab}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 border border-purple-200 rounded-md text-purple-600 hover:bg-purple-50"
               >
                 Previous
               </button>
@@ -629,7 +629,7 @@ export default function ExportForm() {
             <button
               type="button"
               onClick={handleReset}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-purple-200 rounded-md text-purple-600 hover:bg-purple-50"
             >
               Reset
             </button>
@@ -645,7 +645,7 @@ export default function ExportForm() {
                 className={`px-4 py-2 rounded-md text-white ${
                   (activeTab === 'exporter' && isExporterDetailsValid()) ||
                   (activeTab === 'trade' && isTradeDetailsValid())
-                    ? 'bg-primary hover:bg-primary/90'
+                    ? 'bg-purple-600 hover:bg-purple-700'
                     : 'bg-gray-400 cursor-not-allowed'
                 }`}
               >
@@ -657,7 +657,7 @@ export default function ExportForm() {
                 disabled={!isFormValid || status === 'submitting'}
                 className={`px-4 py-2 rounded-md text-white ${
                   isFormValid && status !== 'submitting'
-                    ? 'bg-primary hover:bg-primary/90'
+                    ? 'bg-purple-600 hover:bg-purple-700'
                     : 'bg-gray-400 cursor-not-allowed'
                 }`}
               >

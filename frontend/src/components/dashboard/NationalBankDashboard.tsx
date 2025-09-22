@@ -1,9 +1,9 @@
 import React from 'react';
-import { BaseDashboard } from '../BaseDashboard';
+import { ApproverLayout } from '../ApproverLayout';
 
 export const NationalBankDashboard: React.FC = () => {
   return (
-    <BaseDashboard 
+    <ApproverLayout 
       organizationType="national-bank" 
       userRole="APPROVER"
       userName="National Bank Officer"

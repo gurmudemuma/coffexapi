@@ -203,13 +203,13 @@ export function DocumentInput({
   return (
     <div className={cn('space-y-2', className)}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-black">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
 
       {description && (
-        <p className="text-sm text-gray-500 mb-2">{description}</p>
+        <p className="text-sm text-purple-600 mb-2">{description}</p>
       )}
 
       {state.error && (
@@ -217,15 +217,15 @@ export function DocumentInput({
       )}
 
       {state.file ? (
-        <div className="border rounded-md p-4 bg-gray-50">
+        <div className="border border-purple-200 rounded-md p-4 bg-purple-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <FileText className="h-5 w-5 text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">
+              <FileText className="h-5 w-5 text-purple-600" />
+              <span className="text-sm font-medium text-black">
                 {state.file.name}
               </span>
               {state.loading && (
-                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
               )}
               {state.cid && !state.loading && (
                 <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
@@ -237,7 +237,7 @@ export function DocumentInput({
               type="button"
               onClick={handleRemove}
               disabled={state.loading || disabled}
-              className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              className="text-purple-400 hover:text-purple-600 disabled:opacity-50"
             >
               <X className="h-4 w-4" />
             </button>
@@ -248,7 +248,7 @@ export function DocumentInput({
           )}
           
           {state.cid && (
-            <div className="mt-2 text-xs text-gray-500">
+            <div className="mt-2 text-xs text-purple-600">
               <p>IPFS CID: <span className="font-mono">{state.cid}</span></p>
               {state.iv && (
                 <p className="mt-1">
@@ -264,8 +264,8 @@ export function DocumentInput({
           className={(
             [
               'border-2 border-dashed rounded-lg p-6 text-center transition-colors',
-              isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300',
-              disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-blue-400',
+              isDragging ? 'border-purple-500 bg-purple-50' : 'border-purple-300',
+              disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-purple-400',
             ] as string[]
           ).filter(Boolean).join(' ')}
           onDrop={handleDrop}
@@ -274,12 +274,12 @@ export function DocumentInput({
           onClick={() => !disabled && fileInputRef.current?.click()}
         >
           <div className="flex flex-col items-center justify-center space-y-2">
-            <Upload className="h-10 w-10 text-gray-400" />
-            <div className="text-sm text-gray-600">
-              <span className="font-medium text-blue-600">Click to upload</span> or
+            <Upload className="h-10 w-10 text-purple-400" />
+            <div className="text-sm text-black">
+              <span className="font-medium text-purple-600">Click to upload</span> or
               drag and drop
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-purple-600">
               {accept ? `${accept.replace(/\./g, ' ').toUpperCase()}` : 'Any file'}
             </div>
           </div>

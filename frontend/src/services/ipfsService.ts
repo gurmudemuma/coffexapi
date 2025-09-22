@@ -3,10 +3,10 @@ import * as aesjs from 'aes-js';
 import { generateDiagnosticReport, analyzeDcrytedData } from '@/utils/documentDiagnostics';
 import { analyzeEncryptionKey, testKeyCompatibility, generateCompatibilityReport } from '@/utils/keyCompatibilityChecker';
 
-// Configuration for local IPFS node
+// Configuration for IPFS access via API Gateway proxy
 const IPFS_CONFIG = {
   GATEWAY_URL: 'http://localhost:8090/ipfs',
-  API_URL: 'http://localhost:5001',
+  API_URL: 'http://localhost:8000/api/ipfs', // Use API Gateway proxy instead of direct IPFS
   // Alternative public gateway for fallback
   PUBLIC_GATEWAY: 'https://ipfs.io/ipfs',
   // Public gateway API endpoint
@@ -23,15 +23,8 @@ import type { IPFSHTTPClient } from 'ipfs-http-client';
 // Initialize IPFS client with better error handling
 let ipfs: IPFSHTTPClient | null = null;
 
-try {
-  ipfs = create({ 
-    url: IPFS_CONFIG.API_URL,
-    timeout: 10000 // 10 second timeout
-  });
-  console.log('Connected to local IPFS node');
-} catch (error) {
-  console.warn('Failed to connect to local IPFS node. Some features may be limited.', error);
-}
+// Note: We'll use API Gateway proxy instead of direct IPFS connection to avoid CORS issues
+console.log('IPFS service configured to use API Gateway proxy at:', IPFS_CONFIG.API_URL);
 
 // Types
 export interface IPFSOptions {
@@ -131,117 +124,97 @@ export const uploadToIPFS = async (
 
   let lastError: Error | null = null;
   
-  // First try with local IPFS node
-  if (ipfs) {
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      let fileToUpload: Blob | Uint8Array = file;
-      let fileSize = file.size;
-      let encryptionKey = '';
-      let iv = '';
+  // Use API Gateway proxy to upload to IPFS (bypasses CORS issues)
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    let fileToUpload: Blob = file;
+    let fileSize = file.size;
+    let encryptionKey = '';
+    let iv = '';
+    
+    try {
+      throwIfAborted();
+
+      // Encrypt the file if encryption is enabled
+      if (encrypt) {
+        console.log('Starting encryption process...');
+        encryptionKey = generateEncryptionKey();
+        console.log('Generated encryption key length:', encryptionKey.length);
+        const encryptionResult = await encryptFile(file, encryptionKey);
+        console.log('Encryption completed, creating blob...');
+        const encryptedBlob = new Blob(
+          [new Uint8Array(encryptionResult.ciphertext)],
+          { type: 'application/octet-stream' }
+        );
+        fileToUpload = encryptedBlob;
+        fileSize = encryptedBlob.size;
+        iv = encryptionResult.iv;
+        console.log('Encrypted blob size:', fileSize);
+        console.log('IV generated:', iv);
+        
+        // Report progress after encryption
+        if (onProgress) {
+          onProgress(0.1); // 10% for encryption
+        }
+      }
+
+      // Upload via API Gateway proxy
+      console.log('Uploading to IPFS via API Gateway proxy...');
+      const formData = new FormData();
+      formData.append('file', fileToUpload, file.name);
+
+      const uploadResponse = await fetch(`${IPFS_CONFIG.API_URL}/add`, {
+        method: 'POST',
+        body: formData,
+        signal: signal,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
+      }
+
+      const result = await uploadResponse.json();
+      console.log('Upload successful:', result);
+
+      // Generate the IPFS URL
+      const url = `${IPFS_CONFIG.GATEWAY_URL}/${result.Hash}`;
       
-      try {
-        throwIfAborted();
+      // Report completion
+      if (onProgress) {
+        onProgress(1);
+      }
+      
+      return {
+        cid: result.Hash,
+        url,
+        iv,
+        key: encryptionKey,
+        name: file.name,
+        size: fileSize,
+        type: file.type,
+      };
 
-        // Encrypt the file if encryption is enabled
-        if (encrypt) {
-          console.log('Starting encryption process...');
-          encryptionKey = generateEncryptionKey();
-          console.log('Generated encryption key length:', encryptionKey.length);
-          const encryptionResult = await encryptFile(file, encryptionKey);
-          console.log('Encryption completed, creating blob...');
-          const encryptedBlob = new Blob(
-            [new Uint8Array(encryptionResult.ciphertext)],
-            { type: 'application/octet-stream' }
-          );
-          fileToUpload = encryptedBlob;
-          fileSize = encryptedBlob.size;
-          iv = encryptionResult.iv;
-          console.log('Encrypted blob size:', fileSize);
-          console.log('IV generated:', iv);
-          
-          // Report progress after encryption
-          if (onProgress) {
-            onProgress(0.1); // 10% for encryption
-          }
-        }
-
-        // Set up timeout for the upload
-        const uploadPromise = new Promise<IPFSFile>((resolve, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new Error('Upload timed out'));
-          }, timeout);
-
-          // Upload to IPFS with progress tracking
-          let uploadedBytes = 0;
-          
-          ipfs.add(fileToUpload, {
-            progress: (bytes: number) => {
-              if (signal?.aborted) {
-                clearTimeout(timeoutId);
-                reject(new DOMException('Upload aborted by the user', 'AbortError'));
-                return;
-              }
-              
-              uploadedBytes = bytes;
-              const progress = uploadedBytes / fileSize;
-              
-              // Report progress (scaled to 10-90% to leave room for final steps)
-              if (onProgress) {
-                onProgress(encrypt ? 0.1 + progress * 0.8 : progress * 0.9);
-              }
-            },
-          })
-            .then((result: { path: string }) => {
-              clearTimeout(timeoutId);
-              
-              // Generate the IPFS URL
-              const url = `${IPFS_CONFIG.GATEWAY_URL}/${result.path}`;
-              
-              // Report completion
-              if (onProgress) {
-                onProgress(1);
-              }
-              
-              resolve({
-                cid: result.path,
-                url,
-                iv,
-                key: encryptionKey,
-                name: file.name,
-                size: fileSize,
-                type: file.type,
-              });
-            })
-            .catch((error) => {
-              clearTimeout(timeoutId);
-              console.error('Local IPFS upload failed:', error);
-              reject(error);
-            });
-        });
-
-        return await uploadPromise;
-      } catch (error: unknown) {
-        lastError = error as Error;
-        
-        // Don't retry if the operation was aborted
-        if (signal?.aborted || (error as Error).name === 'AbortError') {
-          throw error;
-        }
-        
-        // Log the error and retry if we have attempts left
-        console.warn(`Upload attempt ${attempt} failed:`, error);
-        console.warn('Error details:', {
-          name: (error as Error).name,
-          message: (error as Error).message,
-          stack: (error as Error).stack
-        });
-        
-        if (attempt < retries) {
-          // Exponential backoff
-          await new Promise(resolve => 
-            setTimeout(resolve, 1000 * Math.pow(2, attempt - 1))
-          );
-        }
+    } catch (error: unknown) {
+      lastError = error as Error;
+      
+      // Don't retry if the operation was aborted
+      if (signal?.aborted || (error as Error).name === 'AbortError') {
+        throw error;
+      }
+      
+      // Log the error and retry if we have attempts left
+      console.warn(`Upload attempt ${attempt} failed:`, error);
+      console.warn('Error details:', {
+        name: (error as Error).name,
+        message: (error as Error).message,
+        stack: (error as Error).stack
+      });
+      
+      if (attempt < retries) {
+        // Exponential backoff
+        await new Promise(resolve => 
+          setTimeout(resolve, 1000 * Math.pow(2, attempt - 1))
+        );
       }
     }
   }
@@ -271,12 +244,18 @@ export async function downloadFromIPFS(
   console.log('[DEBUG] downloadFromIPFS called with:', { cid, hasKey: !!options.key, hasIV: !!options.iv });
   
   try {
-    // For now, we'll implement a basic fetch that can be enhanced later
-    // with proper IPFS gateway integration and decryption
-    const ipfsUrl = `${IPFS_CONFIG.GATEWAY_URL}/${cid}`;
-    console.log('[DEBUG] Fetching from IPFS URL:', ipfsUrl);
-    
-    const response = await fetch(ipfsUrl);
+    // Try API Gateway proxy first, then fallback to direct IPFS gateway
+    let response: Response;
+    try {
+      const proxyUrl = `${IPFS_CONFIG.API_URL}/${cid}`;
+      console.log('[DEBUG] Fetching from API Gateway proxy:', proxyUrl);
+      response = await fetch(proxyUrl);
+    } catch (proxyError) {
+      console.warn('[DEBUG] API Gateway proxy failed, trying direct IPFS gateway:', proxyError);
+      const ipfsUrl = `${IPFS_CONFIG.GATEWAY_URL}/${cid}`;
+      console.log('[DEBUG] Fetching from IPFS URL:', ipfsUrl);
+      response = await fetch(ipfsUrl);
+    }
 
     if (!response.ok) {
       throw new Error(`Failed to fetch file from IPFS: ${response.statusText}`);

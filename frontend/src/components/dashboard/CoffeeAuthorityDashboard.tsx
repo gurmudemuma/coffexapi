@@ -1,9 +1,9 @@
 import React from 'react';
-import { BaseDashboard } from '../BaseDashboard';
+import { ApproverLayout } from '../ApproverLayout';
 
 export const CoffeeAuthorityDashboard: React.FC = () => {
   return (
-    <BaseDashboard 
+    <ApproverLayout 
       organizationType="coffee-authority" 
       userRole="APPROVER"
       userName="Quality Inspector"

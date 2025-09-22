@@ -34,14 +34,14 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Trade Details</h2>
-      <p className="text-muted-foreground">
+      <h2 className="text-xl font-semibold text-black">Trade Details</h2>
+      <p className="text-purple-600">
         Provide information about the goods being exported.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <label htmlFor="productName" className="block text-sm font-medium">
+          <label htmlFor="productName" className="block text-sm font-medium text-black">
             Product Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -50,7 +50,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             name="productName"
             value={tradeDetails.productName}
             onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
+            className="w-full px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
             required
           />
         </div>
@@ -58,7 +58,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
         <div className="space-y-2 md:col-span-2">
           <label
             htmlFor="productDescription"
-            className="block text-sm font-medium"
+            className="block text-sm font-medium text-black"
           >
             Product Description
           </label>
@@ -68,12 +68,12 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             value={tradeDetails.productDescription}
             onChange={handleTradeDetailsChange}
             rows={3}
-            className="w-full px-3 py-2 border rounded-md"
+            className="w-full px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="quantity" className="block text-sm font-medium">
+          <label htmlFor="quantity" className="block text-sm font-medium text-black">
             Quantity <span className="text-red-500">*</span>
           </label>
           <div className="flex">
@@ -85,14 +85,14 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
               step="0.001"
               value={tradeDetails.quantity}
               onChange={handleTradeDetailsChange}
-              className="w-3/4 px-3 py-2 border rounded-l-md"
+              className="w-3/4 px-3 py-2 border border-purple-200 rounded-l-md focus:border-purple-400 focus:outline-none"
               required
             />
             <select
               name="unit"
               value={tradeDetails.unit}
               onChange={handleTradeDetailsChange}
-              className="w-1/4 px-2 py-2 border-t border-b border-r rounded-r-md bg-gray-50"
+              className="w-1/4 px-2 py-2 border-t border-b border-r border-purple-200 rounded-r-md bg-purple-50 focus:border-purple-400 focus:outline-none"
             >
               <option value="kg">kg</option>
               <option value="g">g</option>
@@ -108,11 +108,11 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="unitPrice" className="block text-sm font-medium">
+          <label htmlFor="unitPrice" className="block text-sm font-medium text-black">
             Unit Price <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+            <span className="absolute left-3 top-2.5 text-purple-600">$</span>
             <input
               type="number"
               id="unitPrice"
@@ -121,21 +121,21 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
               step="0.01"
               value={tradeDetails.unitPrice}
               onChange={handleTradeDetailsChange}
-              className="w-full pl-8 pr-3 py-2 border rounded-md"
+              className="w-full pl-8 pr-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
               required
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Total Value</label>
-          <div className="px-3 py-2 border rounded-md bg-gray-50">
+          <label className="block text-sm font-medium text-black">Total Value</label>
+          <div className="px-3 py-2 border border-purple-200 rounded-md bg-purple-50 text-black">
             ${tradeDetails.totalValue.toFixed(2)} {tradeDetails.currency}
           </div>
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="currency" className="block text-sm font-medium">
+          <label htmlFor="currency" className="block text-sm font-medium text-black">
             Currency <span className="text-red-500">*</span>
           </label>
           <select
@@ -143,7 +143,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             name="currency"
             value={tradeDetails.currency}
             onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
+            className="w-full px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
             required
           >
             <option value="USD">USD</option>
@@ -160,7 +160,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
         <div className="space-y-2">
           <label
             htmlFor="countryOfOrigin"
-            className="block text-sm font-medium"
+            className="block text-sm font-medium text-black"
           >
             Country of Origin <span className="text-red-500">*</span>
           </label>
@@ -170,7 +170,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             name="countryOfOrigin"
             value={tradeDetails.countryOfOrigin}
             onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
+            className="w-full px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
             required
           />
         </div>
@@ -178,7 +178,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
         <div className="space-y-2">
           <label
             htmlFor="destinationCountry"
-            className="block text-sm font-medium"
+            className="block text-sm font-medium text-black"
           >
             Destination Country <span className="text-red-500">*</span>
           </label>
@@ -188,13 +188,13 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             name="destinationCountry"
             value={tradeDetails.destinationCountry}
             onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
+            className="w-full px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
             required
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="incoterms" className="block text-sm font-medium">
+          <label htmlFor="incoterms" className="block text-sm font-medium text-black">
             Incoterms <span className="text-red-500">*</span>
           </label>
           <select
@@ -202,7 +202,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             name="incoterms"
             value={tradeDetails.incoterms}
             onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
+            className="w-full px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
             required
           >
             <option value="EXW">EXW - Ex Works</option>
@@ -216,7 +216,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="shippingDate" className="block text-sm font-medium">
+          <label htmlFor="shippingDate" className="block text-sm font-medium text-black">
             Shipping Date <span className="text-red-500">*</span>
           </label>
           <input
@@ -226,7 +226,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             value={tradeDetails.shippingDate}
             onChange={handleTradeDetailsChange}
             min={new Date().toISOString().split('T')[0]}
-            className="w-full px-3 py-2 border rounded-md"
+            className="w-full px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
             required
           />
         </div>
@@ -234,7 +234,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
         <div className="space-y-2">
           <label
             htmlFor="expectedDeliveryDate"
-            className="block text-sm font-medium"
+            className="block text-sm font-medium text-black"
           >
             Expected Delivery Date <span className="text-red-500">*</span>
           </label>
@@ -245,13 +245,13 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             value={tradeDetails.expectedDeliveryDate}
             onChange={handleTradeDetailsChange}
             min={tradeDetails.shippingDate}
-            className="w-full px-3 py-2 border rounded-md"
+            className="w-full px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
             required
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="paymentTerms" className="block text-sm font-medium">
+          <label htmlFor="paymentTerms" className="block text-sm font-medium text-black">
             Payment Terms <span className="text-red-500">*</span>
           </label>
           <select
@@ -259,7 +259,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             name="paymentTerms"
             value={tradeDetails.paymentTerms}
             onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
+            className="w-full px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
             required
           >
             <option value="30 days">Net 30 days</option>
@@ -272,7 +272,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="paymentMethod" className="block text-sm font-medium">
+          <label htmlFor="paymentMethod" className="block text-sm font-medium text-black">
             Payment Method <span className="text-red-500">*</span>
           </label>
           <select
@@ -280,7 +280,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             name="paymentMethod"
             value={tradeDetails.paymentMethod}
             onChange={handleTradeDetailsChange}
-            className="w-full px-3 py-2 border rounded-md"
+            className="w-full px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
             required
           >
             <option value="Bank Transfer">Bank Transfer</option>
@@ -296,7 +296,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
         <div className="space-y-2 md:col-span-2">
           <label
             htmlFor="specialInstructions"
-            className="block text-sm font-medium"
+            className="block text-sm font-medium text-black"
           >
             Special Instructions
           </label>
@@ -306,7 +306,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             value={tradeDetails.specialInstructions || ''}
             onChange={handleTradeDetailsChange}
             rows={3}
-            className="w-full px-3 py-2 border rounded-md"
+            className="w-full px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
             placeholder="Any special instructions or notes regarding this shipment..."
           />
         </div>

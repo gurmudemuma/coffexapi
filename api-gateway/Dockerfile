@@ -9,7 +9,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o /api-gateway
+RUN go build -mod=mod -o /api-gateway
 
 EXPOSE 8000
 

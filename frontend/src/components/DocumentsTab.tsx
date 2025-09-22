@@ -25,13 +25,13 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Required Documents</h2>
-      <p className="text-muted-foreground">
+      <h2 className="text-xl font-semibold text-black">Required Documents</h2>
+      <p className="text-purple-600">
         Upload all required documents for your export. All documents are
         required.
       </p>
 
-      <div className="space-y-6 bg-muted/50 p-6 rounded-lg border">
+      <div className="space-y-6 bg-purple-50 p-6 rounded-lg border border-purple-200">
         {(Object.entries(documents) as [DocumentType, DocumentState][]).map(
           ([type, doc]) => (
             <div
@@ -42,8 +42,8 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center ${
                     doc.file
-                      ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-300'
+                      ? 'bg-green-100 text-green-600'
+                      : 'bg-purple-100 text-purple-600'
                   }`}
                 >
                   {doc.file
@@ -56,7 +56,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
                           ? '3'
                           : '4'}
                 </div>
-                <h3 className="font-medium text-gray-900 dark:text-white">
+                <h3 className="font-medium text-black">
                   {getDocumentLabel(type)}
                 </h3>
               </div>

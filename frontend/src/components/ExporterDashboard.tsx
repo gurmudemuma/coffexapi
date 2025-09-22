@@ -272,8 +272,8 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Export Dashboard</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-black">Export Dashboard</h1>
+          <p className="text-purple-600 mt-2">
             Welcome back, {exporterName} • Track and manage your export requests
           </p>
         </div>
@@ -286,11 +286,12 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
               fetchRequests();
             }}
             disabled={refreshing}
+            className="border-purple-200 text-purple-600 hover:bg-purple-50"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button>
+          <Button className="bg-purple-600 hover:bg-purple-700">
             <Plus className="w-4 h-4 mr-2" />
             New Export
           </Button>
@@ -299,65 +300,65 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
+        <Card className="border-purple-200 bg-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Requests</p>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-sm font-medium text-purple-600">Total Requests</p>
+                <p className="text-3xl font-bold text-black">
                   {dashboardData?.totalRequests || 0}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <FileText className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <FileText className="w-6 h-6 text-purple-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-yellow-200 bg-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Pending Approval</p>
-                <p className="text-3xl font-bold text-yellow-600">
+                <p className="text-sm font-medium text-purple-600">Pending Approval</p>
+                <p className="text-3xl font-bold text-purple-600">
                   {dashboardData?.pendingApproval || 0}
                 </p>
               </div>
               <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                <Clock className="w-6 h-6 text-yellow-600" />
+                <Clock className="w-6 h-6 text-purple-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-purple-200 bg-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Approved</p>
-                <p className="text-3xl font-bold text-green-600">
+                <p className="text-sm font-medium text-purple-600">Approved</p>
+                <p className="text-3xl font-bold text-purple-600">
                   {dashboardData?.approved || 0}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-purple-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-yellow-200 bg-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Requires Action</p>
-                <p className="text-3xl font-bold text-red-600">
+                <p className="text-sm font-medium text-purple-600">Requires Action</p>
+                <p className="text-3xl font-bold text-black">
                   {dashboardData?.rejected || 0}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-red-600" />
+              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                <XCircle className="w-6 h-6 text-purple-600" />
               </div>
             </div>
           </CardContent>
@@ -379,16 +380,16 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="flex gap-4 items-center">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-400 w-4 h-4" />
                 <Input
                   placeholder="Search by ID or reference..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-64"
+                  className="pl-9 w-64 border-purple-200 focus:border-purple-400"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-40 border-purple-200">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -399,34 +400,34 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                 </SelectContent>
               </Select>
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-purple-600">
               {filteredRequests.length} of {allRequests.length} requests
             </div>
           </div>
 
           {/* Requests Table */}
-          <Card>
+          <Card className="border-purple-200 bg-white">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
+                  <thead className="bg-purple-50 border-b border-purple-200">
                     <tr>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Request</th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Status</th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Current Approver</th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Progress</th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Last Updated</th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Actions</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-black">Request</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-black">Status</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-black">Current Approver</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-black">Progress</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-black">Last Updated</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-black">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-purple-200">
                     {filteredRequests.map((request) => (
-                      <tr key={request.exportId} className="hover:bg-gray-50">
+                      <tr key={request.exportId} className="hover:bg-yellow-50">
                         <td className="px-6 py-4">
                           <div>
-                            <p className="font-medium text-gray-900">{request.referenceNumber}</p>
-                            <p className="text-sm text-gray-500">{request.exportId}</p>
-                            <p className="text-xs text-gray-400">
+                            <p className="font-medium text-black">{request.referenceNumber}</p>
+                            <p className="text-sm text-purple-600">{request.exportId}</p>
+                            <p className="text-xs text-purple-500">
                               Submitted: {new Date(request.submissionDate).toLocaleDateString()}
                             </p>
                           </div>
@@ -438,21 +439,21 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                           </Badge>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="text-sm text-gray-900">{request.currentApprover}</p>
+                          <p className="text-sm text-black">{request.currentApprover}</p>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <div className="w-24 bg-gray-200 rounded-full h-2">
+                            <div className="w-24 bg-purple-200 rounded-full h-2">
                               <div 
-                                className="bg-blue-600 h-2 rounded-full" 
+                                className="bg-purple-600 h-2 rounded-full" 
                                 style={{ width: `${request.progressPercent}%` }}
                               ></div>
                             </div>
-                            <span className="text-sm text-gray-600">{request.progressPercent}%</span>
+                            <span className="text-sm text-purple-600">{request.progressPercent}%</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="text-sm text-gray-900">
+                          <p className="text-sm text-black">
                             {new Date(request.lastUpdated).toLocaleDateString()}
                           </p>
                         </td>
@@ -464,13 +465,14 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                                   variant="outline"
                                   size="sm"
                                   onClick={() => fetchRequestDetail(request.exportId)}
+                                  className="border-purple-200 text-purple-600 hover:bg-purple-50"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>
                               </DialogTrigger>
-                              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto border-purple-200">
                                 <DialogHeader>
-                                  <DialogTitle>Export Request Details</DialogTitle>
+                                  <DialogTitle className="text-black">Export Request Details</DialogTitle>
                                 </DialogHeader>
                                 {selectedRequest && (
                                   <RequestDetailView request={selectedRequest} />
@@ -478,7 +480,11 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                               </DialogContent>
                             </Dialog>
                             {request.status === 'REJECTED' && (
-                              <Button variant="outline" size="sm">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="border-purple-200 text-purple-600 hover:bg-purple-50"
+                              >
                                 <Edit className="w-4 h-4" />
                               </Button>
                             )}
@@ -491,16 +497,16 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
               </div>
               {filteredRequests.length === 0 && (
                 <div className="text-center py-12">
-                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No requests found</h3>
-                  <p className="text-gray-500 mb-4">
+                  <FileText className="w-12 h-12 text-purple-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-black mb-2">No requests found</h3>
+                  <p className="text-purple-600 mb-4">
                     {searchTerm || statusFilter !== 'all' 
                       ? 'Try adjusting your search or filters'
                       : 'Start by creating your first export request'
                     }
                   </p>
                   {!searchTerm && statusFilter === 'all' && (
-                    <Button>
+                    <Button className="bg-purple-600 hover:bg-purple-700">
                       <Plus className="w-4 h-4 mr-2" />
                       Create New Export
                     </Button>
@@ -513,10 +519,10 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
 
         {/* Notifications Tab */}
         <TabsContent value="notifications" className="space-y-4">
-          <Card>
+          <Card className="border-purple-200 bg-white">
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Bell className="w-5 h-5 mr-2" />
+              <CardTitle className="flex items-center text-black">
+                <Bell className="w-5 h-5 mr-2 text-purple-600" />
                 Recent Notifications
               </CardTitle>
             </CardHeader>
@@ -525,25 +531,25 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                 <div className="space-y-4">
                   {dashboardData.notifications.map((notification) => (
                     <div key={notification.id} 
-                         className={`p-4 rounded-lg border ${notification.isRead ? 'bg-gray-50' : 'bg-blue-50 border-blue-200'}`}>
+                         className={`p-4 rounded-lg border ${notification.isRead ? 'bg-purple-50 border-purple-200' : 'bg-yellow-50 border-yellow-200'}`}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-medium text-gray-900">{notification.title}</h4>
-                            <Badge variant="outline">
+                            <h4 className="font-medium text-black">{notification.title}</h4>
+                            <Badge variant="outline" className="border-purple-200 text-purple-600">
                               {notification.priority}
                             </Badge>
                           </div>
-                          <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-sm text-purple-600 mb-2">{notification.message}</p>
+                          <p className="text-xs text-purple-500">
                             {new Date(notification.timestamp).toLocaleString()}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           {!notification.isRead && (
-                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                            <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
                           )}
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" className="text-purple-600 hover:bg-purple-50">
                             <Eye className="w-4 h-4" />
                           </Button>
                         </div>
@@ -553,9 +559,9 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No notifications</h3>
-                  <p className="text-gray-500">You're all caught up! New notifications will appear here.</p>
+                  <Bell className="w-12 h-12 text-purple-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-black mb-2">No notifications</h3>
+                  <p className="text-purple-600">You're all caught up! New notifications will appear here.</p>
                 </div>
               )}
             </CardContent>

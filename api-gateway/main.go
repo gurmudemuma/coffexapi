@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"sync"
@@ -61,6 +62,14 @@ type ApprovalStageInfo struct {
 	DocumentHash string     `json:"documentHash"`
 	ExporterName string     `json:"exporterName"`
 	UrgencyLevel string     `json:"urgencyLevel"`
+	// Enhanced document metadata for approver panel
+	IPFSCID     string `json:"ipfsCid,omitempty"`
+	IPFSURL     string `json:"ipfsUrl,omitempty"`
+	IV          string `json:"iv,omitempty"`
+	Key         string `json:"key,omitempty"`
+	Encrypted   bool   `json:"encrypted"`
+	ContentType string `json:"contentType,omitempty"`
+	Size        int64  `json:"size,omitempty"`
 }
 
 // BankSupervisorViewData represents the supervisor dashboard data
@@ -133,19 +142,96 @@ func corsWrapper(handler http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// getOrganizationSummaryHandler provides dashboard metrics for an organization
+func getOrganizationSummaryHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get organization from query parameter
+	org := r.URL.Query().Get("org")
+	if org == "" {
+		http.Error(w, "Organization parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	// Normalize organization type
+	orgType := getOrgTypeFromString(org)
+
+	// Count pending approvals for this organization
+	pendingCount := 0
+	urgentCount := 0
+	approvedCount := 0
+	rejectedCount := 0
+
+	exportsMutex.Lock()
+	approvalsMutex.Lock()
+
+	// Count pending approvals
+	for exportID, exportData := range submittedExports {
+		for docType, docInfo := range exportData.Documents {
+			if shouldOrganizationHandleDocument(orgType, docType) {
+				// Check if this document is already approved/rejected
+				isCompleted := false
+				for _, approval := range completedApprovals {
+					if approval.ExportID == exportID && approval.DocumentHash == docInfo.Hash {
+						isCompleted = true
+						if approval.Action == "APPROVED" {
+							approvedCount++
+						} else if approval.Action == "REJECTED" {
+							rejectedCount++
+						}
+						break
+					}
+				}
+				
+				if !isCompleted {
+					pendingCount++
+					// Consider documents older than 24 hours as urgent
+					if time.Since(exportData.Timestamp) > 24*time.Hour {
+						urgentCount++
+					}
+				}
+			}
+		}
+	}
+
+	approvalsMutex.Unlock()
+	exportsMutex.Unlock()
+
+	// Return summary data
+	summary := map[string]interface{}{
+		"pending":  pendingCount,
+		"urgent":   urgentCount,
+		"approved": approvedCount,
+		"rejected": rejectedCount,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(summary)
+}
+
 func main() {
+	// Initialize test data for development
+	initializeTestData()
+
 	// API endpoints with CORS support
 	http.HandleFunc("/api/auth/login", corsWrapper(loginHandler))
 	http.HandleFunc("/api/documents", corsWrapper(uploadDocumentHandler))
 	http.HandleFunc("/api/documents/upload", corsWrapper(uploadDocumentToDbHandler))
 	http.HandleFunc("/api/documents/", corsWrapper(viewDocumentHandler))
 	http.HandleFunc("/api/exports", corsWrapper(submitExportHandler))
+	// IPFS proxy endpoints to bypass CORS
+	http.HandleFunc("/api/ipfs/add", corsWrapper(ipfsAddHandler))
+	http.HandleFunc("/api/ipfs/", corsWrapper(ipfsGetHandler))
 	http.HandleFunc("/api/pending-approvals", corsWrapper(pendingApprovalsHandler))
 	http.HandleFunc("/api/completed-approvals", corsWrapper(completedApprovalsHandler))
 	http.HandleFunc("/api/exports/list", corsWrapper(listExportsHandler)) // Debug endpoint
 	http.HandleFunc("/approve", corsWrapper(approveHandler))              // Document approval endpoint
 	// Multi-channel approval endpoints
 	http.HandleFunc("/api/approval-channels/pending", corsWrapper(getOrganizationPendingApprovalsHandler))
+	http.HandleFunc("/api/approval-channels/summary", corsWrapper(getOrganizationSummaryHandler))
 	http.HandleFunc("/api/approval-channels/submit-decision", corsWrapper(submitApprovalDecisionHandler))
 	http.HandleFunc("/api/supervisor/exports", corsWrapper(getBankSupervisorExportsHandler))
 	http.HandleFunc("/api/supervisor/export/", corsWrapper(getBankSupervisorViewHandler))
@@ -158,6 +244,7 @@ func main() {
 
 	// Start HTTP server
 	fmt.Println("API Gateway running on port 8000 with CORS enabled")
+	fmt.Println("Test data initialized - dashboard should now show sample export requests")
 	if err := http.ListenAndServe(":8000", nil); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
@@ -532,7 +619,7 @@ func approveHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse the approval request
 	var approvalReq ApprovalRequest
 	if err := json.NewDecoder(r.Body).Decode(&approvalReq); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -666,6 +753,118 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 // getDocTypeForOrg returns the document type that an organization is responsible for
 func getDocTypeForOrg(org string) string {
 	switch org {
+}
+
+// submitApprovalDecisionHandler processes approval decisions for documents
+func submitApprovalDecisionHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var decision ApprovalRequest
+	if err := json.NewDecoder(r.Body).Decode(&decision); err != nil {
+		http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Get organization from query parameter
+	org := r.URL.Query().Get("org")
+	if org == "" {
+		http.Error(w, "Organization parameter required", http.StatusBadRequest)
+		return
+	}
+
+	orgType := getOrgTypeFromString(org)
+	if orgType == "" {
+		http.Error(w, "Invalid organization", http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if decision.DocumentHash == "" || decision.ExportID == "" || decision.Action == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Missing required fields: documentHash, exportId, and action are required",
+		})
+		return
+	}
+
+	// Validate action
+	if decision.Action != "APPROVED" && decision.Action != "REJECTED" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Invalid action. Must be APPROVED or REJECTED",
+		})
+		return
+	}
+
+	// Check if the document exists in submitted exports
+	exportsMutex.RLock()
+	exportData, exportExists := submittedExports[decision.ExportID]
+	exportsMutex.RUnlock()
+
+	if !exportExists {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Export not found in registry",
+		})
+		return
+	}
+
+	// Find the document with matching hash
+	documentFound := false
+	for _, docInfo := range exportData.Documents {
+		// Check both hash and IPFS CID (since we use CID as hash when hash is empty)
+		if docInfo.Hash == decision.DocumentHash || docInfo.IPFSCID == decision.DocumentHash {
+			documentFound = true
+			break
+		}
+	}
+
+	if !documentFound {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Document not found in registry",
+		})
+		return
+	}
+
+	// Process the decision
+	approvalsMutex.Lock()
+	approvalKey := fmt.Sprintf("%s_%s_%s", decision.ExportID, decision.DocumentHash, orgType)
+	completedApproval := CompletedApproval{
+		ID:           approvalKey,
+		ExportID:     decision.ExportID,
+		DocumentHash: decision.DocumentHash,
+		Action:       decision.Action,
+		Comments:     decision.Comments,
+		ReviewedBy:   decision.ReviewedBy,
+		Timestamp:    time.Now(),
+	}
+	completedApprovals[approvalKey] = completedApproval
+	approvalsMutex.Unlock()
+
+	fmt.Printf("Document %s %s by %s for export %s\n", decision.DocumentHash, decision.Action, decision.ReviewedBy, decision.ExportID)
+
+	// Return success response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":    true,
+		"message":    fmt.Sprintf("Document %s successfully", strings.ToLower(decision.Action)),
+		"id":         approvalKey,
+		"timestamp":  completedApproval.Timestamp.Format(time.RFC3339),
+	})
+}
+
 	case "national-bank":
 		return "license" // Frontend uses lowercase
 	case "exporter-bank":
@@ -1273,7 +1472,7 @@ func getOrganizationPendingApprovalsHandler(w http.ResponseWriter, r *http.Reque
 				for _, approval := range completedApprovals {
 					if approval.ExportID == exportID &&
 						(approval.DocumentHash == docInfo.Hash || approval.DocumentHash == docInfo.IPFSCID) &&
-						approval.Action == "APPROVE" {
+						(approval.Action == "APPROVE" || approval.Action == "APPROVED") {
 						alreadyApproved = true
 						break
 					}
@@ -1282,7 +1481,7 @@ func getOrganizationPendingApprovalsHandler(w http.ResponseWriter, r *http.Reque
 
 				// Only include pending (not yet approved) documents
 				if !alreadyApproved {
-					// Create approval stage info
+					// Create approval stage info with full document metadata
 					approval := ApprovalStageInfo{
 						ID:           fmt.Sprintf("stage_%s_%s", exportID, docType),
 						ExportID:     exportID,
@@ -1296,6 +1495,14 @@ func getOrganizationPendingApprovalsHandler(w http.ResponseWriter, r *http.Reque
 						CreatedAt:    exportData.Timestamp,
 						UpdatedAt:    exportData.Timestamp,
 						StageOrder:   getStageOrder(docType),
+						// Include full document metadata for enhanced approver panel
+						IPFSCID:     docInfo.IPFSCID,
+						IPFSURL:     docInfo.IPFSURL,
+						IV:          docInfo.IV,
+						Key:         docInfo.Key,
+						Encrypted:   docInfo.Encrypted,
+						ContentType: docInfo.ContentType,
+						Size:        docInfo.Size,
 					}
 					pendingApprovals = append(pendingApprovals, approval)
 				}
@@ -2054,9 +2261,9 @@ func calculateExportStatus(exportID string) string {
 
 	for _, approval := range completedApprovals {
 		if approval.ExportID == exportID {
-			if approval.Action == "APPROVE" {
+			if approval.Action == "APPROVED" {
 				approvedDocs++
-			} else if approval.Action == "REJECT" {
+			} else if approval.Action == "REJECTED" {
 				rejectedDocs++
 			}
 		}
@@ -2090,7 +2297,7 @@ func calculateProgressPercent(exportID string) int {
 
 	approvedDocs := 0
 	for _, approval := range completedApprovals {
-		if approval.ExportID == exportID && approval.Action == "APPROVE" {
+		if approval.ExportID == exportID && approval.Action == "APPROVED" {
 			approvedDocs++
 		}
 	}
@@ -2326,3 +2533,556 @@ func generateDashboardNotifications(exporterFilter string) []DashboardNotificati
 
 	return notifications
 }
+
+// initializeTestData creates sample export requests for development/demo purposes
+func initializeTestData() {
+	fmt.Println("Initializing test data for development...")
+
+	// Create sample export requests
+	testExports := []struct {
+		exportID  string
+		exporter  string
+		timestamp time.Time
+		documents map[string]DocumentInfo
+	}{
+		{
+			exportID:  "EXP-2024-001",
+			exporter:  "Coffee Exporter Co.",
+			timestamp: time.Now().Add(-48 * time.Hour),
+			documents: map[string]DocumentInfo{
+				"license": {
+					Hash:        "a1b2c3d4e5f6789012345",
+					IPFSCID:     "QmTest1License",
+					IPFSURL:     "http://localhost:8090/ipfs/QmTest1License",
+					IV:          "test-iv-1",
+					Key:         "test-key-1",
+					Encrypted:   true,
+					ContentType: "application/pdf",
+					Size:        1024000,
+				},
+				"invoice": {
+					Hash:        "x9y8z7w6v5u4t3s2r1q0",
+					IPFSCID:     "QmTest1Invoice",
+					IPFSURL:     "http://localhost:8090/ipfs/QmTest1Invoice",
+					IV:          "test-iv-2",
+					Key:         "test-key-2",
+					Encrypted:   true,
+					ContentType: "application/pdf",
+					Size:        512000,
+				},
+				"qualityCert": {
+					Hash:        "q1w2e3r4t5y6u7i8o9p0",
+					IPFSCID:     "QmTest1Quality",
+					IPFSURL:     "http://localhost:8090/ipfs/QmTest1Quality",
+					IV:          "test-iv-3",
+					Key:         "test-key-3",
+					Encrypted:   true,
+					ContentType: "application/pdf",
+					Size:        768000,
+				},
+				"other": {
+					Hash:        "s1h2i3p4p5i6n7g8d9o0",
+					IPFSCID:     "QmTest1Shipping",
+					IPFSURL:     "http://localhost:8090/ipfs/QmTest1Shipping",
+					IV:          "test-iv-4",
+					Key:         "test-key-4",
+					Encrypted:   true,
+					ContentType: "application/pdf",
+					Size:        256000,
+				},
+			},
+		},
+		{
+			exportID:  "EXP-2024-002",
+			exporter:  "Coffee Exporter Co.",
+			timestamp: time.Now().Add(-24 * time.Hour),
+			documents: map[string]DocumentInfo{
+				"license": {
+					Hash:        "b2c3d4e5f6g7h8i9j0k1",
+					IPFSCID:     "QmTest2License",
+					IPFSURL:     "http://localhost:8090/ipfs/QmTest2License",
+					IV:          "test-iv-5",
+					Key:         "test-key-5",
+					Encrypted:   true,
+					ContentType: "application/pdf",
+					Size:        1024000,
+				},
+				"invoice": {
+					Hash:        "y8z7w6v5u4t3s2r1q0p9",
+					IPFSCID:     "QmTest2Invoice",
+					IPFSURL:     "http://localhost:8090/ipfs/QmTest2Invoice",
+					IV:          "test-iv-6",
+					Key:         "test-key-6",
+					Encrypted:   true,
+					ContentType: "application/pdf",
+					Size:        512000,
+				},
+			},
+		},
+		{
+			exportID:  "EXP-2024-003",
+			exporter:  "Coffee Exporter Co.",
+			timestamp: time.Now().Add(-6 * time.Hour),
+			documents: map[string]DocumentInfo{
+				"license": {
+					Hash:        "c3d4e5f6g7h8i9j0k1l2",
+					IPFSCID:     "QmTest3License",
+					IPFSURL:     "http://localhost:8090/ipfs/QmTest3License",
+					IV:          "test-iv-7",
+					Key:         "test-key-7",
+					Encrypted:   true,
+					ContentType: "application/pdf",
+					Size:        1024000,
+				},
+				"invoice": {
+					Hash:        "z7w6v5u4t3s2r1q0p9o8",
+					IPFSCID:     "QmTest3Invoice",
+					IPFSURL:     "http://localhost:8090/ipfs/QmTest3Invoice",
+					IV:          "test-iv-8",
+					Key:         "test-key-8",
+					Encrypted:   true,
+					ContentType: "application/pdf",
+					Size:        512000,
+				},
+				"qualityCert": {
+					Hash:        "r4t5y6u7i8o9p0a1s2d3",
+					IPFSCID:     "QmTest3Quality",
+					IPFSURL:     "http://localhost:8090/ipfs/QmTest3Quality",
+					IV:          "test-iv-9",
+					Key:         "test-key-9",
+					Encrypted:   true,
+					ContentType: "application/pdf",
+					Size:        768000,
+				},
+			},
+		},
+	}
+
+	// Store test exports
+	exportsMutex.Lock()
+	for _, testExport := range testExports {
+		submittedExports[testExport.exportID] = ExportData{
+			ExportID:  testExport.exportID,
+			Documents: testExport.documents,
+			Exporter:  testExport.exporter,
+			Timestamp: testExport.timestamp,
+			Status:    "SUBMITTED",
+		}
+	}
+	exportsMutex.Unlock()
+
+	// Create some sample approvals to show different statuses
+	approvalsMutex.Lock()
+	
+	// Approve license for EXP-2024-001 (partially approved)
+	completedApprovals["approval_1"] = CompletedApproval{
+		ID:           "approval_1",
+		ExportID:     "EXP-2024-001",
+		DocumentHash: "a1b2c3d4e5f6789012345",
+		Action:       "APPROVED",
+		Comments:     "License verified and approved",
+		ReviewedBy:   "National Bank Officer",
+		Timestamp:    time.Now().Add(-36 * time.Hour),
+	}
+
+	// Approve invoice for EXP-2024-001
+	completedApprovals["approval_2"] = CompletedApproval{
+		ID:           "approval_2",
+		ExportID:     "EXP-2024-001",
+		DocumentHash: "x9y8z7w6v5u4t3s2r1q0",
+		Action:       "APPROVED",
+		Comments:     "Invoice amount and details verified",
+		ReviewedBy:   "Bank API Officer",
+		Timestamp:    time.Now().Add(-30 * time.Hour),
+	}
+
+	// Fully approve EXP-2024-002 (all documents approved)
+	completedApprovals["approval_3"] = CompletedApproval{
+		ID:           "approval_3",
+		ExportID:     "EXP-2024-002",
+		DocumentHash: "b2c3d4e5f6g7h8i9j0k1",
+		Action:       "APPROVED",
+		Comments:     "License approved",
+		ReviewedBy:   "National Bank Officer",
+		Timestamp:    time.Now().Add(-18 * time.Hour),
+	}
+
+	completedApprovals["approval_4"] = CompletedApproval{
+		ID:           "approval_4",
+		ExportID:     "EXP-2024-002",
+		DocumentHash: "y8z7w6v5u4t3s2r1q0p9",
+		Action:       "APPROVED",
+		Comments:     "Invoice approved",
+		ReviewedBy:   "Bank API Officer",
+		Timestamp:    time.Now().Add(-12 * time.Hour),
+	}
+
+	// Reject a document for EXP-2024-003 (rejected status)
+	completedApprovals["approval_5"] = CompletedApproval{
+		ID:           "approval_5",
+		ExportID:     "EXP-2024-003",
+		DocumentHash: "c3d4e5f6g7h8i9j0k1l2",
+		Action:       "REJECTED",
+		Comments:     "License document is incomplete - missing signature",
+		ReviewedBy:   "National Bank Officer",
+		Timestamp:    time.Now().Add(-2 * time.Hour),
+	}
+
+	approvalsMutex.Unlock()
+
+	fmt.Printf("Test data initialized: %d export requests created\n", len(testExports))
+	fmt.Println("- EXP-2024-001: Partially approved (2/4 documents)")
+	fmt.Println("- EXP-2024-002: Fully approved (2/2 documents)")
+	fmt.Println("- EXP-2024-003: Rejected (license rejected)")
+}
+// IPFS proxy handlers to bypass CORS issues
+
+// ipfsAddHandler proxies file uploads to IPFS
+func ipfsAddHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Log the incoming request
+	log.Printf("IPFS Add Request: %s %s", r.Method, r.URL.Path)
+	log.Printf("Content-Type: %s", r.Header.Get("Content-Type"))
+	log.Printf("Content-Length: %s", r.Header.Get("Content-Length"))
+
+	// Parse multipart form data
+	err := r.ParseMultipartForm(32 << 20) // 32MB max memory
+	if err != nil {
+		log.Printf("Failed to parse multipart form: %v", err)
+		http.Error(w, "Failed to parse multipart form: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Forward the request to IPFS API (try docker container first, then localhost)
+	ipfsURL := "http://ipfs:5001/api/v0/add"
+	if r.URL.RawQuery != "" {
+		ipfsURL += "?" + r.URL.RawQuery
+	}
+
+	log.Printf("Attempting to forward request to IPFS at: %s", ipfsURL)
+
+	// Create a pipe to stream the request body
+	pr, pw := io.Pipe()
+	writer := multipart.NewWriter(pw)
+
+	// Create a goroutine to write the multipart form data to the pipe
+	go func() {
+		defer pw.Close()
+		defer writer.Close()
+
+		// Copy all form fields
+		for key, values := range r.MultipartForm.Value {
+			for _, value := range values {
+				writer.WriteField(key, value)
+			}
+		}
+
+		// Copy all file parts
+		for key, fileHeaders := range r.MultipartForm.File {
+			for _, fileHeader := range fileHeaders {
+				file, err := fileHeader.Open()
+				if err != nil {
+					log.Printf("Failed to open file: %v", err)
+					return
+				}
+				defer file.Close()
+
+				part, err := writer.CreateFormFile(key, fileHeader.Filename)
+				if err != nil {
+					log.Printf("Failed to create form file: %v", err)
+					return
+				}
+
+				_, err = io.Copy(part, file)
+				if err != nil {
+					log.Printf("Failed to copy file data: %v", err)
+					return
+				}
+			}
+		}
+	}()
+
+	// Create a new request to IPFS
+	req, err := http.NewRequest("POST", ipfsURL, pr)
+	if err != nil {
+		log.Printf("Failed to create IPFS request to %s: %v", ipfsURL, err)
+		// Fallback to localhost if container name fails
+		ipfsURL = "http://localhost:5001/api/v0/add"
+		if r.URL.RawQuery != "" {
+			ipfsURL += "?" + r.URL.RawQuery
+		}
+		log.Printf("Falling back to localhost IPFS at: %s", ipfsURL)
+		
+		// Create a new pipe for the fallback request
+		pr2, pw2 := io.Pipe()
+		writer2 := multipart.NewWriter(pw2)
+		
+		// Create a goroutine to write the multipart form data to the pipe
+		go func() {
+			defer pw2.Close()
+			defer writer2.Close()
+
+			// Copy all form fields
+			for key, values := range r.MultipartForm.Value {
+				for _, value := range values {
+					writer2.WriteField(key, value)
+				}
+			}
+
+			// Copy all file parts
+			for key, fileHeaders := range r.MultipartForm.File {
+				for _, fileHeader := range fileHeaders {
+					file, err := fileHeader.Open()
+					if err != nil {
+						log.Printf("Failed to open file: %v", err)
+						return
+					}
+					defer file.Close()
+
+					part, err := writer2.CreateFormFile(key, fileHeader.Filename)
+					if err != nil {
+						log.Printf("Failed to create form file: %v", err)
+						return
+					}
+
+					_, err = io.Copy(part, file)
+					if err != nil {
+						log.Printf("Failed to copy file data: %v", err)
+						return
+					}
+				}
+			}
+		}()
+		
+		req, err = http.NewRequest("POST", ipfsURL, pr2)
+		if err != nil {
+			log.Printf("Failed to create fallback IPFS request: %v", err)
+			http.Error(w, "Failed to create IPFS request", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Set the content type header
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Copy other headers (excluding CORS headers to avoid conflicts)
+	for name, values := range r.Header {
+		// Skip CORS headers to prevent duplication
+		if strings.HasPrefix(strings.ToLower(name), "access-control-") {
+			continue
+		}
+		// Skip content-type header as we're setting it ourselves
+		if strings.ToLower(name) == "content-type" {
+			continue
+		}
+		for _, value := range values {
+			req.Header.Add(name, value)
+		}
+	}
+
+	// Make the request to IPFS
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Failed to connect to IPFS at %s: %v", ipfsURL, err)
+		// Try fallback to localhost if container name fails
+		ipfsURL = "http://localhost:5001/api/v0/add"
+		if r.URL.RawQuery != "" {
+			ipfsURL += "?" + r.URL.RawQuery
+		}
+		log.Printf("Trying fallback to localhost IPFS at: %s", ipfsURL)
+		
+		// Create a new pipe for the fallback request
+		pr3, pw3 := io.Pipe()
+		writer3 := multipart.NewWriter(pw3)
+		
+		// Create a goroutine to write the multipart form data to the pipe
+		go func() {
+			defer pw3.Close()
+			defer writer3.Close()
+
+			// Copy all form fields
+			for key, values := range r.MultipartForm.Value {
+				for _, value := range values {
+					writer3.WriteField(key, value)
+				}
+			}
+
+			// Copy all file parts
+			for key, fileHeaders := range r.MultipartForm.File {
+				for _, fileHeader := range fileHeaders {
+					file, err := fileHeader.Open()
+					if err != nil {
+						log.Printf("Failed to open file: %v", err)
+						return
+					}
+					defer file.Close()
+
+					part, err := writer3.CreateFormFile(key, fileHeader.Filename)
+					if err != nil {
+						log.Printf("Failed to create form file: %v", err)
+						return
+					}
+
+					_, err = io.Copy(part, file)
+					if err != nil {
+						log.Printf("Failed to copy file data: %v", err)
+						return
+					}
+				}
+			}
+		}()
+		
+		req, err = http.NewRequest("POST", ipfsURL, pr3)
+		if err != nil {
+			log.Printf("Failed to create fallback IPFS request: %v", err)
+			http.Error(w, "Failed to create IPFS request", http.StatusInternalServerError)
+			return
+		}
+		
+		// Set the content type header
+		req.Header.Set("Content-Type", writer3.FormDataContentType())
+		
+		// Copy other headers again for fallback request
+		for name, values := range r.Header {
+			// Skip CORS headers to prevent duplication
+			if strings.HasPrefix(strings.ToLower(name), "access-control-") {
+				continue
+			}
+			// Skip content-type header as we're setting it ourselves
+			if strings.ToLower(name) == "content-type" {
+				continue
+			}
+			for _, value := range values {
+				req.Header.Add(name, value)
+			}
+		}
+		
+		resp, err = client.Do(req)
+		if err != nil {
+			log.Printf("Failed to connect to fallback IPFS at %s: %v", ipfsURL, err)
+			http.Error(w, "Failed to connect to IPFS: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+	}
+	defer resp.Body.Close()
+
+	log.Printf("IPFS response status: %d", resp.StatusCode)
+	log.Printf("IPFS response headers: %v", resp.Header)
+
+	// Check if we got a 403 error
+	if resp.StatusCode == http.StatusForbidden {
+		log.Printf("IPFS returned 403 Forbidden - logging response body for debugging")
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("IPFS 403 response body: %s", string(body))
+		
+		// Still return the 403 to the client, but with more information
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": "IPFS Forbidden",
+			"message": "The IPFS service returned a 403 Forbidden error",
+			"details": string(body),
+			"ipfsUrl": ipfsURL,
+		})
+		return
+	}
+
+	// Copy response headers (excluding CORS headers to prevent duplication)
+	for name, values := range resp.Header {
+		// Skip CORS headers - we handle CORS in our corsWrapper
+		if strings.HasPrefix(strings.ToLower(name), "access-control-") {
+			continue
+		}
+		for _, value := range values {
+			w.Header().Add(name, value)
+		}
+	}
+
+	// Set status code
+	w.WriteHeader(resp.StatusCode)
+
+	// Copy response body
+	io.Copy(w, resp.Body)
+}
+
+// ipfsGetHandler proxies file retrieval from IPFS
+func ipfsGetHandler(w http.ResponseWriter, r *http.Request) {
+	// Extract CID from URL path
+	path := strings.TrimPrefix(r.URL.Path, "/api/ipfs/")
+	if path == "" {
+		http.Error(w, "IPFS CID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Log the incoming request
+	log.Printf("IPFS Get Request: %s %s", r.Method, r.URL.Path)
+
+	// Forward the request to IPFS gateway (try docker container first, then localhost)
+	ipfsURL := fmt.Sprintf("http://ipfs:8080/ipfs/%s", path)
+	log.Printf("Attempting to fetch from IPFS at: %s", ipfsURL)
+
+	// Create a new request to IPFS
+	req, err := http.NewRequest("GET", ipfsURL, nil)
+	if err != nil {
+		log.Printf("Failed to create IPFS request to %s: %v", ipfsURL, err)
+		// Fallback to localhost if container name fails
+		ipfsURL = fmt.Sprintf("http://localhost:8090/ipfs/%s", path)
+		log.Printf("Falling back to localhost IPFS at: %s", ipfsURL)
+		req, err = http.NewRequest("GET", ipfsURL, nil)
+		if err != nil {
+			log.Printf("Failed to create fallback IPFS request: %v", err)
+			http.Error(w, "Failed to create IPFS request", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Make the request to IPFS
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Failed to connect to IPFS at %s: %v", ipfsURL, err)
+		// Try fallback to localhost if container name fails
+		ipfsURL = fmt.Sprintf("http://localhost:8090/ipfs/%s", path)
+		log.Printf("Trying fallback to localhost IPFS at: %s", ipfsURL)
+		req, err = http.NewRequest("GET", ipfsURL, nil)
+		if err != nil {
+			log.Printf("Failed to create fallback IPFS request: %v", err)
+			http.Error(w, "Failed to create IPFS request", http.StatusInternalServerError)
+			return
+		}
+		resp, err = client.Do(req)
+		if err != nil {
+			log.Printf("Failed to connect to fallback IPFS at %s: %v", ipfsURL, err)
+			http.Error(w, "Failed to connect to IPFS: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+	}
+	defer resp.Body.Close()
+
+	log.Printf("IPFS response status: %d", resp.StatusCode)
+
+	// Copy response headers (excluding CORS headers to prevent duplication)
+	for name, values := range resp.Header {
+		// Skip CORS headers - we handle CORS in our corsWrapper
+		if strings.HasPrefix(strings.ToLower(name), "access-control-") {
+			continue
+		}
+		for _, value := range values {
+			w.Header().Add(name, value)
+		}
+	}
+
+	// Set status code
+	w.WriteHeader(resp.StatusCode)
+
+	// Copy response body
+	io.Copy(w, resp.Body)
+}
+
+// Helper functions for organization and document management
+

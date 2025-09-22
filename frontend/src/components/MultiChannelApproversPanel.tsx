@@ -376,18 +376,22 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
   // Submit approval decision
   const submitApprovalDecision = async (approval: ApprovalStageInfo, decision: 'APPROVE' | 'REJECT', comments: string) => {
     try {
+      // Show loading state
+      toast.loading(`${decision === 'APPROVE' ? 'Approving' : 'Rejecting'} document...`, { id: 'approval-loading' });
+
       const response = await fetch(
         `http://localhost:8000/api/approval-channels/submit-decision?org=${organizationType}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-User-Role': userRole
+            'X-User-Role': userRole,
+            'X-Organization': organizationType,
           },
           body: JSON.stringify({
             documentHash: approval.documentHash,
             exportId: approval.exportId,
-            action: decision,
+            action: decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
             comments: comments,
             reviewedBy: `${config.name} Officer`
           })
@@ -395,17 +399,23 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
       );
       
       if (response.ok) {
-        toast.success(`Document ${decision.toLowerCase()}d successfully`);
+        toast.success(`Document ${decision.toLowerCase()}d successfully`, { id: 'approval-loading' });
         // Remove from pending and refresh
         setPendingApprovals(prev => prev.filter(p => p.id !== approval.id));
         setReviewingDocument(null);
         setReviewComments('');
+        
+        // Refresh the list to get updated data from server
+        setTimeout(() => {
+          fetchPendingApprovals();
+        }, 1000);
       } else {
-        toast.error('Failed to submit approval decision');
+        const errorText = await response.text();
+        toast.error(`Failed to submit approval decision: ${errorText}`, { id: 'approval-loading' });
       }
     } catch (error) {
       console.error('Error submitting approval:', error);
-      toast.error('Network error occurred');
+      toast.error(`Network error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: 'approval-loading' });
     }
   };
 

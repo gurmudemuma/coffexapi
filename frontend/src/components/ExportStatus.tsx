@@ -65,8 +65,8 @@ export const ExportStatus: React.FC<ExportStatusProps> = ({
   if (isLoading) {
     return (
       <div className="flex justify-center items-center p-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        <span className="ml-3 text-lg">Loading export status...</span>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <span className="ml-3 text-lg text-black">Loading export status...</span>
       </div>
     );
   }
@@ -78,53 +78,53 @@ export const ExportStatus: React.FC<ExportStatusProps> = ({
         onValueChange={(value: string) => setActiveTab(value as TabValue)}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
-          <TabsTrigger value="status">Status</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 max-w-md bg-purple-100 border border-purple-200">
+          <TabsTrigger value="status" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white text-purple-600">Status</TabsTrigger>
+          <TabsTrigger value="documents" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white text-purple-600">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="status" className="space-y-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">
+          <div className="bg-white rounded-lg shadow border border-purple-200 p-6">
+            <h2 className="text-xl font-semibold mb-4 text-black">
               Export Request Status
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                <h3 className="text-sm font-medium text-purple-600">
                   Export ID
                 </h3>
-                <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                <p className="mt-1 text-sm text-black">
                   {exportId}
                 </p>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                <h3 className="text-sm font-medium text-purple-600">
                   Transaction Hash
                 </h3>
-                <p className="mt-1 text-sm font-mono text-gray-900 dark:text-gray-100 truncate">
+                <p className="mt-1 text-sm font-mono text-black truncate">
                   {txHash}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-medium">Approval Status</h3>
+          <div className="bg-white rounded-lg shadow border border-purple-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-purple-200">
+              <h3 className="text-lg font-medium text-black">Approval Status</h3>
             </div>
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            <div className="divide-y divide-purple-200">
               {approvals.map((approval, index) => (
                 <div
                   key={index}
                   className="px-6 py-4 flex items-center justify-between"
                 >
                   <div>
-                    <h4 className="text-sm font-medium">{approval.name}</h4>
-                    <p className="text-sm text-muted-foreground">
+                    <h4 className="text-sm font-medium text-black">{approval.name}</h4>
+                    <p className="text-sm text-purple-600">
                       {approval.role}
                     </p>
                     {approval.comment && (
-                      <p className="text-sm mt-1 text-muted-foreground">
+                      <p className="text-sm mt-1 text-purple-600">
                         Note: {approval.comment}
                       </p>
                     )}
@@ -139,7 +139,7 @@ export const ExportStatus: React.FC<ExportStatusProps> = ({
                       {approval.status}
                     </span>
                     {approval.timestamp && (
-                      <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      <span className="mt-1 text-xs text-purple-600">
                         {new Date(approval.timestamp).toLocaleString()}
                       </span>
                     )}
@@ -151,8 +151,8 @@ export const ExportStatus: React.FC<ExportStatusProps> = ({
         </TabsContent>
 
         <TabsContent value="documents" className="space-y-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-6">Export Documents</h2>
+          <div className="bg-white rounded-lg shadow border border-purple-200 p-6">
+            <h2 className="text-xl font-semibold mb-6 text-black">Export Documents</h2>
             <div className="space-y-4">
               {documentEntries.map(([docType, doc]) => (
                 <DocumentViewer

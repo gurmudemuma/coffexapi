@@ -217,7 +217,9 @@ export default function ApproversPanel({ organizationType }: ApproversPanelProps
       const response = await fetch(`http://localhost:8000/approve`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-User-Role': 'APPROVER',
+          'X-Organization': organizationType,
         },
         body: JSON.stringify(approvalData)
       });

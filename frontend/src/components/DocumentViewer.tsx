@@ -278,17 +278,17 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   return (
-    <div className={cn('border rounded-lg p-6 bg-white shadow-sm', className)}>
+    <div className={cn('border border-purple-200 rounded-lg p-6 bg-white shadow-sm', className)}>
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-start space-x-4">
-          <div className="p-3 bg-blue-50 rounded-lg">
+          <div className="p-3 bg-purple-50 rounded-lg">
             {getFileIcon(documentMetadata?.contentType || '')}
           </div>
           <div>
-            <h3 className="font-medium text-gray-900">
+            <h3 className="font-medium text-black">
               {documentMetadata?.originalName || 'Document'}
             </h3>
-            <div className="text-sm text-gray-500 mt-1">
+            <div className="text-sm text-purple-600 mt-1">
               {documentMetadata?.contentType || 'Unknown type'}
               {documentMetadata?.size &&
                 ` • ${formatFileSize(documentMetadata.size)}`}
@@ -303,6 +303,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             size="sm"
             onClick={handlePreview}
             disabled={isPreviewLoading}
+            className="border-purple-200 text-purple-600 hover:bg-purple-50"
           >
             {isPreviewLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -315,6 +316,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             size="sm"
             onClick={handleDownload}
             disabled={isDownloading}
+            className="bg-purple-600 hover:bg-purple-700 text-white"
           >
             {isDownloading ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -336,36 +338,36 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       )}
 
       {verificationResult && (
-        <div className="mt-6 pt-6 border-t">
-          <h4 className="font-medium text-gray-900 mb-3">
+        <div className="mt-6 pt-6 border-t border-purple-200">
+          <h4 className="font-medium text-black mb-3">
             Verification Details
           </h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <div className="text-gray-500">Status</div>
-              <div className="font-medium">
+              <div className="text-purple-600">Status</div>
+              <div className="font-medium text-black">
                 {verificationResult.isValid ? 'Valid' : 'Invalid'}
               </div>
             </div>
             <div>
-              <div className="text-gray-500">Verified By</div>
-              <div className="font-medium">{verificationResult.verifiedBy}</div>
+              <div className="text-purple-600">Verified By</div>
+              <div className="font-medium text-black">{verificationResult.verifiedBy}</div>
             </div>
             <div>
-              <div className="text-gray-500">Document Hash</div>
-              <div className="font-mono text-xs truncate">
+              <div className="text-purple-600">Document Hash</div>
+              <div className="font-mono text-xs truncate text-black">
                 {verificationResult.documentHash}
               </div>
             </div>
             <div>
-              <div className="text-gray-500">Block Hash</div>
-              <div className="font-mono text-xs truncate">
+              <div className="text-purple-600">Block Hash</div>
+              <div className="font-mono text-xs truncate text-black">
                 {verificationResult.blockHash}
               </div>
             </div>
             <div>
-              <div className="text-gray-500">Timestamp</div>
-              <div className="font-medium">
+              <div className="text-purple-600">Timestamp</div>
+              <div className="font-medium text-black">
                 {verificationResult.timestamp
                   ? format(new Date(verificationResult.timestamp), 'PPpp')
                   : 'N/A'}

@@ -4,7 +4,7 @@ import { LogOut, Bell, User, Building, Shield, Award, Truck, Crown, Clock, Check
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MultiChannelApproversPanel } from './MultiChannelApproversPanel';
+import EnhancedApproverPanel from './EnhancedApproverPanel';
 
 interface OrganizationConfig {
   name: string;
@@ -246,9 +246,9 @@ export const BaseDashboard: React.FC<BaseDashboardProps> = ({
           </Card>
         </div>
 
-        {/* Main Approval Panel */}
+        {/* Enhanced Approval Panel */}
         <div className="bg-white rounded-lg shadow-sm border">
-          <MultiChannelApproversPanel 
+          <EnhancedApproverPanel 
             organizationType={organizationType} 
             userRole={userRole}
           />
