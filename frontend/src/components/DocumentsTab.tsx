@@ -56,7 +56,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
                           ? '3'
                           : '4'}
                 </div>
-                <h3 className="font-medium text-gray-900 dark:text-white">
+                <h3 className="font-medium text-gray-900">
                   {getDocumentLabel(type)}
                 </h3>
               </div>

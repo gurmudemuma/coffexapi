@@ -216,6 +216,39 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
     return () => clearInterval(interval);
   }, [exporterName]);
 
+  // Listen for successful submissions from the ExportForm and inform the test API
+  useEffect(() => {
+    const onExportSubmitted = async (evt: Event) => {
+      const anyEvt = evt as CustomEvent<any>;
+      const payload = anyEvt.detail || {};
+      const exportId: string | undefined = payload.exportId;
+      try {
+        // Create a minimal request entry on the test server so metrics update immediately
+        await fetch('http://localhost:8000/api/exporter/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            exporterName: exporterName,
+            exportId: exportId,
+            referenceNumber: exportId || `AUTO-${Date.now()}`,
+            totalValue: 0,
+            destinationCountry: 'N/A',
+            documentCount: 4
+          })
+        });
+      } catch (e) {
+        console.warn('Failed to notify test API of submission:', e);
+      } finally {
+        // Refresh UI regardless
+        fetchDashboardData();
+        fetchRequests();
+      }
+    };
+
+    window.addEventListener('exportSubmissionSuccess', onExportSubmitted as EventListener);
+    return () => window.removeEventListener('exportSubmissionSuccess', onExportSubmitted as EventListener);
+  }, [exporterName]);
+
   useEffect(() => {
     // Update status filter when initialStatusFilter changes
     if (initialStatusFilter !== null) {
@@ -249,7 +282,7 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
 
   // Filter requests
   const filteredRequests = allRequests.filter(request => {
-    const matchesStatus = statusFilter === 'all' || request.status.toLowerCase() === statusFilter;
+    const matchesStatus = statusFilter === 'all' || statusFilter === null || request.status.toLowerCase() === statusFilter.toLowerCase();
     const matchesSearch = !searchTerm || 
       request.exportId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.referenceNumber.toLowerCase().includes(searchTerm.toLowerCase());
@@ -308,8 +341,8 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                   {dashboardData?.totalRequests || 0}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <FileText className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <FileText className="w-6 h-6 text-purple-600" />
               </div>
             </div>
           </CardContent>
@@ -324,8 +357,8 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                   {dashboardData?.pendingApproval || 0}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                <Clock className="w-6 h-6 text-yellow-600" />
+              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                <Clock className="w-6 h-6 text-amber-600" />
               </div>
             </div>
           </CardContent>
@@ -340,8 +373,8 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                   {dashboardData?.approved || 0}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-purple-600" />
               </div>
             </div>
           </CardContent>
@@ -541,7 +574,7 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                         </div>
                         <div className="flex items-center gap-2">
                           {!notification.isRead && (
-                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                            <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
                           )}
                           <Button variant="ghost" size="sm">
                             <Eye className="w-4 h-4" />

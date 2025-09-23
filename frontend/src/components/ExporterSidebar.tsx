@@ -91,7 +91,7 @@ export const ExporterSidebar: React.FC<ExporterSidebarProps> = ({
                   onClick={() => handleNavigation(item.path)}
                   className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
                     isActive
-                      ? 'bg-indigo-100 text-indigo-700 font-medium'
+                      ? 'bg-purple-100 text-purple-700 font-medium'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >

@@ -82,6 +82,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
   const [reviewingDocument, setReviewingDocument] = useState<ApprovalStageInfo | null>(null);
   const [reviewComments, setReviewComments] = useState('');
   const [reviewDecision, setReviewDecision] = useState<'APPROVE' | 'REJECT'>('APPROVE');
+  const [metrics, setMetrics] = useState<{ pending: number; approved: number; rejected: number } | null>(null);
 
   // Organization configuration
   const getOrganizationConfig = () => {
@@ -116,6 +117,31 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
 
   const config = getOrganizationConfig();
   const isSupervisor = userRole === 'BANK_SUPERVISOR' || userRole === 'BANK';
+
+  // Fetch per-organization summary metrics (pending/approved/rejected)
+  const fetchSummaryMetrics = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/approval-channels/summary', {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      // data.summary is keyed by org slug; data.totals for supervisors
+      if (isSupervisor) {
+        const t = data.totals || { pending: 0, approved: 0, rejected: 0 };
+        setMetrics({ pending: t.Pending ?? t.pending ?? 0, approved: t.Approved ?? t.approved ?? 0, rejected: t.Rejected ?? t.rejected ?? 0 });
+      } else {
+        const s = (data.summary && data.summary[organizationType]) || { Pending: 0, Approved: 0, Rejected: 0 };
+        setMetrics({
+          pending: s.Pending ?? s.pending ?? 0,
+          approved: s.Approved ?? s.approved ?? 0,
+          rejected: s.Rejected ?? s.rejected ?? 0,
+        });
+      }
+    } catch (e) {
+      // Silent fail; fallback will be pendingApprovals.length in UI
+    }
+  };
 
   // Debug logging
   console.log(`[DEBUG] Component initialized with org: ${organizationType}, role: ${userRole}`);
@@ -400,6 +426,20 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
         setPendingApprovals(prev => prev.filter(p => p.id !== approval.id));
         setReviewingDocument(null);
         setReviewComments('');
+        // Refresh metrics
+        fetchSummaryMetrics();
+        // Emit a global event so other parts of the portal (e.g., exporter dashboard) can refresh immediately
+        try {
+          const evt = new CustomEvent('approvalDecisionMade', {
+            detail: {
+              exportId: approval.exportId,
+              documentHash: approval.documentHash,
+              organization: organizationType,
+              action: decision
+            }
+          });
+          window.dispatchEvent(evt);
+        } catch {}
       } else {
         toast.error('Failed to submit approval decision');
       }
@@ -419,6 +459,8 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
       console.log('[DEBUG] Fetching pending approvals...');
       fetchPendingApprovals();
     }
+    // Fetch metrics for header
+    fetchSummaryMetrics();
 
     // Set up polling every 30 seconds
     const interval = setInterval(() => {
@@ -428,9 +470,24 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
       } else {
         fetchPendingApprovals();
       }
+      fetchSummaryMetrics();
     }, 30000);
 
-    return () => clearInterval(interval);
+    // Refresh immediately when an export is submitted in the exporter portal
+    const onExportSubmitted = () => {
+      if (isSupervisor) {
+        fetchSupervisorView();
+      } else {
+        fetchPendingApprovals();
+      }
+      fetchSummaryMetrics();
+    };
+    window.addEventListener('exportSubmissionSuccess', onExportSubmitted as EventListener);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('exportSubmissionSuccess', onExportSubmitted as EventListener);
+    };
   }, [organizationType, userRole]);
 
   // Filter and search logic
@@ -651,6 +708,52 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
         </div>
       </div>
 
+      {/* Metrics Row */}
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {(() => {
+          const pendingCount = metrics?.pending ?? pendingApprovals.length;
+          const approvedCount = metrics?.approved ?? 0;
+          const rejectedCount = metrics?.rejected ?? 0;
+          return (
+            <>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Pending</p>
+                      <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
+                    </div>
+                    <Clock className="w-6 h-6 text-amber-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Approved</p>
+                      <p className="text-2xl font-bold text-green-600">{approvedCount}</p>
+                    </div>
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Rejected</p>
+                      <p className="text-2xl font-bold text-red-600">{rejectedCount}</p>
+                    </div>
+                    <XCircle className="w-6 h-6 text-red-600" />
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          );
+        })()}
+      </div>
+
       {/* Filters and Search */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
@@ -680,6 +783,8 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
           </Select>
         </div>
       </div>
+
+      {/* Metrics and Quick Actions removed to avoid duplication */}
 
       {/* Main Content */}
       {isSupervisor ? (

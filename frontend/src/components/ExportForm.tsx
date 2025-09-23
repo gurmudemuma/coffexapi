@@ -43,7 +43,11 @@ type TradeDetails = {
   specialInstructions?: string;
 };
 
-export default function ExportForm() {
+type ExportFormProps = {
+  onSubmitted?: (result: { exportId: string; txHash: string }) => void;
+};
+
+const ExportForm: React.FC<ExportFormProps> = ({ onSubmitted }) => {
   const [activeTab, setActiveTab] = useState<
     'exporter' | 'trade' | 'documents'
   >('exporter');
@@ -287,9 +291,14 @@ export default function ExportForm() {
 
       const result = await submitExport(
         exportDocuments,
-        exporterDetails.registrationNumber
+        exporterDetails.companyName
       );
       console.log('Export submitted successfully:', result);
+
+      // Notify parent immediately for local UI updates
+      try {
+        onSubmitted?.(result);
+      } catch {}
 
       // Store the submitted export details
       setSubmittedExport({
@@ -491,13 +500,13 @@ export default function ExportForm() {
                 }
               }, 100);
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-blue-600 text-black rounded-lg hover:bg-blue-700 transition-colors"
           >
             View Dashboard
           </button>
           <button
             onClick={handleNewExport}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+            className="px-4 py-2 bg-primary text-black rounded-lg hover:bg-primary/90 transition-colors"
           >
             Submit Another Export
           </button>
@@ -539,7 +548,7 @@ export default function ExportForm() {
                   }}
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                     activeTab === tab
-                      ? 'bg-primary text-white'
+                      ? 'bg-primary text-black'
                       : isEnabled
                         ? 'bg-primary/10 text-primary hover:bg-primary/20'
                         : 'bg-muted text-muted-foreground cursor-not-allowed'
@@ -642,7 +651,7 @@ export default function ExportForm() {
                   (activeTab === 'exporter' && !isExporterDetailsValid()) ||
                   (activeTab === 'trade' && !isTradeDetailsValid())
                 }
-                className={`px-4 py-2 rounded-md text-white ${
+                className={`px-4 py-2 rounded-md text-black ${
                   (activeTab === 'exporter' && isExporterDetailsValid()) ||
                   (activeTab === 'trade' && isTradeDetailsValid())
                     ? 'bg-primary hover:bg-primary/90'
@@ -655,7 +664,7 @@ export default function ExportForm() {
               <button
                 type="submit"
                 disabled={!isFormValid || status === 'submitting'}
-                className={`px-4 py-2 rounded-md text-white ${
+                className={`px-4 py-2 rounded-md text-black ${
                   isFormValid && status !== 'submitting'
                     ? 'bg-primary hover:bg-primary/90'
                     : 'bg-gray-400 cursor-not-allowed'
@@ -670,3 +679,5 @@ export default function ExportForm() {
     </div>
   );
 }
+
+export default ExportForm;

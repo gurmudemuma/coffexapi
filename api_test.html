@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin: 10px 0; padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+    </style>
+</head>
+<body>
+    <h1>Coffee Export API Test</h1>
+    
+    <button onclick="createSampleData()">Create Sample Data</button>
+    <button onclick="testDashboard()">Test Dashboard API</button>
+    <button onclick="testRequests()">Test Requests API</button>
+    <button onclick="clearResults()">Clear Results</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        
+        function addResult(message, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${isError ? 'error' : 'success'}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function createSampleData() {
+            try {
+                addResult('Creating sample data...');
+                const response = await fetch(`${API_BASE}/api/test/create-sample-data`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                addResult(`Sample data created successfully: ${JSON.stringify(data)}`);
+            } catch (error) {
+                addResult(`Error creating sample data: ${error.message}`, true);
+            }
+        }
+        
+        async function testDashboard() {
+            try {
+                addResult('Testing dashboard API...');
+                const response = await fetch(`${API_BASE}/api/exporter/dashboard?exporter=Coffee Exporter Co.`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                addResult(`Dashboard data: Total: ${data.totalRequests}, Pending: ${data.pendingApproval}, Approved: ${data.approved}, Rejected: ${data.rejected}`);
+            } catch (error) {
+                addResult(`Error fetching dashboard: ${error.message}`, true);
+            }
+        }
+        
+        async function testRequests() {
+            try {
+                addResult('Testing requests API...');
+                const response = await fetch(`${API_BASE}/api/exporter/requests?exporter=Coffee Exporter Co.&status=all`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                addResult(`Requests data: Found ${data.total} requests`);
+                
+                if (data.requests && data.requests.length > 0) {
+                    data.requests.forEach((req, index) => {
+                        addResult(`Request ${index + 1}: ${req.exportId} - Status: ${req.status} - Value: $${req.totalValue}`);
+                    });
+                }
+            } catch (error) {
+                addResult(`Error fetching requests: ${error.message}`, true);
+            }
+        }
+        
+        // Test CORS on page load
+        window.onload = function() {
+            addResult('Page loaded. Ready to test API endpoints.');
+            addResult('Click "Create Sample Data" first, then test the other endpoints.');
+        };
+    </script>
+</body>
+</html>

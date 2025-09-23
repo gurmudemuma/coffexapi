@@ -4,17 +4,19 @@
     <title>API Test</title>
 </head>
 <body>
-    <h1>API Test</h1>
-    <button onclick="testAPI()">Test Exporter Bank API</button>
+    <h1>Dashboard API Test</h1>
+    <button onclick="createSampleData()">Create Sample Data</button>
+    <button onclick="testDashboard()">Test Dashboard API</button>
+    <button onclick="testRequests()">Test Requests API</button>
     <div id="result"></div>
 
     <script>
-        async function testAPI() {
+        async function createSampleData() {
             try {
-                console.log('Testing API...');
-                const response = await fetch('http://localhost:8000/api/approval-channels/pending?org=exporter-bank', {
+                console.log('Creating sample data...');
+                const response = await fetch('http://localhost:8000/api/test/create-sample-data', {
+                    method: 'POST',
                     headers: {
-                        'X-User-Role': 'APPROVER',
                         'Content-Type': 'application/json'
                     }
                 });
@@ -23,9 +25,67 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('API Response:', data);
+                    console.log('Sample Data Response:', data);
                     document.getElementById('result').innerHTML = 
-                        '<h2>Success!</h2><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                        '<h2>Sample Data Created!</h2><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                } else {
+                    const error = await response.text();
+                    console.error('API Error:', error);
+                    document.getElementById('result').innerHTML = 
+                        '<h2>Error!</h2><p>Status: ' + response.status + '</p><p>' + error + '</p>';
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                document.getElementById('result').innerHTML = 
+                    '<h2>Network Error!</h2><p>' + error.message + '</p>';
+            }
+        }
+
+        async function testDashboard() {
+            try {
+                console.log('Testing Dashboard API...');
+                const response = await fetch('http://localhost:8000/api/exporter/dashboard?exporter=Coffee Exporter Co.', {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Dashboard Response:', data);
+                    document.getElementById('result').innerHTML = 
+                        '<h2>Dashboard Data!</h2><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                } else {
+                    const error = await response.text();
+                    console.error('API Error:', error);
+                    document.getElementById('result').innerHTML = 
+                        '<h2>Error!</h2><p>Status: ' + response.status + '</p><p>' + error + '</p>';
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                document.getElementById('result').innerHTML = 
+                    '<h2>Network Error!</h2><p>' + error.message + '</p>';
+            }
+        }
+
+        async function testRequests() {
+            try {
+                console.log('Testing Requests API...');
+                const response = await fetch('http://localhost:8000/api/exporter/requests?exporter=Coffee Exporter Co.', {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Requests Response:', data);
+                    document.getElementById('result').innerHTML = 
+                        '<h2>Requests Data!</h2><pre>' + JSON.stringify(data, null, 2) + '</pre>';
                 } else {
                     const error = await response.text();
                     console.error('API Error:', error);

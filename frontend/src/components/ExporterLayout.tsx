@@ -63,7 +63,7 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:8000/api/exporter/dashboard?exporter=${encodeURIComponent(exporterName)}`
+        `http://localhost:8000/api/exporter/dashboard?exporter=all`
       );
       
       if (response.ok) {
@@ -84,7 +84,48 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
         metrics.approved = Number(metrics.approved) || 0;
         metrics.rejected = Number(metrics.rejected) || 0;
         
-        setDashboardMetrics(metrics);
+        // If backend returns empty metrics, derive counts from requests API as fallback
+        const looksEmpty =
+          metrics.totalRequests === 0 &&
+          metrics.pendingApproval === 0 &&
+          metrics.approved === 0 &&
+          metrics.rejected === 0;
+
+        if (looksEmpty) {
+          try {
+            const listRes = await fetch(
+              `http://localhost:8000/api/exporter/requests?exporter=all&status=all`
+            );
+            if (listRes.ok) {
+              const listData: any = await listRes.json();
+              const requests: Array<{ status?: string } & Record<string, any>> = listData.requests || [];
+              // Count by status (case-insensitive)
+              let total = requests.length;
+              let pending = 0;
+              let approved = 0;
+              let rejected = 0;
+              for (const r of requests) {
+                const s = (r.status || '').toString().toLowerCase();
+                if (s === 'pending') pending++;
+                else if (s === 'approved') approved++;
+                else if (s === 'rejected') rejected++;
+              }
+              setDashboardMetrics({
+                totalRequests: total,
+                pendingApproval: pending,
+                approved,
+                rejected,
+              });
+            } else {
+              setDashboardMetrics(metrics);
+            }
+          } catch (fallbackErr) {
+            console.warn('Fallback requests fetch failed:', fallbackErr);
+            setDashboardMetrics(metrics);
+          }
+        } else {
+          setDashboardMetrics(metrics);
+        }
       } else {
         console.error('Failed to fetch dashboard data:', response.statusText);
         toast.error('Failed to load dashboard data');
@@ -112,7 +153,55 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
       fetchDashboardData();
     }, 30000);
 
-    return () => clearInterval(interval);
+    // Listen for successful export submissions to refresh immediately with optimistic update
+    const onExportSubmitted = () => {
+      // Optimistically bump counters so user sees instant feedback
+      setDashboardMetrics(prev => ({
+        ...prev,
+        totalRequests: (prev.totalRequests ?? 0) + 1,
+        pendingApproval: (prev.pendingApproval ?? 0) + 1,
+      }));
+      // Ensure we're on dashboard and schedule a definitive refresh shortly after
+      setActiveView('dashboard');
+      setTimeout(() => {
+        handleRefresh();
+      }, 1500);
+    };
+    window.addEventListener('exportSubmissionSuccess', onExportSubmitted as EventListener);
+
+    // Listen for approval decisions from approver dashboards to refresh exporter metrics immediately
+    const onApprovalDecision = (e: Event) => {
+      try {
+        const detail = (e as CustomEvent).detail || {};
+        const { action, exportId } = detail || {};
+        // Show a friendly notification to the exporter
+        if (action === 'APPROVE') {
+          toast.success(`Your export ${exportId || ''} was approved by an approver channel`);
+        } else if (action === 'REJECT') {
+          toast.warning(`Your export ${exportId || ''} requires action (rejected by approver)`);
+        }
+      } catch {}
+      // Refresh metrics right away
+      handleRefresh();
+    };
+    window.addEventListener('approvalDecisionMade', onApprovalDecision as EventListener);
+
+    // Refresh on window focus/visibility to reduce stale metrics
+    const onVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboardData();
+      }
+    };
+    window.addEventListener('focus', onVisibilityOrFocus);
+    document.addEventListener('visibilitychange', onVisibilityOrFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('exportSubmissionSuccess', onExportSubmitted as EventListener);
+      window.removeEventListener('approvalDecisionMade', onApprovalDecision as EventListener);
+      window.removeEventListener('focus', onVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', onVisibilityOrFocus);
+    };
   }, [exporterName]);
 
   const handleLogout = () => {
@@ -126,24 +215,24 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
     // Set filter based on the metric clicked
     switch (metric) {
       case 'pendingApproval':
-        setFilterStatus('PENDING');
+        setFilterStatus('pending');
         break;
       case 'approved':
-        setFilterStatus('APPROVED');
+        setFilterStatus('approved');
         break;
       case 'rejected':
-        setFilterStatus('REJECTED');
+        setFilterStatus('rejected');
         break;
       case 'totalRequests':
-        setFilterStatus(null); // Show all requests
+        setFilterStatus('all'); // Show all requests
         break;
       default:
-        setFilterStatus(null);
+        setFilterStatus('all');
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-yellow-50">
       {/* Sidebar */}
       <ExporterSidebar 
         exporterName={exporterName} 
@@ -161,11 +250,11 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <header className="bg-purple-700 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Exporter Dashboard</h1>
-              <p className="text-gray-600">Welcome back, {exporterName}</p>
+              <h1 className="text-2xl font-bold text-yellow-200">Exporter Dashboard</h1>
+              <p className="text-purple-100">Welcome back, {exporterName}</p>
             </div>
             <div className="flex items-center space-x-4">
               <Button 
@@ -173,17 +262,18 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
                 size="sm"
                 onClick={handleRefresh}
                 disabled={refreshing}
+                className="bg-yellow-100 text-gray-900 hover:bg-yellow-200 border-none"
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold">
+                <div className="w-8 h-8 rounded-full bg-yellow-400 text-purple-900 flex items-center justify-center font-semibold">
                   {exporterName.charAt(0)}
                 </div>
-                <span className="font-medium text-gray-900">{exporterName}</span>
+                <span className="font-medium text-white">{exporterName}</span>
               </div>
-              <Button variant="outline" onClick={handleLogout}>
+              <Button variant="outline" onClick={handleLogout} className="bg-white/10 text-white border-white/30 hover:bg-white/20">
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
@@ -209,8 +299,8 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
                           {loading ? '...' : dashboardMetrics.totalRequests}
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                        <FileText className="w-6 h-6 text-blue-600" />
+                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                        <FileText className="w-6 h-6 text-purple-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -228,8 +318,8 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
                           {loading ? '...' : dashboardMetrics.pendingApproval}
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <Clock className="w-6 h-6 text-yellow-600" />
+                      <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                        <Clock className="w-6 h-6 text-amber-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -247,8 +337,8 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
                           {loading ? '...' : dashboardMetrics.approved}
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                        <CheckCircle className="w-6 h-6 text-green-600" />
+                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-6 h-6 text-purple-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -262,12 +352,12 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Requires Action</p>
-                        <p className="text-3xl font-bold text-red-600">
+                        <p className="text-3xl font-bold text-purple-700">
                           {loading ? '...' : dashboardMetrics.rejected}
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                        <XCircle className="w-6 h-6 text-red-600" />
+                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                        <XCircle className="w-6 h-6 text-purple-700" />
                       </div>
                     </div>
                   </CardContent>

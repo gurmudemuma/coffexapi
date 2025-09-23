@@ -7,13 +7,13 @@
 @layer base {
   :root {
     --background: 240 10% 98%;
-    --foreground: 240 10% 10%;
+    --foreground: 0 0% 0%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 10%;
+    --card-foreground: 0 0% 0%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 10%;
+    --popover-foreground: 0 0% 0%;
 
     --primary: 260 84% 60%;
     --primary-50: 264 100% 98%;
@@ -26,19 +26,19 @@
     --primary-700: 264 100% 35%;
     --primary-800: 264 100% 25%;
     --primary-900: 264 100% 15%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
 
     --secondary: 45 100% 50%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary-foreground: 0 0% 0%;
 
     --muted: 240 10% 96%;
-    --muted-foreground: 240 4% 46%;
+    --muted-foreground: 0 0% 0%;
 
     --accent: 45 100% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent-foreground: 0 0% 0%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
 
     --border: 240 6% 90%;
     --input: 240 6% 90%;
@@ -122,7 +122,7 @@
   }
 
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply bg-primary-600 hover:bg-primary-700 text-black font-medium py-2 px-4 rounded-lg transition-colors duration-200;
   }
 
   .btn-secondary {
@@ -151,3 +151,4 @@
 .dark ::-webkit-scrollbar-thumb {
   @apply bg-primary-600 hover:bg-primary-500;
 }
+

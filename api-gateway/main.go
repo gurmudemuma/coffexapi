@@ -94,19 +94,28 @@ type CompletedApproval struct {
 	Action       string    `json:"action"`
 	Comments     string    `json:"comments"`
 	ReviewedBy   string    `json:"reviewedBy"`
+	Organization string    `json:"organization"`
 	Timestamp    time.Time `json:"timestamp"`
 }
 
-// In-memory storage for submitted exports (in production, use a database)
+// In-memory storage for documents and metadata
 var (
-	submittedExports   = make(map[string]ExportData)
-	exportsMutex       = sync.RWMutex{}
+	documentStorage   = make(map[string][]byte)
+	unencryptedStorage = make(map[string][]byte) // For approver access
+	documentMetadata  = make(map[string]map[string]interface{})
+	documentMutex     sync.RWMutex
+
+	// In-memory storage for submitted exports
+	submittedExports = make(map[string]ExportData)
+	exportsMutex     sync.RWMutex
+
+	// Sample data storage for testing
+	sampleExports = make(map[string]map[string]interface{})
+	sampleMutex   sync.RWMutex
+
+	// Approvals storage (store individual approvals keyed by ID)
 	completedApprovals = make(map[string]CompletedApproval)
-	approvalsMutex     = sync.RWMutex{}
-	documentStorage    = make(map[string][]byte) // Encrypted/original documents
-	documentMetadata   = make(map[string]map[string]interface{})
-	documentMutex      = sync.RWMutex{}
-	unencryptedStorage = make(map[string][]byte) // Unencrypted documents for approver access
+	approvalsMutex     sync.RWMutex
 )
 
 // enableCORS adds CORS headers to allow cross-origin requests
@@ -146,6 +155,8 @@ func main() {
 	http.HandleFunc("/approve", corsWrapper(approveHandler))              // Document approval endpoint
 	// Multi-channel approval endpoints
 	http.HandleFunc("/api/approval-channels/pending", corsWrapper(getOrganizationPendingApprovalsHandler))
+	// Summary endpoint used by approver dashboards (BaseDashboard)
+	http.HandleFunc("/api/approval-channels/summary", corsWrapper(getApprovalChannelsSummaryHandler))
 	http.HandleFunc("/api/approval-channels/submit-decision", corsWrapper(submitApprovalDecisionHandler))
 	http.HandleFunc("/api/supervisor/exports", corsWrapper(getBankSupervisorExportsHandler))
 	http.HandleFunc("/api/supervisor/export/", corsWrapper(getBankSupervisorViewHandler))
@@ -154,6 +165,9 @@ func main() {
 	http.HandleFunc("/api/exporter/dashboard", corsWrapper(getExporterDashboardHandler))
 	http.HandleFunc("/api/exporter/requests", corsWrapper(getExporterRequestsHandler))
 	http.HandleFunc("/api/exporter/request/", corsWrapper(getExporterRequestDetailHandler))
+	// Minimal submission notifier used by frontend to reflect new exports immediately
+	http.HandleFunc("/api/exporter/submit", corsWrapper(handleExporterSubmitNotify))
+	http.HandleFunc("/api/test/create-sample-data", corsWrapper(createSampleDataHandler))
 	http.HandleFunc("/health", corsWrapper(healthHandler))
 
 	// Start HTTP server
@@ -632,7 +646,7 @@ func completedApprovalsHandler(w http.ResponseWriter, r *http.Request) {
 	org := r.URL.Query().Get("org")
 
 	// Mock data for development - replace with real blockchain queries
-	mockCompletedApprovals := map[string]interface{}{
+	completedApprovals := map[string]interface{}{
 		"completedApprovals": []map[string]interface{}{
 			{
 				"id":           "3",
@@ -650,20 +664,136 @@ func completedApprovalsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(mockCompletedApprovals)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(completedApprovals)
+}
+
+func createSampleDataHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Create sample export requests
+	sampleRequests := []map[string]interface{}{
+		{
+			"exportId":        "EXP-2024-001",
+			"referenceNumber": "REF-001-2024",
+			"exporterName":    "Coffee Exporter Co.",
+			"status":          "pending",
+			"submissionDate":  time.Now().AddDate(0, 0, -5).Format(time.RFC3339),
+			"lastUpdated":     time.Now().AddDate(0, 0, -1).Format(time.RFC3339),
+			"currentApprover": "National Bank",
+			"progressPercent": 25,
+			"documentCount":   4,
+			"totalValue":      50000,
+			"destinationCountry": "Germany",
+		},
+		{
+			"exportId":        "EXP-2024-002",
+			"referenceNumber": "REF-002-2024",
+			"exporterName":    "Coffee Exporter Co.",
+			"status":          "approved",
+			"submissionDate":  time.Now().AddDate(0, 0, -10).Format(time.RFC3339),
+			"lastUpdated":     time.Now().AddDate(0, 0, -2).Format(time.RFC3339),
+			"currentApprover": "Completed",
+			"progressPercent": 100,
+			"documentCount":   4,
+			"totalValue":      75000,
+			"destinationCountry": "USA",
+		},
+		{
+			"exportId":        "EXP-2024-003",
+			"referenceNumber": "REF-003-2024",
+			"exporterName":    "Coffee Exporter Co.",
+			"status":          "rejected",
+			"submissionDate":  time.Now().AddDate(0, 0, -7).Format(time.RFC3339),
+			"lastUpdated":     time.Now().AddDate(0, 0, -3).Format(time.RFC3339),
+			"currentApprover": "Coffee Authority",
+			"progressPercent": 50,
+			"documentCount":   4,
+			"totalValue":      30000,
+			"destinationCountry": "Japan",
+		},
+		{
+			"exportId":        "EXP-2024-004",
+			"referenceNumber": "REF-004-2024",
+			"exporterName":    "Coffee Exporter Co.",
+			"status":          "pending",
+			"submissionDate":  time.Now().AddDate(0, 0, -3).Format(time.RFC3339),
+			"lastUpdated":     time.Now().Format(time.RFC3339),
+			"currentApprover": "Exporter Bank",
+			"progressPercent": 75,
+			"documentCount":   4,
+			"totalValue":      60000,
+			"destinationCountry": "Netherlands",
+		},
+	}
+
+	// Store sample data in memory (in a real app, this would go to blockchain/database)
+	sampleMutex.Lock()
+	for _, req := range sampleRequests {
+		exportId := req["exportId"].(string)
+		sampleExports[exportId] = req
+		fmt.Printf("Created sample export request: %s\n", exportId)
+	}
+	sampleMutex.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Sample data created successfully",
+		"count":   len(sampleRequests),
+	})
 }
 
 // healthHandler provides a health check endpoint
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+}
+
+func handleExporterSubmitNotify(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var notifyData map[string]interface{}
+	err := json.NewDecoder(r.Body).Decode(&notifyData)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	exportId, ok := notifyData["exportId"].(string)
+	if !ok || exportId == "" {
+		http.Error(w, "Missing export ID", http.StatusBadRequest)
+		return
+	}
+
+	// Create a new export entry with pending status
+	exportsMutex.Lock()
+	submittedExports[exportId] = ExportData{
+		ExportID:  exportId,
+		Status:    "pending",
+		Exporter:  "Coffee Exporter Co.",
+		Timestamp: time.Now(),
+		Documents: make(map[string]DocumentInfo),
+	}
+	exportsMutex.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":    "healthy",
-		"service":   "api-gateway",
-		"timestamp": time.Now().Format(time.RFC3339),
+		"success": true,
+		"message": "Export submission notification received",
 	})
 }
 
-// getDocTypeForOrg returns the document type that an organization is responsible for
+// ... (rest of the code remains the same)
 func getDocTypeForOrg(org string) string {
 	switch org {
 	case "national-bank":
@@ -1324,8 +1454,124 @@ func getOrganizationPendingApprovalsHandler(w http.ResponseWriter, r *http.Reque
 		"organizationType": orgType,
 		"pendingApprovals": pendingApprovals,
 		"count":            len(pendingApprovals),
-		"userRole":         userRole,
-		"isSupervisor":     isSupervisor,
+	})
+}
+
+func getApprovalChannelsSummaryHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Initialize counters per organization
+	type counts struct{ Pending, Approved, Rejected int }
+	summary := map[string]counts{
+		"national-bank":     {0, 0, 0},
+		"exporter-bank":     {0, 0, 0},
+		"quality-authority": {0, 0, 0},
+		"customs":           {0, 0, 0},
+	}
+
+	// Build a quick lookup of approvals by export and organization
+	approvalsMutex.RLock()
+	approvalsByExportOrg := make(map[string]map[string][]CompletedApproval) // exportID -> orgType -> []approvals
+	for _, a := range completedApprovals {
+		if approvalsByExportOrg[a.ExportID] == nil {
+			approvalsByExportOrg[a.ExportID] = make(map[string][]CompletedApproval)
+		}
+		approvalsByExportOrg[a.ExportID][a.Organization] = append(approvalsByExportOrg[a.ExportID][a.Organization], a)
+	}
+	approvalsMutex.RUnlock()
+
+	// Helper to map docType to org slug and org type
+	mapDocType := func(docType string) (orgSlug, orgType string) {
+		switch docType {
+		case "license":
+			return "national-bank", "NATIONAL_BANK"
+		case "invoice":
+			return "exporter-bank", "EXPORTER_BANK"
+		case "qualityCert":
+			return "quality-authority", "COFFEE_AUTHORITY"
+		case "other":
+			return "customs", "CUSTOMS"
+		default:
+			return "", ""
+		}
+	}
+
+	// Count approved/rejected by scanning approvals
+	approvalsMutex.RLock()
+	for _, a := range completedApprovals {
+		// Map org type to slug
+		var orgSlug string
+		switch a.Organization {
+		case "NATIONAL_BANK":
+			orgSlug = "national-bank"
+		case "EXPORTER_BANK":
+			orgSlug = "exporter-bank"
+		case "COFFEE_AUTHORITY":
+			orgSlug = "quality-authority"
+		case "CUSTOMS":
+			orgSlug = "customs"
+		default:
+			orgSlug = ""
+		}
+		if orgSlug == "" {
+			continue
+		}
+		c := summary[orgSlug]
+		if a.Action == "APPROVE" || a.Action == "APPROVED" {
+			c.Approved++
+		} else if a.Action == "REJECT" || a.Action == "REJECTED" {
+			c.Rejected++
+		}
+		summary[orgSlug] = c
+	}
+	approvalsMutex.RUnlock()
+
+	// Count pending as documents without a decision for their responsible org
+	exportsMutex.RLock()
+	for exportID, exportData := range submittedExports {
+		for docType, docInfo := range exportData.Documents {
+			orgSlug, orgType := mapDocType(docType)
+			if orgSlug == "" {
+				continue
+			}
+			// Check if there's an approval for this doc by this org
+			decided := false
+			approvalsMutex.RLock()
+			for _, appr := range approvalsByExportOrg[exportID][orgType] {
+				// Match by document hash or CID
+				if appr.DocumentHash == getDocumentHash(docInfo) {
+					if appr.Action == "APPROVE" || appr.Action == "APPROVED" || appr.Action == "REJECT" || appr.Action == "REJECTED" {
+						decided = true
+						break
+					}
+				}
+			}
+			approvalsMutex.RUnlock()
+			if !decided {
+				c := summary[orgSlug]
+				c.Pending++
+				summary[orgSlug] = c
+			}
+		}
+	}
+	exportsMutex.RUnlock()
+
+	// Totals
+	totals := counts{}
+	for _, c := range summary {
+		totals.Pending += c.Pending
+		totals.Approved += c.Approved
+		totals.Rejected += c.Rejected
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"summary":     summary,
+		"totals":      totals,
+		"generatedAt": time.Now().Format(time.RFC3339),
 	})
 }
 
@@ -1365,6 +1611,7 @@ func submitApprovalDecisionHandler(w http.ResponseWriter, r *http.Request) {
 		Action:       decision.Action,
 		Comments:     decision.Comments,
 		ReviewedBy:   decision.ReviewedBy,
+		Organization: orgType,
 		Timestamp:    time.Now(),
 	}
 	completedApprovals[approvalKey] = completedApproval
@@ -1828,20 +2075,75 @@ func getExporterDashboardHandler(w http.ResponseWriter, r *http.Request) {
 	exportsMutex.RLock()
 	defer exportsMutex.RUnlock()
 
-	// Calculate dashboard metrics
+	// Calculate dashboard metrics from both sample data and real submitted exports
 	var totalRequests, pendingApproval, approved, rejected int
 	var recentRequests []ExporterRequestInfo
 
-	for exportID, exportData := range submittedExports {
-		// Filter by exporter if specified
-		if exportData.Exporter != exporterFilter {
+	// 1) Sample data (dev/testing)
+	sampleMutex.RLock()
+	for exportID, exportData := range sampleExports {
+		exporterName, ok := exportData["exporterName"].(string)
+		if !ok {
+			continue
+		}
+		if exporterFilter != "" && !strings.EqualFold(exporterFilter, "all") && !strings.EqualFold(exporterName, exporterFilter) {
 			continue
 		}
 
 		totalRequests++
+		status, _ := exportData["status"].(string)
+		switch strings.ToUpper(status) {
+		case "PENDING":
+			pendingApproval++
+		case "APPROVED":
+			approved++
+		case "REJECTED":
+			rejected++
+		}
 
-		// Calculate status
-		status := calculateExportStatus(exportID)
+		submissionDateStr, _ := exportData["submissionDate"].(string)
+		lastUpdatedStr, _ := exportData["lastUpdated"].(string)
+		submissionDate := time.Now()
+		if t, err := time.Parse(time.RFC3339, submissionDateStr); err == nil {
+			submissionDate = t
+		}
+		lastUpdated := time.Now()
+		if t, err := time.Parse(time.RFC3339, lastUpdatedStr); err == nil {
+			lastUpdated = t
+		}
+		currentApprover, _ := exportData["currentApprover"].(string)
+		referenceNumber, _ := exportData["referenceNumber"].(string)
+		documentCount, _ := exportData["documentCount"].(int)
+		progressPercent, _ := exportData["progressPercent"].(int)
+		totalValue, _ := exportData["totalValue"].(int)
+		destinationCountry, _ := exportData["destinationCountry"].(string)
+
+		recentRequests = append(recentRequests, ExporterRequestInfo{
+			ExportID:           exportID,
+			ReferenceNumber:    referenceNumber,
+			SubmissionDate:     submissionDate,
+			Status:             strings.ToUpper(status),
+			CurrentApprover:    currentApprover,
+			LastUpdated:        lastUpdated,
+			DocumentCount:      documentCount,
+			ProgressPercent:    progressPercent,
+			ExporterName:       exporterName,
+			UrgencyLevel:       "HIGH",
+			DestinationCountry: destinationCountry,
+			TotalValue:         float64(totalValue),
+		})
+	}
+	sampleMutex.RUnlock()
+
+	// 2) Real submitted exports
+	exportsMutex.RLock()
+	for exportID, exportData := range submittedExports {
+		if exporterFilter != "" && !strings.EqualFold(exporterFilter, "all") && !strings.EqualFold(exportData.Exporter, exporterFilter) {
+			continue
+		}
+
+		totalRequests++
+		status := strings.ToUpper(calculateExportStatus(exportID))
 		switch status {
 		case "PENDING":
 			pendingApproval++
@@ -1851,37 +2153,27 @@ func getExporterDashboardHandler(w http.ResponseWriter, r *http.Request) {
 			rejected++
 		}
 
-		// Build request info
-		request := ExporterRequestInfo{
+		lastUpdated := getLastUpdateTime(exportID)
+		recentRequests = append(recentRequests, ExporterRequestInfo{
 			ExportID:           exportID,
 			ReferenceNumber:    generateReferenceNumber(exportID),
 			SubmissionDate:     exportData.Timestamp,
 			Status:             status,
 			CurrentApprover:    getCurrentApprover(exportID),
-			LastUpdated:        getLastUpdateTime(exportID),
+			LastUpdated:        lastUpdated,
 			DocumentCount:      len(exportData.Documents),
 			ProgressPercent:    calculateProgressPercent(exportID),
 			ExporterName:       exportData.Exporter,
-			UrgencyLevel:       "HIGH",          // Default for demo
-			DestinationCountry: "International", // Default for demo
-			TotalValue:         0,               // Default for demo
-		}
-
-		recentRequests = append(recentRequests, request)
+			UrgencyLevel:       "HIGH",
+			DestinationCountry: "International",
+			TotalValue:         0,
+		})
 	}
+	exportsMutex.RUnlock()
 
-	// Sort by submission date (most recent first)
-	for i := 0; i < len(recentRequests)-1; i++ {
-		for j := i + 1; j < len(recentRequests); j++ {
-			if recentRequests[i].SubmissionDate.Before(recentRequests[j].SubmissionDate) {
-				recentRequests[i], recentRequests[j] = recentRequests[j], recentRequests[i]
-			}
-		}
-	}
-
-	// Limit to recent 10 requests
-	if len(recentRequests) > 10 {
-		recentRequests = recentRequests[:10]
+	// Limit to recent requests (last 5)
+	if len(recentRequests) > 5 {
+		recentRequests = recentRequests[:5]
 	}
 
 	// Generate notifications
@@ -1900,7 +2192,6 @@ func getExporterDashboardHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(dashboard)
 }
 
-// getExporterRequestsHandler returns paginated list of exporter requests
 func getExporterRequestsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1920,31 +2211,86 @@ func getExporterRequestsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var requests []ExporterRequestInfo
 
-	for exportID, exportData := range submittedExports {
-		// Filter by exporter
-		if exportData.Exporter != exporterFilter {
+	// 1) Sample data
+	sampleMutex.RLock()
+	for exportID, exportData := range sampleExports {
+		exporterName, ok := exportData["exporterName"].(string)
+		// Respect exporter=all and do case-insensitive comparison
+		if !ok || (exporterFilter != "" && !strings.EqualFold(exporterFilter, "all") && !strings.EqualFold(exporterName, exporterFilter)) {
 			continue
 		}
 
-		// Calculate status
-		status := calculateExportStatus(exportID)
-
-		// Apply status filter
-		if statusFilter != "" && statusFilter != "all" && status != statusFilter {
+		status, _ := exportData["status"].(string)
+		statusUpper := strings.ToUpper(status)
+		if statusFilter != "" && statusFilter != "all" && strings.ToLower(statusUpper) != strings.ToLower(statusFilter) {
 			continue
 		}
 
-		// Apply search filter
+		referenceNumber, _ := exportData["referenceNumber"].(string)
 		if search != "" {
 			if !strings.Contains(strings.ToLower(exportID), strings.ToLower(search)) &&
-				!strings.Contains(strings.ToLower(generateReferenceNumber(exportID)), strings.ToLower(search)) {
+				!strings.Contains(strings.ToLower(referenceNumber), strings.ToLower(search)) {
 				continue
 			}
 		}
 
-		request := ExporterRequestInfo{
+		submissionDateStr, _ := exportData["submissionDate"].(string)
+		lastUpdatedStr, _ := exportData["lastUpdated"].(string)
+		submissionDate := time.Now()
+		if t, err := time.Parse(time.RFC3339, submissionDateStr); err == nil {
+			submissionDate = t
+		}
+		lastUpdated := time.Now()
+		if t, err := time.Parse(time.RFC3339, lastUpdatedStr); err == nil {
+			lastUpdated = t
+		}
+		currentApprover, _ := exportData["currentApprover"].(string)
+		documentCount, _ := exportData["documentCount"].(int)
+		progressPercent, _ := exportData["progressPercent"].(int)
+		totalValue, _ := exportData["totalValue"].(int)
+		destinationCountry, _ := exportData["destinationCountry"].(string)
+
+		requests = append(requests, ExporterRequestInfo{
 			ExportID:           exportID,
-			ReferenceNumber:    generateReferenceNumber(exportID),
+			ReferenceNumber:    referenceNumber,
+			SubmissionDate:     submissionDate,
+			Status:             statusUpper,
+			CurrentApprover:    currentApprover,
+			LastUpdated:        lastUpdated,
+			DocumentCount:      documentCount,
+			ProgressPercent:    progressPercent,
+			ExporterName:       exporterName,
+			UrgencyLevel:       "HIGH",
+			DestinationCountry: destinationCountry,
+			TotalValue:         float64(totalValue),
+		})
+	}
+	sampleMutex.RUnlock()
+
+	// 2) Real submitted exports
+	exportsMutex.RLock()
+	for exportID, exportData := range submittedExports {
+		// Respect exporter=all and do case-insensitive comparison
+		if exporterFilter != "" && !strings.EqualFold(exporterFilter, "all") && !strings.EqualFold(exportData.Exporter, exporterFilter) {
+			continue
+		}
+
+		status := strings.ToUpper(calculateExportStatus(exportID))
+		if statusFilter != "" && statusFilter != "all" && strings.ToLower(status) != strings.ToLower(statusFilter) {
+			continue
+		}
+
+		ref := generateReferenceNumber(exportID)
+		if search != "" {
+			if !strings.Contains(strings.ToLower(exportID), strings.ToLower(search)) &&
+				!strings.Contains(strings.ToLower(ref), strings.ToLower(search)) {
+				continue
+			}
+		}
+
+		requests = append(requests, ExporterRequestInfo{
+			ExportID:           exportID,
+			ReferenceNumber:    ref,
 			SubmissionDate:     exportData.Timestamp,
 			Status:             status,
 			CurrentApprover:    getCurrentApprover(exportID),
@@ -1955,19 +2301,9 @@ func getExporterRequestsHandler(w http.ResponseWriter, r *http.Request) {
 			UrgencyLevel:       "HIGH",
 			DestinationCountry: "International",
 			TotalValue:         0,
-		}
-
-		requests = append(requests, request)
+		})
 	}
-
-	// Sort by submission date (most recent first)
-	for i := 0; i < len(requests)-1; i++ {
-		for j := i + 1; j < len(requests); j++ {
-			if requests[i].SubmissionDate.Before(requests[j].SubmissionDate) {
-				requests[i], requests[j] = requests[j], requests[i]
-			}
-		}
-	}
+	exportsMutex.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{

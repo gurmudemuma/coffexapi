@@ -28,7 +28,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
             <p className="mb-4">Please refresh the page and try again.</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+              className="px-4 py-2 bg-primary text-black rounded-md hover:bg-primary/90"
             >
               Refresh Page
             </button>
