@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
-  TrendingUp, 
   Clock, 
   CheckCircle, 
   XCircle, 
@@ -21,7 +20,20 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui';
+import { StatusChart } from './dashboard/StatusChart';
+import { NotificationsPanel } from './dashboard/NotificationsPanel';
 import { toast } from 'sonner';
+
+// Types for Exporter Dashboard
+interface DashboardMetrics {
+  totalRequests: number;
+  pendingApproval: number;
+  approved: number;
+  rejected: number;
+  recentRequests?: ExporterRequest[];
+  notifications?: DashboardNotification[];
+}
+
 
 // Types for Exporter Dashboard
 interface DashboardMetrics {
@@ -230,9 +242,9 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
   // Get status badge variant
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case 'APPROVED': return 'default';
-      case 'REJECTED': return 'destructive';
-      case 'PENDING': return 'secondary';
+      case 'APPROVED': return 'approved';
+      case 'REJECTED': return 'rejected';
+      case 'PENDING': return 'pending';
       default: return 'outline';
     }
   };
@@ -266,6 +278,8 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
       </div>
     );
   }
+
+
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -364,6 +378,8 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
           </CardContent>
         </Card>
       </div>
+
+
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="requests" className="w-full">
@@ -517,55 +533,8 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
           </Card>
         </TabsContent>
 
-        {/* Notifications Tab */}
         <TabsContent value="notifications" className="space-y-4">
-          <Card className="border-purple-200 bg-white">
-            <CardHeader>
-              <CardTitle className="flex items-center text-black">
-                <Bell className="w-5 h-5 mr-2 text-purple-600" />
-                Recent Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {dashboardData?.notifications && dashboardData.notifications.length > 0 ? (
-                <div className="space-y-4">
-                  {dashboardData.notifications.map((notification) => (
-                    <div key={notification.id} 
-                         className={`p-4 rounded-lg border ${notification.isRead ? 'bg-purple-50 border-purple-200' : 'bg-yellow-50 border-yellow-200'}`}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-medium text-black">{notification.title}</h4>
-                            <Badge variant="outline" className="border-purple-200 text-purple-600">
-                              {notification.priority}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-purple-600 mb-2">{notification.message}</p>
-                          <p className="text-xs text-purple-500">
-                            {new Date(notification.timestamp).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {!notification.isRead && (
-                            <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                          )}
-                          <Button variant="ghost" size="sm" className="text-purple-600 hover:bg-purple-50">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Bell className="w-12 h-12 text-purple-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-black mb-2">No notifications</h3>
-                  <p className="text-purple-600">You're all caught up! New notifications will appear here.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <NotificationsPanel notifications={dashboardData?.notifications || []} />
         </TabsContent>
       </Tabs>
     </div>

@@ -4,22 +4,42 @@ import {
   Clock, 
   CheckCircle, 
   XCircle, 
-  RefreshCw,
-  LogOut
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import ApproverSidebar from './ApproverSidebar';
 import { EnhancedApproverPanel } from './EnhancedApproverPanel';
 import { toast } from 'sonner';
+// Status colors are now defined in tailwind.config.js
+import { DashboardHeader } from './DashboardHeader';
 import { getOrganizationConfig } from '../config/organizationConfig';
 
-interface DashboardMetrics {
+type MetricKey = 'totalRequests' | 'pending' | 'approved' | 'rejected';
+
+interface DashboardMetrics extends Record<MetricKey, number> {
+  totalRequests: number;
   pending: number;
   approved: number;
   rejected: number;
-  urgent: number;
 }
+
+interface DashboardApiResponse {
+  totalRequests: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  [key: string]: unknown; // Allow for additional properties
+}
+
+const isDashboardApiResponse = (data: unknown): data is DashboardApiResponse => {
+  if (typeof data !== 'object' || data === null) return false;
+  
+  const requiredFields: MetricKey[] = ['totalRequests', 'pending', 'approved', 'rejected'];
+  return requiredFields.every(field => 
+    field in data && typeof (data as DashboardApiResponse)[field] === 'number'
+  );
+};
 
 interface ApproverLayoutProps {
   organizationType: string;
@@ -35,46 +55,73 @@ export const ApproverLayout: React.FC<ApproverLayoutProps> = ({
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState('dashboard');
   const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics>({
+    totalRequests: 0,
     pending: 0,
     approved: 0,
-    rejected: 0,
-    urgent: 0
+    rejected: 0
   });
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const config = getOrganizationConfig(organizationType);
 
-  // Fetch dashboard data
+  // Fetch dashboard data with enhanced error handling
   const fetchDashboardData = async () => {
+    setLoading(true);
+    
     try {
-      setLoading(true);
       const response = await fetch(
         `http://localhost:8000/api/approval-channels/summary?org=${organizationType}`,
         {
           headers: {
             'X-User-Role': userRole,
             'X-Organization': organizationType,
-            'Content-Type': 'application/json'
-          }
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          credentials: 'include'
         }
       );
       
-      if (response.ok) {
-        const data = await response.json();
-        setDashboardMetrics({
-          pending: data.pending || 0,
-          approved: data.approved || 0,
-          rejected: data.rejected || 0,
-          urgent: data.urgent || 0
-        });
-      } else {
-        console.error('Failed to fetch dashboard data:', response.statusText);
-        toast.error('Failed to load dashboard data');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
       }
+      
+      const data: unknown = await response.json();
+      
+      if (!isDashboardApiResponse(data)) {
+        throw new Error('Invalid data format received from server');
+      }
+      
+      setDashboardMetrics({
+        totalRequests: data.totalRequests,
+        pending: data.pending,
+        approved: data.approved,
+        rejected: data.rejected
+      });
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      toast.error('Network error occurred');
+      console.error('Error in fetchDashboardData:', error);
+      
+      // More specific error messages based on error type
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        toast.error('Unable to connect to the server. Please check your network connection.');
+      } else if (error instanceof Error) {
+        toast.error(`Error: ${error.message}`);
+      } else {
+        toast.error('An unexpected error occurred while loading dashboard data');
+      }
+      
+      // Reset metrics to show loading state
+      setDashboardMetrics({
+        totalRequests: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0
+      });
     } finally {
       setLoading(false);
     }
@@ -119,51 +166,18 @@ export const ApproverLayout: React.FC<ApproverLayoutProps> = ({
         onViewChange={(view) => setActiveView(view)}
         onLogout={handleLogout}
         pendingCount={dashboardMetrics.pending}
-        urgentCount={dashboardMetrics.urgent}
       />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-purple-900 border-b border-yellow-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className={`w-10 h-10 ${config.color} rounded-lg flex items-center justify-center`}>
-                <config.icon className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-yellow-400">{config.name}</h1>
-                <p className="text-purple-300">{config.role}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center text-black font-semibold">
-                  {userName.charAt(0)}
-                </div>
-                <span className="font-medium text-yellow-400">{userName}</span>
-              </div>
-              <Button 
-                variant="outline" 
-                onClick={handleLogout}
-                className="border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </header>
+        <DashboardHeader 
+          title={config.name}
+          subtitle={config.role}
+          userName={userName}
+          onRefresh={handleRefresh}
+          onLogout={handleLogout}
+          refreshing={refreshing}
+        />
 
         {/* Dashboard Content */}
         <main className="flex-1 overflow-y-auto p-6">
@@ -171,65 +185,119 @@ export const ApproverLayout: React.FC<ApproverLayoutProps> = ({
             <div className="space-y-6">
               {/* Metrics Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="cursor-pointer hover:shadow-md transition-shadow border-purple-200">
+                <Card 
+                  className="cursor-pointer hover:shadow-md transition-shadow border-purple-200"
+                  role="region"
+                  aria-label="Total Requests"
+                  tabIndex={0}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-purple-600">Pending Approvals</p>
-                        <p className="text-3xl font-bold text-black">
-                          {loading ? '...' : dashboardMetrics.pending}
+                        <p className="text-sm font-medium text-purple-600">Total Requests</p>
+                        <p 
+                          className="text-3xl font-bold text-black"
+                          aria-live="polite"
+                          aria-atomic="true"
+                        >
+                          {loading ? '...' : dashboardMetrics.totalRequests}
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                      <div 
+                        className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center"
+                        aria-hidden="true"
+                      >
                         <Clock className="w-6 h-6 text-purple-600" />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer hover:shadow-md transition-shadow border-yellow-200">
+                <Card 
+                  className="cursor-pointer hover:shadow-md transition-shadow border-status-pending"
+                  role="region"
+                  aria-label="Pending Approvals"
+                  tabIndex={0}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-purple-600">High Priority</p>
-                        <p className="text-3xl font-bold text-purple-600">
-                          {loading ? '...' : dashboardMetrics.urgent}
+                        <p className="text-sm font-medium text-status-pending">
+                          Pending Approvals
+                        </p>
+                        <p 
+                          className="text-3xl font-bold text-status-pending"
+                          aria-live="polite"
+                          aria-atomic="true"
+                        >
+                          {loading ? '...' : dashboardMetrics.pending}
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <XCircle className="w-6 h-6 text-purple-600" />
+                      <div 
+                        className="w-12 h-12 rounded-full flex items-center justify-center bg-status-pending-light"
+                        aria-hidden="true"
+                      >
+                        <XCircle className="w-6 h-6 text-status-pending" />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer hover:shadow-md transition-shadow border-purple-200">
+                <Card 
+                  className="cursor-pointer hover:shadow-md transition-shadow border-status-approved"
+                  role="region"
+                  aria-label="Approved Requests"
+                  tabIndex={0}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-purple-600">Approved</p>
-                        <p className="text-3xl font-bold text-purple-600">
+                        <p className="text-sm font-medium text-status-approved">
+                          Approved
+                        </p>
+                        <p 
+                          className="text-3xl font-bold text-status-approved"
+                          aria-live="polite"
+                          aria-atomic="true"
+                        >
                           {loading ? '...' : dashboardMetrics.approved}
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                        <CheckCircle className="w-6 h-6 text-purple-600" />
+                      <div 
+                        className="w-12 h-12 rounded-full flex items-center justify-center bg-status-approved-light"
+                        aria-hidden="true"
+                      >
+                        <CheckCircle className="w-6 h-6 text-status-approved" />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer hover:shadow-md transition-shadow border-yellow-200">
+                <Card 
+                  className="cursor-pointer hover:shadow-md transition-shadow border-status-rejected"
+                  role="region"
+                  aria-label="Rejected Requests"
+                  tabIndex={0}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-purple-600">Rejected</p>
-                        <p className="text-3xl font-bold text-black">
+                        <p className="text-sm font-medium text-status-rejected">
+                          Rejected
+                        </p>
+                        <p 
+                          className="text-3xl font-bold text-status-rejected"
+                          aria-live="polite"
+                          aria-atomic="true"
+                        >
                           {loading ? '...' : dashboardMetrics.rejected}
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <XCircle className="w-6 h-6 text-purple-600" />
+                      <div 
+                        className="w-12 h-12 rounded-full flex items-center justify-center bg-status-rejected-light"
+                        aria-hidden="true"
+                      >
+                        <XCircle className="w-6 h-6 text-status-rejected" />
                       </div>
                     </div>
                   </CardContent>
@@ -283,6 +351,7 @@ export const ApproverLayout: React.FC<ApproverLayoutProps> = ({
                 userRole={userRole}
                 initialView={activeView}
                 contentOnly={true}
+                hideHeader={true}
               />
             </div>
           )}

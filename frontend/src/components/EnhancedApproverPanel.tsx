@@ -5,7 +5,7 @@ import {
   Activity, BarChart3, Settings, AlertTriangle, FileCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import ApproverSidebar from './ApproverSidebar';
+import { NotificationsPanel } from './dashboard/NotificationsPanel';
+import { ApprovalStatusChart } from './dashboard/ApprovalStatusChart';
 import { getOrganizationConfig } from '../config/organizationConfig';
 
 
@@ -48,13 +50,15 @@ interface EnhancedApproverPanelProps {
   userRole?: 'APPROVER' | 'BANK_SUPERVISOR' | 'BANK';
   initialView?: string;
   contentOnly?: boolean; // New prop to render only content without sidebar
+  hideHeader?: boolean;
 }
 
 export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
   organizationType,
   userRole = 'APPROVER',
   initialView = 'pending',
-  contentOnly = false
+  contentOnly = false,
+  hideHeader = false,
 }) => {
   const [pendingApprovals, setPendingApprovals] = useState<DocumentApproval[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,6 +74,7 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [submittingApproval, setSubmittingApproval] = useState(false);
   // Add the missing urgentCount state variable
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [urgentCount, setUrgentCount] = useState(0);
 
   const config = getOrganizationConfig(organizationType);
@@ -84,6 +89,21 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
     // Implement logout functionality
     console.log('Logout initiated');
     // This would typically involve clearing user session and redirecting
+  };
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/approval-channels/notifications?org=${organizationType}`);
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.notifications || []);
+      } else {
+        console.error('Failed to fetch notifications:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
   };
 
   // Update urgentCount when pendingApprovals change
@@ -320,7 +340,11 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
   // Auto-refresh every 30 seconds
   useEffect(() => {
     fetchPendingApprovals();
-    const interval = setInterval(() => fetchPendingApprovals(true), 30000);
+    fetchNotifications();
+    const interval = setInterval(() => {
+      fetchPendingApprovals(true);
+      fetchNotifications();
+    }, 30000);
     return () => clearInterval(interval);
   }, [fetchPendingApprovals]);
 
@@ -368,8 +392,8 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
               <div>
                 <p className="text-xs text-purple-500">Status</p>
                 <Badge variant={
-                  approval.status === 'APPROVED' ? 'success' :
-                  approval.status === 'REJECTED' ? 'destructive' : 'default'
+                  approval.status === 'APPROVED' ? 'approved' :
+                  approval.status === 'REJECTED' ? 'rejected' : 'pending'
                 }>
                   {approval.status.replace('_', ' ')}
                 </Badge>
@@ -580,6 +604,19 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
     </Card>
   );
 
+  const approvalChartData = pendingApprovals.reduce((acc, approval) => {
+    const date = new Date(approval.createdAt).toLocaleDateString();
+    let entry = acc.find((e) => e.date === date);
+    if (!entry) {
+      entry = { date, pending: 0, approved: 0, rejected: 0 };
+      acc.push(entry);
+    }
+    if (approval.status === 'PENDING') entry.pending++;
+    if (approval.status === 'APPROVED') entry.approved++;
+    if (approval.status === 'REJECTED') entry.rejected++;
+    return acc;
+  }, [] as any[]);
+
   // Render different content based on active view
   const renderContentView = () => {
     switch (activeView) {
@@ -762,28 +799,18 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
           <div className="space-y-4">
             <h2 className="text-2xl font-bold text-black mb-6">Analytics & Reports</h2>
             <Card className="border-purple-200 bg-white">
-              <CardContent className="p-12 text-center">
-                <BarChart3 className="w-16 h-16 text-purple-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-black mb-2">Performance Analytics</h3>
-                <p className="text-purple-600">View approval statistics and generate reports.</p>
+              <CardHeader>
+                <CardTitle>Approval Status Trends</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ApprovalStatusChart data={approvalChartData} />
               </CardContent>
             </Card>
           </div>
         );
       
       case 'notifications':
-        return (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-black mb-6">Notifications</h2>
-            <Card className="border-purple-200 bg-white">
-              <CardContent className="p-12 text-center">
-                <Bell className="w-16 h-16 text-purple-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-black mb-2">System Notifications</h3>
-                <p className="text-purple-600">Manage your notification preferences and view alerts.</p>
-              </CardContent>
-            </Card>
-          </div>
-        );
+        return <NotificationsPanel notifications={notifications} />;
       
       case 'settings':
         return (
@@ -816,22 +843,9 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
 
   // Main render function
   return (
-    <div className="flex h-screen bg-yellow-50">
-      {/* Sidebar */}
-      <ApproverSidebar
-        organizationName={config.name}
-        organizationType={organizationType}
-        userRole={userRole}
-        activeView={activeView}
-        onViewChange={handleViewChange}
-        onLogout={handleLogout}
-        pendingCount={pendingApprovals.length}
-        urgentCount={urgentCount}
-      />
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Enhanced Header */}
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Enhanced Header */}
+      {!hideHeader && (
         <div className="bg-purple-900 shadow-sm border-b border-yellow-200">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-4">
@@ -865,12 +879,12 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
             </div>
           </div>
         </div>
+      )}
 
-        {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {renderContentView()}
-          </div>
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {renderContentView()}
         </div>
       </div>
     </div>

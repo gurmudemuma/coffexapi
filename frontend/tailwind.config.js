@@ -50,6 +50,14 @@ export default {
           DEFAULT: 'hsl(var(--card) / <alpha-value>)',
           foreground: 'hsl(var(--card-foreground) / <alpha-value>)',
         },
+        status: {
+          pending: 'hsl(300, 100%, 25%)', // #800080
+          approved: 'hsl(51, 100%, 50%)',  // #FFD700
+          rejected: 'hsl(0, 0%, 0%)',     // #000000
+          'pending-light': 'hsla(300, 100%, 25%, 0.1)',
+          'approved-light': 'hsla(51, 100%, 50%, 0.1)',
+          'rejected-light': 'hsla(0, 0%, 0%, 0.1)'
+        },
         gold: {
           50: '#fff9db',
           100: '#ffec9f',

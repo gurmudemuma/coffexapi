@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ExporterSidebar from './ExporterSidebar';
 import { ExporterDashboard } from './ExporterDashboard';
 import ExportForm from './ExportForm';
+import { DashboardHeader } from './DashboardHeader';
 import { toast } from 'sonner';
 
 interface DashboardMetrics {
@@ -160,41 +161,14 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-purple-900 border-b border-yellow-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-yellow-400">Exporter Dashboard</h1>
-              <p className="text-purple-300">Welcome back, {exporterName}</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center text-black font-semibold">
-                  {exporterName.charAt(0)}
-                </div>
-                <span className="font-medium text-yellow-400">{exporterName}</span>
-              </div>
-              <Button 
-                variant="outline" 
-                onClick={handleLogout}
-                className="border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </header>
+        <DashboardHeader 
+          title="Exporter Dashboard"
+          subtitle={`Welcome back, ${exporterName}`}
+          userName={exporterName}
+          onRefresh={handleRefresh}
+          onLogout={handleLogout}
+          refreshing={refreshing}
+        />
 
         {/* Dashboard Content */}
         <main className="flex-1 overflow-y-auto p-6">

@@ -120,9 +120,18 @@ var (
 
 // enableCORS adds CORS headers to allow cross-origin requests
 func enableCORS(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	// Allow requests from any origin during development
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		origin = "*"
+	}
+
+	// Set CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", origin)
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-Role, X-Organization")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-Role, X-Organization, X-Requested-With")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Type, X-Total-Count")
 
 	// Handle preflight requests
 	if r.Method == "OPTIONS" {
@@ -212,40 +221,74 @@ func getOrganizationSummaryHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(summary)
 }
 
+func getOrganizationNotificationsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"notifications": []string{},
+	})
+}
+
+func corsMiddleware(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		enableCORS(w, r)
+		if r.Method == "OPTIONS" {
+			return
+		}
+		handler.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	// Initialize test data for development
 	initializeTestData()
 
-	// API endpoints with CORS support
-	http.HandleFunc("/api/auth/login", corsWrapper(loginHandler))
-	http.HandleFunc("/api/documents", corsWrapper(uploadDocumentHandler))
-	http.HandleFunc("/api/documents/upload", corsWrapper(uploadDocumentToDbHandler))
-	http.HandleFunc("/api/documents/", corsWrapper(viewDocumentHandler))
-	http.HandleFunc("/api/exports", corsWrapper(submitExportHandler))
-	// IPFS proxy endpoints to bypass CORS
-	http.HandleFunc("/api/ipfs/add", corsWrapper(ipfsAddHandler))
-	http.HandleFunc("/api/ipfs/", corsWrapper(ipfsGetHandler))
-	http.HandleFunc("/api/pending-approvals", corsWrapper(pendingApprovalsHandler))
-	http.HandleFunc("/api/completed-approvals", corsWrapper(completedApprovalsHandler))
-	http.HandleFunc("/api/exports/list", corsWrapper(listExportsHandler)) // Debug endpoint
-	http.HandleFunc("/approve", corsWrapper(approveHandler))              // Document approval endpoint
-	// Multi-channel approval endpoints
-	http.HandleFunc("/api/approval-channels/pending", corsWrapper(getOrganizationPendingApprovalsHandler))
-	http.HandleFunc("/api/approval-channels/summary", corsWrapper(getOrganizationSummaryHandler))
-	http.HandleFunc("/api/approval-channels/submit-decision", corsWrapper(submitApprovalDecisionHandler))
-	http.HandleFunc("/api/supervisor/exports", corsWrapper(getBankSupervisorExportsHandler))
-	http.HandleFunc("/api/supervisor/export/", corsWrapper(getBankSupervisorViewHandler))
-	http.HandleFunc("/api/approval-chain/", corsWrapper(getApprovalChainHandler))
-	// Exporter dashboard endpoints
-	http.HandleFunc("/api/exporter/dashboard", corsWrapper(getExporterDashboardHandler))
-	http.HandleFunc("/api/exporter/requests", corsWrapper(getExporterRequestsHandler))
-	http.HandleFunc("/api/exporter/request/", corsWrapper(getExporterRequestDetailHandler))
-	http.HandleFunc("/health", corsWrapper(healthHandler))
+	// Create a new router
+	router := http.NewServeMux()
 
-	// Start HTTP server
+	// API endpoints with CORS wrapper
+	router.HandleFunc("/api/auth/login", corsWrapper(loginHandler))
+	router.HandleFunc("/api/documents", corsWrapper(uploadDocumentHandler))
+	router.HandleFunc("/api/documents/upload", corsWrapper(uploadDocumentToDbHandler))
+	router.HandleFunc("/api/documents/", corsWrapper(viewDocumentHandler))
+	router.HandleFunc("/api/exports", corsWrapper(submitExportHandler))
+	
+	// IPFS proxy endpoints with CORS wrapper
+	router.HandleFunc("/api/ipfs/add", corsWrapper(ipfsAddHandler))
+	router.HandleFunc("/api/ipfs/", corsWrapper(ipfsGetHandler))
+	
+	// Other API endpoints with CORS wrapper
+	router.HandleFunc("/api/pending-approvals", corsWrapper(pendingApprovalsHandler))
+	router.HandleFunc("/api/completed-approvals", corsWrapper(completedApprovalsHandler))
+	router.HandleFunc("/api/exports/list", corsWrapper(listExportsHandler)) // Debug endpoint
+	router.HandleFunc("/approve", corsWrapper(approveHandler))              // Document approval endpoint
+	
+	// Multi-channel approval endpoints with CORS wrapper
+	router.HandleFunc("/api/approval-channels/pending", corsWrapper(getOrganizationPendingApprovalsHandler))
+	router.HandleFunc("/api/approval-channels/summary", corsWrapper(getOrganizationSummaryHandler))
+	router.HandleFunc("/api/approval-channels/notifications", corsWrapper(getOrganizationNotificationsHandler))
+	router.HandleFunc("/api/approval-channels/submit-decision", corsWrapper(submitApprovalDecisionHandler))
+	
+	// Supervisor endpoints with CORS wrapper
+	router.HandleFunc("/api/supervisor/exports", corsWrapper(getBankSupervisorExportsHandler))
+	router.HandleFunc("/api/supervisor/export/", corsWrapper(getBankSupervisorViewHandler))
+	router.HandleFunc("/api/approval-chain/", corsWrapper(getApprovalChainHandler))
+	
+	// Exporter dashboard endpoints with CORS wrapper
+	router.HandleFunc("/api/exporter/dashboard", corsWrapper(getExporterDashboardHandler))
+	router.HandleFunc("/api/exporter/requests", corsWrapper(getExporterRequestsHandler))
+	router.HandleFunc("/api/exporter/request/", corsWrapper(getExporterRequestDetailHandler))
+	router.HandleFunc("/health", corsWrapper(healthHandler))
+
+	// Start HTTP server with CORS middleware
 	fmt.Println("API Gateway running on port 8000 with CORS enabled")
 	fmt.Println("Test data initialized - dashboard should now show sample export requests")
-	if err := http.ListenAndServe(":8000", nil); err != nil {
+	
+	server := &http.Server{
+		Addr:    ":8000",
+		Handler: corsMiddleware(router),
+	}
+	
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal("Failed to start server:", err)
 	}
 }
@@ -753,6 +796,15 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 // getDocTypeForOrg returns the document type that an organization is responsible for
 func getDocTypeForOrg(org string) string {
 	switch org {
+	case "national-bank":
+		return "bank_approval"
+	case "customs":
+		return "customs_approval"
+	case "quality-authority":
+		return "quality_certificate"
+	default:
+		return ""
+	}
 }
 
 // submitApprovalDecisionHandler processes approval decisions for documents
@@ -803,9 +855,9 @@ func submitApprovalDecisionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the document exists in submitted exports
+	// Check if the export exists
 	exportsMutex.RLock()
-	exportData, exportExists := submittedExports[decision.ExportID]
+	_, exportExists := submittedExports[decision.ExportID]
 	exportsMutex.RUnlock()
 
 	if !exportExists {
@@ -813,33 +865,12 @@ func submitApprovalDecisionHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
-			"message": "Export not found in registry",
+			"message": "Export not found",
 		})
 		return
 	}
 
-	// Find the document with matching hash
-	documentFound := false
-	for _, docInfo := range exportData.Documents {
-		// Check both hash and IPFS CID (since we use CID as hash when hash is empty)
-		if docInfo.Hash == decision.DocumentHash || docInfo.IPFSCID == decision.DocumentHash {
-			documentFound = true
-			break
-		}
-	}
-
-	if !documentFound {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": false,
-			"message": "Document not found in registry",
-		})
-		return
-	}
-
-	// Process the decision
-	approvalsMutex.Lock()
+	// Process the approval decision
 	approvalKey := fmt.Sprintf("%s_%s_%s", decision.ExportID, decision.DocumentHash, orgType)
 	completedApproval := CompletedApproval{
 		ID:           approvalKey,
@@ -847,13 +878,21 @@ func submitApprovalDecisionHandler(w http.ResponseWriter, r *http.Request) {
 		DocumentHash: decision.DocumentHash,
 		Action:       decision.Action,
 		Comments:     decision.Comments,
-		ReviewedBy:   decision.ReviewedBy,
+		ReviewedBy:   r.Header.Get("X-User-Id"),
 		Timestamp:    time.Now(),
 	}
+
+	// Store the approval
+	approvalsMutex.Lock()
 	completedApprovals[approvalKey] = completedApproval
 	approvalsMutex.Unlock()
 
-	fmt.Printf("Document %s %s by %s for export %s\n", decision.DocumentHash, decision.Action, decision.ReviewedBy, decision.ExportID)
+	// Log the approval
+	fmt.Printf("Document %s %s by %s for export %s\n", 
+		decision.DocumentHash, 
+		decision.Action, 
+		r.Header.Get("X-User-Id"), 
+		decision.ExportID)
 
 	// Return success response
 	w.Header().Set("Content-Type", "application/json")
@@ -863,19 +902,6 @@ func submitApprovalDecisionHandler(w http.ResponseWriter, r *http.Request) {
 		"id":         approvalKey,
 		"timestamp":  completedApproval.Timestamp.Format(time.RFC3339),
 	})
-}
-
-	case "national-bank":
-		return "license" // Frontend uses lowercase
-	case "exporter-bank":
-		return "invoice"
-	case "quality-authority":
-		return "qualityCert"
-	case "customs":
-		return "other" // Shipping documents stored as "other"
-	default:
-		return "license"
-	}
 }
 
 // getDisplayDocType returns the display name for document types
@@ -1533,56 +1559,6 @@ func getOrganizationPendingApprovalsHandler(w http.ResponseWriter, r *http.Reque
 		"count":            len(pendingApprovals),
 		"userRole":         userRole,
 		"isSupervisor":     isSupervisor,
-	})
-}
-
-// submitApprovalDecisionHandler processes approval decisions through the multi-channel system
-func submitApprovalDecisionHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var decision ApprovalRequest
-	if err := json.NewDecoder(r.Body).Decode(&decision); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	// Get organization from query parameter
-	org := r.URL.Query().Get("org")
-	if org == "" {
-		http.Error(w, "Organization parameter required", http.StatusBadRequest)
-		return
-	}
-
-	orgType := getOrgTypeFromString(org)
-	if orgType == "" {
-		http.Error(w, "Invalid organization", http.StatusBadRequest)
-		return
-	}
-
-	// Process the decision
-	approvalsMutex.Lock()
-	approvalKey := fmt.Sprintf("%s_%s_%s", decision.ExportID, decision.DocumentHash, orgType)
-	completedApproval := CompletedApproval{
-		ID:           approvalKey,
-		ExportID:     decision.ExportID,
-		DocumentHash: decision.DocumentHash,
-		Action:       decision.Action,
-		Comments:     decision.Comments,
-		ReviewedBy:   decision.ReviewedBy,
-		Timestamp:    time.Now(),
-	}
-	completedApprovals[approvalKey] = completedApproval
-	approvalsMutex.Unlock()
-
-	// Return success response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":  "success",
-		"message": "Approval decision processed",
-		"id":      approvalKey,
 	})
 }
 
