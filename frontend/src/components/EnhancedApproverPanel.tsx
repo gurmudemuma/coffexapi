@@ -61,6 +61,7 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
   hideHeader = false,
 }) => {
   const [pendingApprovals, setPendingApprovals] = useState<DocumentApproval[]>([]);
+  const [completedApprovals, setCompletedApprovals] = useState<DocumentApproval[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -73,6 +74,8 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [submittingApproval, setSubmittingApproval] = useState(false);
+  const [searchResults, setSearchResults] = useState<DocumentApproval[]>([]);
+  const [activityLog, setActivityLog] = useState<any[]>([]);
   // Add the missing urgentCount state variable
   const [notifications, setNotifications] = useState<any[]>([]);
   const [urgentCount, setUrgentCount] = useState(0);
@@ -113,7 +116,7 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
   }, [pendingApprovals]);
 
   // Fetch pending approvals with enhanced error handling
-  const fetchPendingApprovals = useCallback(async (showRefreshIndicator = false) => {
+  const fetchApprovals = useCallback(async (showRefreshIndicator = false) => {
     try {
       if (showRefreshIndicator) {
         setRefreshing(true);
@@ -121,10 +124,10 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
         setLoading(true);
       }
 
-      const url = `http://localhost:8000/api/approval-channels/pending?org=${organizationType}`;
-      console.log('Fetching pending approvals from:', url);
+      const pendingUrl = `http://localhost:8000/api/approval-channels/pending?org=${organizationType}`;
+      console.log('Fetching pending approvals from:', pendingUrl);
 
-      const response = await fetch(url, {
+      const pendingResponse = await fetch(pendingUrl, {
         headers: {
           'X-User-Role': userRole,
           'X-Organization': organizationType,
@@ -132,15 +135,14 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
         }
       });
 
-      console.log('Fetch response status:', response.status);
+      console.log('Fetch pending response status:', pendingResponse.status);
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Fetched approvals data:', data);
-        const approvals = data.pendingApprovals || [];
+      if (pendingResponse.ok) {
+        const pendingData = await pendingResponse.json();
+        console.log('Fetched pending approvals data:', pendingData);
+        const pendingApprovals = pendingData.pendingApprovals || [];
 
-        // Transform the data to match our enhanced interface
-        const enhancedApprovals = approvals.map((approval: any) => ({
+        const enhancedPendingApprovals = pendingApprovals.map((approval: any) => ({
           ...approval,
           documentType: approval.docType || approval.documentType,
           documentHash: approval.hash || approval.documentHash,
@@ -151,7 +153,6 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
           encrypted: approval.encrypted,
           contentType: approval.contentType,
           size: approval.size,
-          // Ensure required fields have defaults
           organization: approval.organization || organizationType,
           status: approval.status || 'PENDING',
           assignedTo: approval.assignedTo || '',
@@ -160,18 +161,63 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
           urgencyLevel: approval.urgencyLevel || 'MEDIUM'
         }));
 
-        setPendingApprovals(enhancedApprovals);
+        setPendingApprovals(enhancedPendingApprovals);
 
         if (showRefreshIndicator) {
-          toast.success(`Refreshed: ${enhancedApprovals.length} pending approvals`);
+          toast.success(`Refreshed: ${enhancedPendingApprovals.length} pending approvals`);
         }
       } else {
-        const errorText = await response.text();
+        const errorText = await pendingResponse.text();
         console.error('Failed to fetch pending approvals:', errorText);
         toast.error('Failed to load pending approvals');
       }
+
+      const completedUrl = `http://localhost:8000/api/completed-approvals?org=${organizationType}`;
+      console.log('Fetching completed approvals from:', completedUrl);
+
+      const completedResponse = await fetch(completedUrl, {
+        headers: {
+          'X-User-Role': userRole,
+          'X-Organization': organizationType,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Fetch completed response status:', completedResponse.status);
+
+      if (completedResponse.ok) {
+        const completedData = await completedResponse.json();
+        console.log('Fetched completed approvals data:', completedData);
+        const completedApprovals = completedData.completedApprovals || [];
+
+        const enhancedCompletedApprovals = completedApprovals.map((approval: any) => ({
+          ...approval,
+          documentType: approval.docType || approval.documentType,
+          documentHash: approval.hash || approval.documentHash,
+          ipfsCid: approval.ipfsCid,
+          ipfsUrl: approval.ipfsUrl,
+          iv: approval.iv,
+          key: approval.key,
+          encrypted: approval.encrypted,
+          contentType: approval.contentType,
+          size: approval.size,
+          organization: approval.organization || organizationType,
+          status: approval.status || 'PENDING',
+          assignedTo: approval.assignedTo || '',
+          createdAt: approval.createdAt || new Date().toISOString(),
+          updatedAt: approval.updatedAt || new Date().toISOString(),
+          urgencyLevel: approval.urgencyLevel || 'MEDIUM'
+        }));
+
+        setCompletedApprovals(enhancedCompletedApprovals);
+      } else {
+        const errorText = await completedResponse.text();
+        console.error('Failed to fetch completed approvals:', errorText);
+        toast.error('Failed to load completed approvals');
+      }
+
     } catch (error) {
-      console.error('Error fetching pending approvals:', error);
+      console.error('Error fetching approvals:', error);
       toast.error('Network error occurred');
     } finally {
       setLoading(false);
@@ -232,7 +278,7 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
 
         // Fallback to IPFS gateways
         if (jsonData.ipfsCid) {
-          const ipfsUrl = `http://localhost:8090/ipfs/${jsonData.ipfsCid}`;
+          const ipfsUrl = `http://localhost:8080/ipfs/${jsonData.ipfsCid}`;
           window.open(ipfsUrl, '_blank');
           toast.success('Document accessed via IPFS', { id: 'document-loading' });
           return;
@@ -248,7 +294,7 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
       }
 
       // Final fallback
-      const fallbackUrl = `http://localhost:8090/ipfs/${approval.documentHash}`;
+      const fallbackUrl = `http://localhost:8080/ipfs/${approval.documentHash}`;
       window.open(fallbackUrl, '_blank');
       toast.success('Document accessed via fallback', { id: 'document-loading' });
 
@@ -337,16 +383,58 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
     }
   };
 
+  const handleSearch = async (searchTerm: string) => {
+    if (!searchTerm) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:8000/api/search?q=${searchTerm}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResults(data.results || []);
+      } else {
+        console.error('Failed to fetch search results:', response.statusText);
+        toast.error('Failed to perform search');
+      }
+    } catch (error) {
+      console.error('Error searching:', error);
+      toast.error('Network error occurred during search');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchActivityLog = async () => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/activity-log?org=${organizationType}`);
+      if (response.ok) {
+        const data = await response.json();
+        setActivityLog(data.log || []);
+      } else {
+        console.error('Failed to fetch activity log:', response.statusText);
+        toast.error('Failed to load activity log');
+      }
+    } catch (error) {
+      console.error('Error fetching activity log:', error);
+      toast.error('Network error occurred while loading activity log');
+    }
+  };
+
   // Auto-refresh every 30 seconds
   useEffect(() => {
-    fetchPendingApprovals();
+    fetchApprovals();
     fetchNotifications();
+    fetchActivityLog();
     const interval = setInterval(() => {
-      fetchPendingApprovals(true);
+      fetchApprovals(true);
       fetchNotifications();
+      fetchActivityLog();
     }, 30000);
     return () => clearInterval(interval);
-  }, [fetchPendingApprovals]);
+  }, [fetchApprovals]);
 
   // Filter and search logic
   const filteredApprovals = pendingApprovals.filter(approval => {
@@ -742,13 +830,17 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
         return (
           <div className="space-y-4">
             <h2 className="text-2xl font-bold text-black mb-6">Approved Documents</h2>
-            <Card className="border-purple-200 bg-white">
-              <CardContent className="p-12 text-center">
-                <CheckCircle className="w-16 h-16 text-purple-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-black mb-2">Approved Documents View</h3>
-                <p className="text-purple-600">This section will show previously approved documents.</p>
-              </CardContent>
-            </Card>
+            {completedApprovals.filter(a => a.status === 'APPROVED').length === 0 ? (
+              <Card className="border-purple-200 bg-white">
+                <CardContent className="p-12 text-center">
+                  <CheckCircle className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-black mb-2">No Approved Documents</h3>
+                  <p className="text-purple-600">This section will show previously approved documents.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              completedApprovals.filter(a => a.status === 'APPROVED').map(renderEnhancedApprovalCard)
+            )}
           </div>
         );
       
@@ -756,13 +848,17 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
         return (
           <div className="space-y-4">
             <h2 className="text-2xl font-bold text-black mb-6">Rejected Documents</h2>
-            <Card className="border-purple-200 bg-white">
-              <CardContent className="p-12 text-center">
-                <FileText className="w-16 h-16 text-purple-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-black mb-2">Rejected Documents View</h3>
-                <p className="text-purple-600">This section will show previously rejected documents.</p>
-              </CardContent>
-            </Card>
+            {completedApprovals.filter(a => a.status === 'REJECTED').length === 0 ? (
+              <Card className="border-purple-200 bg-white">
+                <CardContent className="p-12 text-center">
+                  <FileText className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-black mb-2">No Rejected Documents</h3>
+                  <p className="text-purple-600">This section will show previously rejected documents.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              completedApprovals.filter(a => a.status === 'REJECTED').map(renderEnhancedApprovalCard)
+            )}
           </div>
         );
       
@@ -770,13 +866,32 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
         return (
           <div className="space-y-4">
             <h2 className="text-2xl font-bold text-black mb-6">Document Search</h2>
-            <Card className="border-purple-200 bg-white">
-              <CardContent className="p-12 text-center">
-                <Search className="w-16 h-16 text-purple-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-black mb-2">Advanced Document Search</h3>
-                <p className="text-purple-600">Search through all documents by various criteria.</p>
-              </CardContent>
-            </Card>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-400 w-4 h-4" />
+              <Input
+                placeholder="Search by exporter name, export ID, or document type..."
+                onChange={(e) => handleSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="space-y-4">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="w-8 h-8 animate-spin text-purple-400" />
+                  <span className="ml-2 text-purple-600">Searching...</span>
+                </div>
+              ) : searchResults.length === 0 ? (
+                <Card className="border-purple-200 bg-white">
+                  <CardContent className="p-12 text-center">
+                    <Search className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-black mb-2">Search for Documents</h3>
+                    <p className="text-purple-600">Search through all documents by various criteria.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                searchResults.map(renderEnhancedApprovalCard)
+              )}
+            </div>
           </div>
         );
       
@@ -785,10 +900,26 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
           <div className="space-y-4">
             <h2 className="text-2xl font-bold text-black mb-6">Activity Log</h2>
             <Card className="border-purple-200 bg-white">
-              <CardContent className="p-12 text-center">
-                <Activity className="w-16 h-16 text-purple-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-black mb-2">Recent Activity</h3>
-                <p className="text-purple-600">View your recent approval activities and system events.</p>
+              <CardContent className="p-6">
+                {activityLog.length === 0 ? (
+                  <div className="text-center text-gray-500 py-8">No recent activity.</div>
+                ) : (
+                  <ul className="space-y-4">
+                    {activityLog.map((item, index) => (
+                      <li key={index} className="flex items-start space-x-4">
+                        <div className="flex-shrink-0">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
+                            <Activity className="h-5 w-5 text-gray-600" />
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-black">{item.message}</p>
+                          <p className="text-sm text-gray-500">{new Date(item.timestamp).toLocaleString()}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -821,6 +952,9 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
                 <Settings className="w-16 h-16 text-purple-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-black mb-2">Account Settings</h3>
                 <p className="text-purple-600">Manage your account preferences and system settings.</p>
+                <div className="mt-4">
+                  <Button variant="outline">Change Password</Button>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -863,7 +997,7 @@ export const EnhancedApproverPanel: React.FC<EnhancedApproverPanelProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => fetchPendingApprovals(true)}
+                  onClick={() => fetchApprovals(true)}
                   disabled={refreshing}
                   className="border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
                 >

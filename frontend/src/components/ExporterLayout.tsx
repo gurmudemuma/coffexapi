@@ -123,22 +123,27 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
 
   const handleMetricClick = (metric: keyof DashboardMetrics) => {
     // Navigate to requests view with appropriate filter
-    setActiveView('requests');
+    
     // Set filter based on the metric clicked
     switch (metric) {
       case 'pendingApproval':
+        setActiveView('requests-pending');
         setFilterStatus('PENDING');
         break;
       case 'approved':
+        setActiveView('requests-approved');
         setFilterStatus('APPROVED');
         break;
       case 'rejected':
+        setActiveView('requests-rejected');
         setFilterStatus('REJECTED');
         break;
       case 'totalRequests':
+        setActiveView('requests');
         setFilterStatus(null); // Show all requests
         break;
       default:
+        setActiveView('requests');
         setFilterStatus(null);
     }
   };
@@ -152,8 +157,11 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
         activeView={activeView}
         onViewChange={(view) => {
           setActiveView(view);
-          // Reset filter when changing views
-          if (view !== 'requests') {
+          if (view.startsWith('requests')) {
+            const status = view.split('-')[1]?.toUpperCase() || null;
+            setFilterStatus(status);
+            setActiveView('requests');
+          } else {
             setFilterStatus(null);
           }
         }}

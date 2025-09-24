@@ -1,11 +1,15 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ExporterPortal from './components/ExporterPortal';
-import Login from './components/Login';
+import { Login } from './components/Login';
 import NationalBankDashboard from './components/dashboard/NationalBankDashboard';
 import CustomsDashboard from './components/dashboard/CustomsDashboard';
 import CoffeeAuthorityDashboard from './components/dashboard/CoffeeAuthorityDashboard';
 import ExporterBankDashboard from './components/dashboard/ExporterBankDashboard';
+
+import UserManagement from './components/UserManagement';
+
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Exporter Interface Component
 function ExporterApp() {
@@ -26,6 +30,9 @@ function App() {
         <Route path="/dashboard/coffee-authority" element={<CoffeeAuthorityDashboard />} />
         <Route path="/dashboard/exporter-bank" element={<ExporterBankDashboard />} />
         <Route path="/dashboard/exporter" element={<ExporterApp />} />
+        <Route path="/user-management" element={<ProtectedRoute role="national-bank" />}>
+          <Route path="" element={<UserManagement />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

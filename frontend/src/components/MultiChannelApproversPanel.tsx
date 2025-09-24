@@ -264,7 +264,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
         if (jsonData.ipfsCid) {
           console.log('[DEBUG] Trying direct IPFS access');
           const ipfsGateways = [
-            `http://localhost:8090/ipfs/${jsonData.ipfsCid}`,
+            `http://localhost:8080/ipfs/${jsonData.ipfsCid}`,
             `https://ipfs.io/ipfs/${jsonData.ipfsCid}`,
             `https://cloudflare-ipfs.com/ipfs/${jsonData.ipfsCid}`,
             `https://gateway.pinata.cloud/ipfs/${jsonData.ipfsCid}`
@@ -317,7 +317,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
     // Fallback: Try direct IPFS access through multiple gateways using documentHash as CID
     console.log('[DEBUG] Trying fallback IPFS access methods');
     const ipfsGateways = [
-      `http://localhost:8090/ipfs/${approval.documentHash}`,
+      `http://localhost:8080/ipfs/${approval.documentHash}`,
       `https://ipfs.io/ipfs/${approval.documentHash}`,
       `https://cloudflare-ipfs.com/ipfs/${approval.documentHash}`,
       `https://gateway.pinata.cloud/ipfs/${approval.documentHash}`

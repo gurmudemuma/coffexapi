@@ -1,0 +1,12 @@
+fabric:
+  channelName: "coffeeexport"
+  chaincodeName: "coffee_export"
+  connectionProfile: "/app/connection.yaml"
+
+server:
+  port: "8000"
+  cors:
+    allowedOrigins: ["http://localhost:3001", "http://localhost:4173"]
+
+auth:
+  jwtSecret: "a-very-secret-key"

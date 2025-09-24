@@ -127,7 +127,7 @@ export function DocumentInput({
 
       // Prefer unencrypted CID for approver viewing
       const cid = realUpload.unencryptedCid || realUpload.encryptedCid || null;
-      const url = cid ? `http://localhost:8090/ipfs/${cid}` : null;
+      const url = cid ? `http://localhost:8080/ipfs/${cid}` : null;
 
       const newState: DocumentState = {
         file,

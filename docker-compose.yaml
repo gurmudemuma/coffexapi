@@ -268,36 +268,30 @@ services:
       - GOPATH=/opt/gopath
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
       - FABRIC_LOGGING_SPEC=INFO
-      # National Bank Peer Settings
+      - CORE_PEER_ID=cli
       - CORE_PEER_ADDRESS=peer0.nationalbank.com:7051
       - CORE_PEER_LOCALMSPID=NationalBankMSP
       - CORE_PEER_TLS_ENABLED=true
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/organizations/peerOrganizations/nationalbank.com/peers/peer0.nationalbank.com/tls/ca.crt
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/organizations/peerOrganizations/nationalbank.com/users/Admin@nationalbank.com/msp
-      - CORE_PEER_GOSSIP_USELEADERELECTION=true
-      - CORE_PEER_GOSSIP_ORGLEADER=false
-      # Orderer Settings
-      - ORDERER_ADDRESS=orderer.coffee-consortium.com:7050
-      - ORDERER_TLS_CERT_FILE=/etc/hyperledger/fabric/organizations/ordererOrganizations/coffee-consortium.com/orderers/orderer.coffee-consortium.com/tls/server.crt
-      - ORDERER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/organizations/ordererOrganizations/coffee-consortium.com/orderers/orderer.coffee-consortium.com/tls/ca.crt
-      - ORDERER_MSPCONFIGPATH=/etc/hyperledger/fabric/organizations/ordererOrganizations/coffee-consortium.com/users/Admin@coffee-consortium.com/msp
+      - CORE_PEER_BCCSP_SW_LIBRARY=SW
+      - CORE_PEER_BCCSP_SW_HASH=SHA2
       - FABRIC_CFG_PATH=/etc/hyperledger/fabric
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
-    command: /bin/bash -c 'sleep 9999999'
+    command: /bin/bash
     volumes:
       - /var/run/:/host/var/run/
-      - ./network/organizations:/etc/hyperledger/fabric/organizations
-      - ./network/channel-artifacts:/etc/hyperledger/fabric/channel-artifacts
-      - ./network/configtx.yaml:/etc/hyperledger/fabric/configtx.yaml
-      - ./chaincode:/opt/gopath/src/github.com/chaincode
-    networks:
-      - coffee_net
+      - ./network:/etc/hyperledger/fabric
+      - ./chaincode:/opt/gopath/src/github.com/hyperledger/fabric/chaincode
+      - ./network/scripts:/etc/hyperledger/fabric/scripts
     depends_on:
       - orderer.coffee-consortium.com
       - peer0.nationalbank.com
       - peer0.exporterbank.com
       - peer0.coffeeauthority.com
       - peer0.customs.com
+    networks:
+      - coffee_net
 
   # ============================================================================
   # IPFS SERVICE
@@ -393,10 +387,10 @@ services:
   api-gateway:
     build:
       context: ./api-gateway
-      args:
-        - GO_MOD=-mod=vendor
     ports:
-      - "8000:8000"
+      - "${API_GATEWAY_PORT:-8000}:8000"
+    volumes:
+      - ./network:/network
     networks:
       - coffee_net
       - validator_net
@@ -405,6 +399,21 @@ services:
       - INVOICE_VALIDATOR_ENDPOINT=http://bank-api-validator:5000/validate
       - QUALITY_VALIDATOR_ENDPOINT=http://quality-authority-validator:8081/validate
       - SHIPPING_VALIDATOR_ENDPOINT=http://customs-validator:8082/validate
+      - CLIENT_ORGANIZATION=${CLIENT_ORGANIZATION:-NationalBank}
+      - CLIENT_USER=${CLIENT_USER:-Admin@nationalbank.com}
+      - CLIENT_MSP=${CLIENT_MSP:-NationalBankMSP}
+      - CHANNEL_NAME=${CHANNEL_NAME:-coffeeexport}
+      - CHAINCODE_NAME=${CHAINCODE_NAME:-coffee_export}
+      - ORDERER_ID=${ORDERER_ID:-orderer}
+      - ORDERER_DOMAIN=${ORDERER_DOMAIN:-coffee-consortium.com}
+    env_file:
+      - .env
+    depends_on:
+      - orderer.coffee-consortium.com
+      - peer0.nationalbank.com
+      - peer0.exporterbank.com
+      - peer0.coffeeauthority.com
+      - peer0.customs.com
 
 volumes:
   peer0.nationalbank.com:

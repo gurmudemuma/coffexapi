@@ -166,34 +166,99 @@ export async function uploadFile(
   });
 }
 
-// Export API methods
-export const api = {
-  // Base request method
-  request: request,
-  // Auth
-  login: async (credentials: { email: string; password: string }) => {
-    const response = await request<{ token: string }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    });
-    if (response.token) {
-      setAuthToken(response.token);
-    }
-    return response;
-  },
+async function login(username: string, password: string) {
+  const response = await request<{ token: string }>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+  if (response.token) {
+    setAuthToken(response.token);
+  }
+  return response;
+}
 
-  // Documents
-  uploadDocument: (file: File, onProgress?: (progress: any) => void) =>
-    uploadFile('/documents', file, 'file', onProgress),
+async function register(data: any) {
+  const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    throw new Error('Registration failed');
+  }
+  return response.json();
+}
 
-  // Export submissions
-  submitExport: (data: any) =>
-    request('/exports', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+async function getOrganizationSummary(orgId: string) {
+  return request(`/summary/${orgId}`);
+}
 
-  // Add more API methods as needed
+async function submitExport(data: any) {
+  return request('/export', { method: 'POST', body: JSON.stringify(data) });
+}
+
+async function getExporterDashboard() {
+  return request('/export/dashboard');
+}
+
+async function getExporterRequests() {
+  return request('/export/requests');
+}
+
+async function getExporterRequestDetail(id: string) {
+  return request(`/export/requests/${id}`);
+}
+
+async function getBankSupervisorExports() {
+  return request('/bank/exports');
+}
+
+async function getBankSupervisorView(id: string) {
+  return request(`/bank/exports/${id}`);
+}
+
+async function submitApprovalDecision(data: any) {
+  return request('/approval', { method: 'POST', body: JSON.stringify(data) });
+}
+
+async function getCompletedApprovals() {
+  return request('/approval/completed');
+}
+
+async function searchDocuments(query: string) {
+  return request(`/documents/search?q=${query}`);
+}
+
+async function getActivityLog() {
+  return request('/activity');
+}
+
+async function viewDocument(id: string) {
+  return request(`/documents/${id}`);
+}
+
+async function getApprovalChain(id: string) {
+  return request(`/approval/chain/${id}`);
+}
+
+const api = {
+  login,
+  register,
+  getOrganizationSummary,
+  submitExport,
+  getExporterDashboard,
+  getExporterRequests,
+  getExporterRequestDetail,
+  getBankSupervisorExports,
+  getBankSupervisorView,
+  submitApprovalDecision,
+  getCompletedApprovals,
+  searchDocuments,
+  getActivityLog,
+  viewDocument,
+  getApprovalChain,
 };
 
 export default api;

@@ -29,7 +29,7 @@ interface DirectAccessResult {
  */
 export class DirectDocumentAccess {
   private static IPFS_GATEWAYS = [
-    'http://localhost:8090/ipfs',     // Local IPFS
+    'http://localhost:8080/ipfs',     // Local IPFS
     'https://ipfs.io/ipfs',           // Public IPFS
     'https://cloudflare-ipfs.com/ipfs', // Cloudflare IPFS
     'https://gateway.pinata.cloud/ipfs', // Pinata

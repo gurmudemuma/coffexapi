@@ -5,7 +5,7 @@ import { analyzeEncryptionKey, testKeyCompatibility, generateCompatibilityReport
 
 // Configuration for IPFS access via API Gateway proxy
 const IPFS_CONFIG = {
-  GATEWAY_URL: 'http://localhost:8090/ipfs',
+  GATEWAY_URL: 'http://localhost:8080/ipfs',
   API_URL: 'http://localhost:8000/api/ipfs', // Use API Gateway proxy instead of direct IPFS
   // Alternative public gateway for fallback
   PUBLIC_GATEWAY: 'https://ipfs.io/ipfs',

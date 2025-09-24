@@ -1,0 +1,148 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+peer:
+    id: peer
+    networkId: dev
+    listenAddress: 0.0.0.0:7051
+    address: 0.0.0.0:7051
+    addressAutoDetect: false
+    gomaxprocs: -1
+    logging:
+        level: info
+        format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
+    BCCSP:
+        Default: SW
+        SW:
+            Hash: SHA2
+            Security: 256
+            FileKeyStore:
+                KeyStore:
+    tls:
+        enabled: true
+        clientAuthRequired: false
+        cert:
+            file: tls/server.crt
+        key:
+            file: tls/server.key
+        rootcert:
+            file: tls/ca.crt
+        clientRootCAs:
+            files:
+            - tls/ca.crt
+    keepalive:
+        minInterval: 60s
+        client:
+            interval: 60s
+            timeout: 20s
+        deliveryClient:
+            interval: 60s
+            timeout: 20s
+    gossip:
+        useLeaderElection: true
+        orgLeader: false
+        bootstrap: 127.0.0.1:7051
+        endpoint:
+        maxBlockCountToStore: 100
+        maxPropagationBurstLatency: 10ms
+        maxPropagationBurstSize: 10
+        propagateIterations: 1
+        propagatePeerNum: 3
+        pullInterval: 4s
+        pullPeerNum: 3
+        requestStateInfoInterval: 4s
+        publishStateInfoInterval: 4s
+        stateInfoRetentionInterval:
+        publishCertPeriod: 10s
+        skipBlockVerification: false
+        dialTimeout: 3s
+        connTimeout: 2s
+        recvBuffSize: 20
+        sendBuffSize: 200
+        digestWaitTime: 1s
+        requestWaitTime: 1s
+        responseWaitTime: 2s
+        aliveTimeInterval: 5s
+        aliveExpirationTimeout: 25s
+        reconnectInterval: 25s
+        election:
+            startupGracefulPeriod: 5s
+            membershipSampleInterval: 1s
+            leaderAliveThreshold: 10s
+            leaderElectionDuration: 5s
+        pvtData:
+            pullRetryThreshold: 60s
+            transientstoreMaxBlockRetention: 1000
+            pushAckTimeout: 3s
+            btlPullMargin: 10
+            reconcileBatchSize: 10
+            reconcileSleepInterval: 1m
+            reconciliationEnabled: true
+            skipPullingInvalidTransactionsDuringCommit: false
+    events:
+        address: 0.0.0.0:7053
+        buffersize: 100
+        timeout: 10ms
+        timewindow: 15m
+        keepalive:
+            minInterval: 60s
+    vmdocker:
+        endpoint: unix:///var/run/docker.sock
+        hostConfig:
+            NetworkMode: host
+    chaincode:
+        startuptimeout: 300s
+        executetimeout: 30s
+        logging:
+            level: info
+            format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
+        externalBuilders:
+        - name: ccaas_builder
+          path: /opt/gopath/src/github.com/hyperledger/fabric-chaincode-go/ccaas
+          propagateEnvironment:
+          - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG
+    operations:
+        listenAddress: 127.0.0.1:9443
+        tls:
+            enabled: false
+            cert:
+                file:
+            key:
+                file:
+            clientAuthRequired: false
+            clientRootCAs:
+                files: []
+    metrics:
+        provider: disabled
+        statsd:
+            network: udp
+            address: 127.0.0.1:8125
+            writeInterval: 10s
+            prefix:
+
+vm:
+    endpoint: unix:///var/run/docker.sock
+    docker:
+        attachStdout: true
+        hostConfig:
+            NetworkMode: host
+
+chaincode:
+    builder: $(DOCKER_NS)/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
+    pull: false
+    golang:
+        runtime: $(DOCKER_NS)/fabric-baseos:$(ARCH)-$(PROJECT_VERSION)
+        dynamicLink: false
+    java:
+        runtime: $(DOCKER_NS)/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
+    node:
+        runtime: $(DOCKER_NS)/fabric-nodeenv:$(ARCH)-$(PROJECT_VERSION)
+
+ledger:
+    state:
+        stateDatabase: goleveldb
+        totalQueryLimit: 100000
+    history:
+        enableHistoryDatabase: true

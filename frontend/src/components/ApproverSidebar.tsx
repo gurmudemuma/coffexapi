@@ -1,25 +1,17 @@
 import React from 'react';
 import {
     CheckCircle,
-    Clock,
     FileText,
-    Activity,
-    BarChart3,
-    Settings,
-    LogOut,
     Shield,
     Archive,
-    Search,
-    Bell,
-    Home
 } from 'lucide-react';
-import { Sidebar, SidebarItem } from './Sidebar';
+import { Sidebar } from './Sidebar';
+import { getSidebarItems, SidebarItem } from '../config/sidebarConfig.tsx';
 
 interface ApproverSidebarProps {
     organizationName: string;
     organizationType: string;
     userRole?: string;
-    activeView: string;
     onViewChange: (view: string) => void;
     onLogout: () => void;
     pendingCount?: number;
@@ -29,7 +21,6 @@ export const ApproverSidebar: React.FC<ApproverSidebarProps> = ({
     organizationName,
     organizationType,
     userRole = 'APPROVER',
-    activeView,
     onViewChange,
     onLogout,
     pendingCount = 0,
@@ -50,57 +41,9 @@ export const ApproverSidebar: React.FC<ApproverSidebarProps> = ({
         }
     };
 
-    const sidebarItems: SidebarItem[] = [
-        {
-            id: 'dashboard',
-            label: 'Dashboard',
-            icon: <Home className="w-5 h-5" />,
-            path: 'dashboard'
-        },
-        {
-            id: 'pending-approvals',
-            label: 'Pending Approvals',
-            icon: <Clock className="w-5 h-5" />,
-            path: 'pending',
-            badge: pendingCount,
-        },
-        {
-            id: 'approved-documents',
-            label: 'Approved Documents',
-            icon: <CheckCircle className="w-5 h-5" />,
-            path: 'approved'
-        },
-        {
-            id: 'rejected-documents',
-            label: 'Rejected Documents',
-            icon: <FileText className="w-5 h-5" />,
-            path: 'rejected'
-        },
-        {
-            id: 'document-search',
-            label: 'Document Search',
-            icon: <Search className="w-5 h-5" />,
-            path: 'search'
-        },
-        {
-            id: 'activity-log',
-            label: 'Activity Log',
-            icon: <Activity className="w-5 h-5" />,
-            path: 'activity'
-        },
-        {
-            id: 'analytics',
-            label: 'Analytics & Reports',
-            icon: <BarChart3 className="w-5 h-5" />,
-            path: 'analytics'
-        },
-        {
-            id: 'notifications',
-            label: 'Notifications',
-            icon: <Bell className="w-5 h-5" />,
-            path: 'notifications'
-        }
-    ];
+    const sidebarItems = getSidebarItems(organizationType).map(item => 
+        item.id === 'pending-approvals' ? { ...item, badge: pendingCount } : item
+    );
 
     const header = (
         <div className="p-4 border-b border-purple-200 bg-purple-50">
@@ -132,8 +75,7 @@ export const ApproverSidebar: React.FC<ApproverSidebarProps> = ({
         <Sidebar 
             header={header}
             items={sidebarItems}
-            activeView={activeView}
-            onViewChange={onViewChange}
+            onViewChange={() => {}}
             onLogout={onLogout}
             footer={footer}
         />

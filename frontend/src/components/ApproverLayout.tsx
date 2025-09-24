@@ -45,15 +45,16 @@ interface ApproverLayoutProps {
   organizationType: string;
   userRole?: 'APPROVER' | 'BANK_SUPERVISOR' | 'BANK';
   userName?: string;
+  children?: React.ReactNode;
 }
 
-export const ApproverLayout: React.FC<ApproverLayoutProps> = ({ 
+export const ApproverLayout: React.FC<ApproverLayoutProps> = ({
   organizationType,
   userRole = 'APPROVER',
-  userName = 'Approver Officer'
+  userName = 'Approver Officer',
+  children
 }) => {
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState('dashboard');
   const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics>({
     totalRequests: 0,
     pending: 0,
@@ -162,8 +163,7 @@ export const ApproverLayout: React.FC<ApproverLayoutProps> = ({
         organizationName={config.name}
         organizationType={organizationType}
         userRole={userRole}
-        activeView={activeView}
-        onViewChange={(view) => setActiveView(view)}
+        onViewChange={(view) => {}}
         onLogout={handleLogout}
         pendingCount={dashboardMetrics.pending}
       />
@@ -181,184 +181,10 @@ export const ApproverLayout: React.FC<ApproverLayoutProps> = ({
 
         {/* Dashboard Content */}
         <main className="flex-1 overflow-y-auto p-6">
-          {activeView === 'dashboard' && (
-            <div className="space-y-6">
-              {/* Metrics Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card 
-                  className="cursor-pointer hover:shadow-md transition-shadow border-purple-200"
-                  role="region"
-                  aria-label="Total Requests"
-                  tabIndex={0}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-purple-600">Total Requests</p>
-                        <p 
-                          className="text-3xl font-bold text-black"
-                          aria-live="polite"
-                          aria-atomic="true"
-                        >
-                          {loading ? '...' : dashboardMetrics.totalRequests}
-                        </p>
-                      </div>
-                      <div 
-                        className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center"
-                        aria-hidden="true"
-                      >
-                        <Clock className="w-6 h-6 text-purple-600" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="cursor-pointer hover:shadow-md transition-shadow border-status-pending"
-                  role="region"
-                  aria-label="Pending Approvals"
-                  tabIndex={0}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-status-pending">
-                          Pending Approvals
-                        </p>
-                        <p 
-                          className="text-3xl font-bold text-status-pending"
-                          aria-live="polite"
-                          aria-atomic="true"
-                        >
-                          {loading ? '...' : dashboardMetrics.pending}
-                        </p>
-                      </div>
-                      <div 
-                        className="w-12 h-12 rounded-full flex items-center justify-center bg-status-pending-light"
-                        aria-hidden="true"
-                      >
-                        <XCircle className="w-6 h-6 text-status-pending" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="cursor-pointer hover:shadow-md transition-shadow border-status-approved"
-                  role="region"
-                  aria-label="Approved Requests"
-                  tabIndex={0}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-status-approved">
-                          Approved
-                        </p>
-                        <p 
-                          className="text-3xl font-bold text-status-approved"
-                          aria-live="polite"
-                          aria-atomic="true"
-                        >
-                          {loading ? '...' : dashboardMetrics.approved}
-                        </p>
-                      </div>
-                      <div 
-                        className="w-12 h-12 rounded-full flex items-center justify-center bg-status-approved-light"
-                        aria-hidden="true"
-                      >
-                        <CheckCircle className="w-6 h-6 text-status-approved" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="cursor-pointer hover:shadow-md transition-shadow border-status-rejected"
-                  role="region"
-                  aria-label="Rejected Requests"
-                  tabIndex={0}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-status-rejected">
-                          Rejected
-                        </p>
-                        <p 
-                          className="text-3xl font-bold text-status-rejected"
-                          aria-live="polite"
-                          aria-atomic="true"
-                        >
-                          {loading ? '...' : dashboardMetrics.rejected}
-                        </p>
-                      </div>
-                      <div 
-                        className="w-12 h-12 rounded-full flex items-center justify-center bg-status-rejected-light"
-                        aria-hidden="true"
-                      >
-                        <XCircle className="w-6 h-6 text-status-rejected" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="border-purple-200">
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold text-black mb-4">Quick Actions</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Button 
-                        className="h-auto py-4 flex flex-col items-center justify-center bg-purple-600 hover:bg-purple-700"
-                        onClick={() => setActiveView('pending')}
-                      >
-                        <Clock className="w-6 h-6 mb-2" />
-                        <span>Pending</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="h-auto py-4 flex flex-col items-center justify-center border-purple-200 text-purple-600 hover:bg-purple-50"
-                        onClick={() => setActiveView('urgent')}
-                      >
-                        <XCircle className="w-6 h-6 mb-2" />
-                        <span>Urgent</span>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-purple-200">
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold text-black mb-4">Recent Activity</h3>
-                    <div className="space-y-4">
-                      <p className="text-purple-600 text-center py-4">
-                        Recent activity will appear here
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          )}
-
-          {/* All other views use the EnhancedApproverPanel content */}
-          {activeView !== 'dashboard' && (
-            <div className="bg-white rounded-lg shadow-sm border border-purple-200">
-              <EnhancedApproverPanel 
-                organizationType={organizationType} 
-                userRole={userRole}
-                initialView={activeView}
-                contentOnly={true}
-                hideHeader={true}
-              />
-            </div>
-          )}
+          {children}
         </main>
       </div>
     </div>
   );
 };
-
 export default ApproverLayout;

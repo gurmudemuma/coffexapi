@@ -101,7 +101,7 @@ export const accessUnencryptedDocument = async (
   console.log('CID:', documentCid);
 
   const gateways = useLocalGateway 
-    ? ['http://localhost:8090/ipfs', 'https://ipfs.io/ipfs']
+    ? ['http://localhost:8080/ipfs', 'https://ipfs.io/ipfs']
     : ['https://ipfs.io/ipfs'];
 
   for (const gateway of gateways) {
@@ -175,7 +175,7 @@ export const getDocumentMetadata = async (cid: string): Promise<{
   error?: string;
 }> => {
   try {
-    const response = await fetch(`http://localhost:8090/ipfs/${cid}`, {
+    const response = await fetch(`http://localhost:8080/ipfs/${cid}`, {
       method: 'HEAD'
     });
 

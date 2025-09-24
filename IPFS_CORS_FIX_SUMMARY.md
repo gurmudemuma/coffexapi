@@ -14,13 +14,13 @@ Error: IPFS uploads are currently disabled
 ## Solutions Implemented
 
 ### ✅ 1. IPFS CORS Configuration
-- Configured IPFS node to allow CORS requests from browsers
-- Added proper CORS headers to IPFS API at localhost:5001
+- Configured IPFS node to remove CORS headers to prevent conflicts with the API Gateway.
+- The API Gateway at localhost:8000 now handles all CORS requests.
 - Commands executed:
   ```bash
-  docker exec ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
-  docker exec ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '["PUT", "POST", "GET"]'
-  docker exec ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Headers '["Authorization", "Content-Type"]'
+  docker exec ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin 'null'
+  docker exec ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods 'null'
+  docker exec ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Headers 'null'
   docker-compose restart ipfs
   ```
 
@@ -43,7 +43,7 @@ Error: IPFS uploads are currently disabled
 
 ### ✅ Working Services
 - **API Gateway**: Running on port 8000 with CORS enabled
-- **IPFS Node**: Running on port 5001 with CORS configured
+- **IPFS Node**: Running on port 5001 with CORS disabled (handled by API Gateway)
 - **IPFS Proxy**: Available through API Gateway
 
 ### 🔄 Next Steps
@@ -53,8 +53,7 @@ Error: IPFS uploads are currently disabled
    npm run dev
    ```
 
-2. **Test the upload** - your frontend should now work with either:
-   - Direct IPFS: `http://localhost:5001/api/v0/add` (with CORS)
+2. **Test the upload** - your frontend should now work with the proxy route:
    - Proxy route: `http://localhost:8000/api/ipfs/add` (no CORS issues)
 
 ## Verification

@@ -1,5 +1,6 @@
 import React from 'react';
 import { ApproverLayout } from '../ApproverLayout';
+import UserManagement from '../UserManagement';
 
 export const NationalBankDashboard: React.FC = () => {
   return (
@@ -7,7 +8,9 @@ export const NationalBankDashboard: React.FC = () => {
       organizationType="national-bank" 
       userRole="APPROVER"
       userName="National Bank Officer"
-    />
+    >
+      <UserManagement />
+    </ApproverLayout>
   );
 };
 

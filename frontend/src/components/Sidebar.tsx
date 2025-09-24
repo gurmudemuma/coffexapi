@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Settings, ChevronDown } from 'lucide-react';
 
 export interface SidebarItem {
     id: string;
@@ -10,6 +10,7 @@ export interface SidebarItem {
     icon: React.ReactNode;
     path: string;
     badge?: number;
+    subItems?: SidebarItem[];
 }
 
 interface SidebarProps {
@@ -20,6 +21,80 @@ interface SidebarProps {
     onLogout: () => void;
     footer?: React.ReactNode;
 }
+
+const SidebarSubItem: React.FC<{ item: SidebarItem, onNavigate: (path: string) => void, activeView: string }> = ({ item, onNavigate, activeView }) => {
+    const isActive = activeView === item.path;
+    return (
+        <li>
+            <button
+                onClick={() => onNavigate(item.path)}
+                className={`w-full flex items-center justify-between pl-8 pr-3 py-2 rounded-lg text-left transition-colors ${
+                    isActive
+                        ? 'bg-purple-100 text-purple-700 font-medium'
+                        : 'text-black hover:bg-yellow-50'
+                    }`}
+            >
+                <div className="flex items-center space-x-3">
+                    <span className={isActive ? 'text-purple-600' : 'text-purple-500'}>
+                        {item.icon}
+                    </span>
+                    <span className="text-sm">{item.label}</span>
+                </div>
+            </button>
+        </li>
+    );
+};
+
+const SidebarItem: React.FC<{ item: SidebarItem, onNavigate: (path: string) => void, activeView: string }> = ({ item, onNavigate, activeView }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const hasSubItems = item.subItems && item.subItems.length > 0;
+    const isActive = activeView === item.path;
+
+    const handleClick = () => {
+        if (hasSubItems) {
+            setIsOpen(!isOpen);
+        } else {
+            onNavigate(item.path);
+        }
+    };
+
+    return (
+        <li>
+            <button
+                onClick={handleClick}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
+                    isActive && !hasSubItems
+                        ? 'bg-purple-100 text-purple-700 font-medium border border-purple-200'
+                        : 'text-black hover:bg-yellow-50 hover:border hover:border-yellow-200'
+                    }`}
+            >
+                <div className="flex items-center space-x-3">
+                    <span className={isActive ? 'text-purple-600' : 'text-purple-500'}>
+                        {item.icon}
+                    </span>
+                    <span className="text-sm">{item.label}</span>
+                </div>
+                <div className="flex items-center">
+                    {item.badge && item.badge > 0 && (
+                        <Badge className="bg-purple-600 text-white hover:bg-purple-700 text-xs mr-2">
+                            {item.badge}
+                        </Badge>
+                    )}
+                    {hasSubItems && (
+                        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    )}
+                </div>
+            </button>
+            {hasSubItems && isOpen && (
+                <ul className="space-y-1 mt-1">
+                    {item.subItems?.map(subItem => (
+                        <SidebarSubItem key={subItem.id} item={subItem} onNavigate={onNavigate} activeView={activeView} />
+                    ))}
+                </ul>
+            )}
+        </li>
+    );
+};
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
     header, 
@@ -41,33 +116,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Navigation Items */}
             <nav className="flex-1 p-4">
                 <ul className="space-y-2">
-                    {items.map((item) => {
-                        const isActive = activeView === item.path;
-                        return (
-                            <li key={item.id}>
-                                <button
-                                    onClick={() => handleNavigation(item.path)}
-                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                                        isActive
-                                            ? 'bg-purple-100 text-purple-700 font-medium border border-purple-200'
-                                            : 'text-black hover:bg-yellow-50 hover:border hover:border-yellow-200'
-                                        }`}
-                                >
-                                    <div className="flex items-center space-x-3">
-                                        <span className={isActive ? 'text-purple-600' : 'text-purple-500'}>
-                                            {item.icon}
-                                        </span>
-                                        <span className="text-sm">{item.label}</span>
-                                    </div>
-                                    {item.badge && item.badge > 0 && (
-                                        <Badge className="bg-purple-600 text-white hover:bg-purple-700 text-xs">
-                                            {item.badge}
-                                        </Badge>
-                                    )}
-                                </button>
-                            </li>
-                        );
-                    })}
+                    {items.map((item) => (
+                        <SidebarItem key={item.id} item={item} onNavigate={handleNavigation} activeView={activeView} />
+                    ))}
                 </ul>
             </nav>
 

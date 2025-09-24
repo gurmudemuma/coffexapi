@@ -115,7 +115,7 @@ setup_validators() {
     print_status "Setting up validator services..."
     
     # Build and start validators
-    docker-compose up -d validator-base nb-api bank-api quality-api customs-api
+    docker-compose up -d national-bank-validator bank-api-validator quality-authority-validator customs-validator
     
     # Wait for validators to be ready
     print_status "Waiting for validators to be ready..."
@@ -210,13 +210,13 @@ show_status() {
     echo "  - Customs: http://localhost:8082"
     echo ""
     echo "💾 Databases:"
-    echo "  - CouchDB 0: http://localhost:5984"
-    echo "  - CouchDB 1: http://localhost:6984"
-    echo "  - CouchDB 2: http://localhost:7984"
-    echo "  - CouchDB 3: http://localhost:8984"
+    echo "  - CouchDB 0: http://localhost:15984"
+    echo "  - CouchDB 1: http://localhost:15985"
+    echo "  - CouchDB 2: http://localhost:15986"
+    echo "  - CouchDB 3: http://localhost:15987"
     echo ""
     echo "🎨 Frontend:"
-    echo "  - Web Interface: http://localhost:3000"
+    echo "  - Web Interface: http://localhost:3001"
     echo ""
     echo "📋 Channel: coffeeexport"
     echo "📦 Chaincode: coffeeexport@1.0"

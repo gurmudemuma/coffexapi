@@ -102,20 +102,20 @@ Application: &ApplicationDefaults
     Organizations:
     Policies:
         Readers:
-            Type: ImplicitMeta
-            Rule: "ANY Readers"
+            Type: Signature
+            Rule: "OR('NationalBankMSP.admin', 'ExporterBankMSP.admin', 'CoffeeAuthorityMSP.admin', 'CustomsMSP.admin')"
         Writers:
-            Type: ImplicitMeta
-            Rule: "ANY Writers"
+            Type: Signature
+            Rule: "OR('NationalBankMSP.admin', 'ExporterBankMSP.admin', 'CoffeeAuthorityMSP.admin', 'CustomsMSP.admin')"
         Admins:
             Type: ImplicitMeta
-            Rule: "ANY Admins"
+            Rule: "MAJORITY Admins"
         LifecycleEndorsement:
-            Type: ImplicitMeta
-            Rule: "MAJORITY Endorsement"
+            Type: Signature
+            Rule: "OR('NationalBankMSP.peer', 'ExporterBankMSP.peer', 'CoffeeAuthorityMSP.peer', 'CustomsMSP.peer')"
         Endorsement:
-            Type: ImplicitMeta
-            Rule: "MAJORITY Endorsement"
+            Type: Signature
+            Rule: "OR('NationalBankMSP.peer', 'ExporterBankMSP.peer', 'CoffeeAuthorityMSP.peer', 'CustomsMSP.peer')"
 
 Orderer: &OrdererDefaults
     OrdererType: solo
@@ -186,17 +186,17 @@ Profiles:
                 - *Customs
             Policies:
                 Readers:
-                    Type: ImplicitMeta
-                    Rule: "ANY Readers"
+                    Type: Signature
+                    Rule: "OR('NationalBankMSP.admin', 'ExporterBankMSP.admin', 'CoffeeAuthorityMSP.admin', 'CustomsMSP.admin')"
                 Writers:
-                    Type: ImplicitMeta
-                    Rule: "ANY Writers"
+                    Type: Signature
+                    Rule: "OR('NationalBankMSP.admin', 'ExporterBankMSP.admin', 'CoffeeAuthorityMSP.admin', 'CustomsMSP.admin')"
                 Admins:
                     Type: ImplicitMeta
-                    Rule: "ANY Admins"
+                    Rule: "MAJORITY Admins"
                 LifecycleEndorsement:
-                    Type: ImplicitMeta
-                    Rule: "MAJORITY Endorsement"
+                    Type: Signature
+                    Rule: "OR('NationalBankMSP.peer', 'ExporterBankMSP.peer', 'CoffeeAuthorityMSP.peer', 'CustomsMSP.peer')"
                 Endorsement:
-                    Type: ImplicitMeta
-                    Rule: "MAJORITY Endorsement"
+                    Type: Signature
+                    Rule: "OR('NationalBankMSP.peer', 'ExporterBankMSP.peer', 'CoffeeAuthorityMSP.peer', 'CustomsMSP.peer')"

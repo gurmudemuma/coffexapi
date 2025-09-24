@@ -126,6 +126,41 @@ func (acm *ApprovalChannelManager) GetPendingApprovalsForOrganization(
 	return approvals, nil
 }
 
+// GetCompletedApprovalsForOrganization retrieves completed approvals for a specific organization
+func (acm *ApprovalChannelManager) GetCompletedApprovalsForOrganization(
+	ctx contractapi.TransactionContextInterface,
+	org OrganizationType,
+) ([]map[string]interface{}, error) {
+	collectionName := fmt.Sprintf("approvalChannel_%s", string(org))
+
+	// Get all assignments
+	iterator, err := ctx.GetStub().GetPrivateDataByPartialCompositeKey(collectionName, "assignment", []string{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get completed approvals: %v", err)
+	}
+	defer iterator.Close()
+
+	var approvals []map[string]interface{}
+	for iterator.HasNext() {
+		result, err := iterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		var assignment map[string]interface{}
+		if err := json.Unmarshal(result.Value, &assignment); err != nil {
+			continue // Skip invalid entries
+		}
+
+		// Only include completed assignments
+		if status, exists := assignment["status"]; exists && (status == string(StageStatusApproved) || status == string(StageStatusRejected)) {
+			approvals = append(approvals, assignment)
+		}
+	}
+
+	return approvals, nil
+}
+
 // ProcessApprovalDecision processes an approval decision and updates the channel
 func (acm *ApprovalChannelManager) ProcessApprovalDecision(
 	ctx contractapi.TransactionContextInterface,

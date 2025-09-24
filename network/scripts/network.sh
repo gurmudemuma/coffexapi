@@ -31,7 +31,7 @@ print_error() {
 }
 
 # Set absolute path to the bin directory
-BIN_DIR="/home/gu-da/coffexapi/bin"
+BIN_DIR="../bin"
 export PATH=$BIN_DIR:$PATH
 
 # Verify binaries exist
@@ -91,7 +91,7 @@ generate_crypto() {
     print_status "Generating crypto materials for all organizations..."
     
     # Define the base directory
-    local BASE_DIR="/home/gu-da/coffexapi/network"
+    local BASE_DIR="."
     
     # Create organizations directory
     mkdir -p "$BASE_DIR/organizations/peerOrganizations"
@@ -200,7 +200,7 @@ start_network() {
     print_status "Starting the consortium network..."
     
     # Define the base directory
-    local BASE_DIR="/home/gu-da/coffexapi"
+    local BASE_DIR=".."
     
     # Ensure the channel-artifacts directory exists
     mkdir -p "$BASE_DIR/network/channel-artifacts"

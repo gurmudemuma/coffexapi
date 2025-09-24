@@ -48,7 +48,7 @@ def create_test_export():
             "license": {
                 "hash": "test_license_hash_123",
                 "ipfsCid": "QmTestLicense123",
-                "ipfsUrl": "http://localhost:8090/ipfs/QmTestLicense123",
+                "ipfsUrl": "http://localhost:8080/ipfs/QmTestLicense123",
                 "iv": "test_iv_license",
                 "key": "test_key_license",
                 "encrypted": True,
@@ -58,7 +58,7 @@ def create_test_export():
             "invoice": {
                 "hash": "test_invoice_hash_456", 
                 "ipfsCid": "QmTestInvoice456",
-                "ipfsUrl": "http://localhost:8090/ipfs/QmTestInvoice456",
+                "ipfsUrl": "http://localhost:8080/ipfs/QmTestInvoice456",
                 "iv": "test_iv_invoice",
                 "key": "test_key_invoice", 
                 "encrypted": True,
