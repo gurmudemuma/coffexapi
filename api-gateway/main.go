@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/hex"
@@ -8,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"sync"
@@ -100,10 +102,10 @@ type CompletedApproval struct {
 
 // In-memory storage for documents and metadata
 var (
-	documentStorage   = make(map[string][]byte)
+	documentStorage    = make(map[string][]byte)
 	unencryptedStorage = make(map[string][]byte) // For approver access
-	documentMetadata  = make(map[string]map[string]interface{})
-	documentMutex     sync.RWMutex
+	documentMetadata   = make(map[string]map[string]interface{})
+	documentMutex      sync.RWMutex
 
 	// In-memory storage for submitted exports
 	submittedExports = make(map[string]ExportData)
@@ -168,6 +170,7 @@ func main() {
 	// Minimal submission notifier used by frontend to reflect new exports immediately
 	http.HandleFunc("/api/exporter/submit", corsWrapper(handleExporterSubmitNotify))
 	http.HandleFunc("/api/test/create-sample-data", corsWrapper(createSampleDataHandler))
+	http.HandleFunc("/api/ipfs/upload", corsWrapper(ipfsUploadProxyHandler))
 	http.HandleFunc("/health", corsWrapper(healthHandler))
 
 	// Start HTTP server
@@ -374,7 +377,7 @@ func fetchAndDecryptDocument(cid, key, iv string) ([]byte, error) {
 	log.Printf("Attempting to fetch and decrypt document %s", cid)
 
 	// Try to fetch from local IPFS gateway
-	ipfsURL := fmt.Sprintf("http://localhost:8090/ipfs/%s", cid)
+	ipfsURL := fmt.Sprintf("http://ipfs:8080/ipfs/%s", cid)
 	log.Printf("Fetching document from IPFS URL: %s", ipfsURL)
 	resp, err := http.Get(ipfsURL)
 
@@ -418,7 +421,7 @@ func fetchAndDecryptDocument(cid, key, iv string) ([]byte, error) {
 // fetchDocumentFromIPFS fetches a document from IPFS without decryption
 func fetchDocumentFromIPFS(cid string) ([]byte, error) {
 	// Try to fetch from local IPFS gateway
-	ipfsURL := fmt.Sprintf("http://localhost:8090/ipfs/%s", cid)
+	ipfsURL := fmt.Sprintf("http://ipfs:8080/ipfs/%s", cid)
 	resp, err := http.Get(ipfsURL)
 
 	if err != nil {
@@ -677,55 +680,55 @@ func createSampleDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Create sample export requests
 	sampleRequests := []map[string]interface{}{
 		{
-			"exportId":        "EXP-2024-001",
-			"referenceNumber": "REF-001-2024",
-			"exporterName":    "Coffee Exporter Co.",
-			"status":          "pending",
-			"submissionDate":  time.Now().AddDate(0, 0, -5).Format(time.RFC3339),
-			"lastUpdated":     time.Now().AddDate(0, 0, -1).Format(time.RFC3339),
-			"currentApprover": "National Bank",
-			"progressPercent": 25,
-			"documentCount":   4,
-			"totalValue":      50000,
+			"exportId":           "EXP-2024-001",
+			"referenceNumber":    "REF-001-2024",
+			"exporterName":       "Coffee Exporter Co.",
+			"status":             "pending",
+			"submissionDate":     time.Now().AddDate(0, 0, -5).Format(time.RFC3339),
+			"lastUpdated":        time.Now().AddDate(0, 0, -1).Format(time.RFC3339),
+			"currentApprover":    "National Bank",
+			"progressPercent":    25,
+			"documentCount":      4,
+			"totalValue":         50000,
 			"destinationCountry": "Germany",
 		},
 		{
-			"exportId":        "EXP-2024-002",
-			"referenceNumber": "REF-002-2024",
-			"exporterName":    "Coffee Exporter Co.",
-			"status":          "approved",
-			"submissionDate":  time.Now().AddDate(0, 0, -10).Format(time.RFC3339),
-			"lastUpdated":     time.Now().AddDate(0, 0, -2).Format(time.RFC3339),
-			"currentApprover": "Completed",
-			"progressPercent": 100,
-			"documentCount":   4,
-			"totalValue":      75000,
+			"exportId":           "EXP-2024-002",
+			"referenceNumber":    "REF-002-2024",
+			"exporterName":       "Coffee Exporter Co.",
+			"status":             "approved",
+			"submissionDate":     time.Now().AddDate(0, 0, -10).Format(time.RFC3339),
+			"lastUpdated":        time.Now().AddDate(0, 0, -2).Format(time.RFC3339),
+			"currentApprover":    "Completed",
+			"progressPercent":    100,
+			"documentCount":      4,
+			"totalValue":         75000,
 			"destinationCountry": "USA",
 		},
 		{
-			"exportId":        "EXP-2024-003",
-			"referenceNumber": "REF-003-2024",
-			"exporterName":    "Coffee Exporter Co.",
-			"status":          "rejected",
-			"submissionDate":  time.Now().AddDate(0, 0, -7).Format(time.RFC3339),
-			"lastUpdated":     time.Now().AddDate(0, 0, -3).Format(time.RFC3339),
-			"currentApprover": "Coffee Authority",
-			"progressPercent": 50,
-			"documentCount":   4,
-			"totalValue":      30000,
+			"exportId":           "EXP-2024-003",
+			"referenceNumber":    "REF-003-2024",
+			"exporterName":       "Coffee Exporter Co.",
+			"status":             "rejected",
+			"submissionDate":     time.Now().AddDate(0, 0, -7).Format(time.RFC3339),
+			"lastUpdated":        time.Now().AddDate(0, 0, -3).Format(time.RFC3339),
+			"currentApprover":    "Coffee Authority",
+			"progressPercent":    50,
+			"documentCount":      4,
+			"totalValue":         30000,
 			"destinationCountry": "Japan",
 		},
 		{
-			"exportId":        "EXP-2024-004",
-			"referenceNumber": "REF-004-2024",
-			"exporterName":    "Coffee Exporter Co.",
-			"status":          "pending",
-			"submissionDate":  time.Now().AddDate(0, 0, -3).Format(time.RFC3339),
-			"lastUpdated":     time.Now().Format(time.RFC3339),
-			"currentApprover": "Exporter Bank",
-			"progressPercent": 75,
-			"documentCount":   4,
-			"totalValue":      60000,
+			"exportId":           "EXP-2024-004",
+			"referenceNumber":    "REF-004-2024",
+			"exporterName":       "Coffee Exporter Co.",
+			"status":             "pending",
+			"submissionDate":     time.Now().AddDate(0, 0, -3).Format(time.RFC3339),
+			"lastUpdated":        time.Now().Format(time.RFC3339),
+			"currentApprover":    "Exporter Bank",
+			"progressPercent":    75,
+			"documentCount":      4,
+			"totalValue":         60000,
 			"destinationCountry": "Netherlands",
 		},
 	}
@@ -753,6 +756,101 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+}
+
+// ipfsUploadProxyHandler proxies IPFS upload requests to avoid CORS issues
+func ipfsUploadProxyHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse multipart form
+	err := r.ParseMultipartForm(32 << 20) // 32MB max
+	if err != nil {
+		log.Printf("Failed to parse multipart form: %v", err)
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	// Get the uploaded file
+	file, handler, err := r.FormFile("file")
+	if err != nil {
+		log.Printf("No file in form: %v", err)
+		http.Error(w, "No file uploaded", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Read file content
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		log.Printf("Failed to read file: %v", err)
+		http.Error(w, "Failed to read file", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Received file upload: %s (%d bytes)", handler.Filename, len(fileBytes))
+
+	// Create a new multipart form for IPFS
+	var requestBody bytes.Buffer
+	writer := multipart.NewWriter(&requestBody)
+
+	// Add the file to the form
+	fileWriter, err := writer.CreateFormFile("file", handler.Filename)
+	if err != nil {
+		log.Printf("Failed to create form file: %v", err)
+		http.Error(w, "Failed to prepare IPFS request", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = fileWriter.Write(fileBytes)
+	if err != nil {
+		log.Printf("Failed to write file to form: %v", err)
+		http.Error(w, "Failed to prepare IPFS request", http.StatusInternalServerError)
+		return
+	}
+
+	writer.Close()
+
+	// Make request to local IPFS node
+	ipfsURL := "http://ipfs:5001/api/v0/add?stream-channels=true&progress=false"
+	log.Printf("Forwarding request to IPFS: %s", ipfsURL)
+
+	req, err := http.NewRequest("POST", ipfsURL, &requestBody)
+	if err != nil {
+		log.Printf("Failed to create IPFS request: %v", err)
+		http.Error(w, "Failed to create IPFS request", http.StatusInternalServerError)
+		return
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Make the request to IPFS
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("IPFS request failed: %v", err)
+		http.Error(w, "IPFS upload failed", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read IPFS response
+	ipfsResponse, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Failed to read IPFS response: %v", err)
+		http.Error(w, "Failed to read IPFS response", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("IPFS response status: %d", resp.StatusCode)
+	log.Printf("IPFS response: %s", string(ipfsResponse))
+
+	// Forward the IPFS response to the client
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(resp.StatusCode)
+	w.Write(ipfsResponse)
 }
 
 func handleExporterSubmitNotify(w http.ResponseWriter, r *http.Request) {
@@ -1083,7 +1181,7 @@ func viewDocumentHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("Approver access detected, attempting server-side decryption\n")
 
 			// Try to fetch from local IPFS gateway
-			ipfsURL := fmt.Sprintf("http://localhost:8090/ipfs/%s", foundDocument.IPFSCID)
+			ipfsURL := fmt.Sprintf("http://ipfs:8080/ipfs/%s", foundDocument.IPFSCID)
 			resp, err := http.Get(ipfsURL)
 
 			if err != nil {
@@ -1158,7 +1256,7 @@ func viewDocumentHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Attempting direct IPFS access via multiple gateways for unencrypted document\n")
 
 	gateways := []string{
-		"http://localhost:8090/ipfs/%s",
+		"http://ipfs:8080/ipfs/%s",
 		"http://localhost:8080/ipfs/%s",
 		"https://ipfs.io/ipfs/%s",
 		"https://cloudflare-ipfs.com/ipfs/%s",
@@ -1601,6 +1699,37 @@ func submitApprovalDecisionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate payload fields
+	if strings.TrimSpace(decision.ExportID) == "" {
+		http.Error(w, "Missing exportId", http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(decision.DocumentHash) == "" {
+		http.Error(w, "Missing documentHash", http.StatusBadRequest)
+		return
+	}
+	if decision.Action == "" {
+		http.Error(w, "Missing action (APPROVE or REJECT)", http.StatusBadRequest)
+		return
+	}
+
+	// Normalize action
+	action := strings.ToUpper(decision.Action)
+	if action != "APPROVE" && action != "REJECT" && action != "APPROVED" && action != "REJECTED" {
+		http.Error(w, "Invalid action. Use APPROVE or REJECT", http.StatusBadRequest)
+		return
+	}
+	if action == "APPROVED" {
+		action = "APPROVE"
+	}
+	if action == "REJECTED" {
+		action = "REJECT"
+	}
+
+	// Server-side log for diagnosis
+	fmt.Printf("[submit-decision] org=%s (%s) exportId=%s docHash=%s action=%s reviewedBy=%s\n",
+		org, orgType, decision.ExportID, decision.DocumentHash, action, decision.ReviewedBy)
+
 	// Process the decision
 	approvalsMutex.Lock()
 	approvalKey := fmt.Sprintf("%s_%s_%s", decision.ExportID, decision.DocumentHash, orgType)
@@ -1608,7 +1737,7 @@ func submitApprovalDecisionHandler(w http.ResponseWriter, r *http.Request) {
 		ID:           approvalKey,
 		ExportID:     decision.ExportID,
 		DocumentHash: decision.DocumentHash,
-		Action:       decision.Action,
+		Action:       action,
 		Comments:     decision.Comments,
 		ReviewedBy:   decision.ReviewedBy,
 		Organization: orgType,

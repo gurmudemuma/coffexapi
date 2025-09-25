@@ -107,6 +107,7 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
 }) => {
   const [dashboardData, setDashboardData] = useState<DashboardMetrics | null>(null);
   const [allRequests, setAllRequests] = useState<ExporterRequest[]>([]);
+  const [persistentRequests, setPersistentRequests] = useState<ExporterRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<RequestDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -127,15 +128,17 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
         const data: any = await response.json();
         console.log('ExporterDashboard API Response:', data); // Log the actual response
         
-        // Handle different possible API response formats with more robust mapping
+        // Use the standard API response format
         const normalizedData: DashboardMetrics = {
-          totalRequests: data.totalRequests ?? data.total_requests ?? data.total ?? 0,
-          pendingApproval: data.pendingApproval ?? data.pending_approval ?? data.pending ?? 0,
-          approved: data.approved ?? data.approved_count ?? 0,
-          rejected: data.rejected ?? data.requires_action ?? data.rejected_count ?? 0,
+          totalRequests: data.totalRequests ?? 0,
+          pendingApproval: data.pendingApproval ?? 0,
+          approved: data.approved ?? 0,
+          rejected: data.rejected ?? 0,
           recentRequests: data.recentRequests ?? [],
           notifications: data.notifications ?? []
         };
+        
+        console.log('ExporterDashboard parsed metrics:', normalizedData);
         
         // Ensure all values are numbers
         normalizedData.totalRequests = Number(normalizedData.totalRequests) || 0;
@@ -172,7 +175,15 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
       
       if (response.ok) {
         const data = await response.json();
-        setAllRequests(data.requests || []);
+        const newRequests = data.requests || [];
+        
+        // Merge with persistent requests to ensure no data loss
+        const mergedRequests = mergeRequests(persistentRequests, newRequests);
+        setAllRequests(mergedRequests);
+        setPersistentRequests(mergedRequests);
+        
+        // Save to localStorage for persistence
+        localStorage.setItem(`exporter-requests-${exporterName}`, JSON.stringify(mergedRequests));
       } else {
         console.error('Failed to fetch requests:', response.statusText);
       }
@@ -203,7 +214,19 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
     }
   };
 
+  // Load persistent data from localStorage on component mount
   useEffect(() => {
+    const savedRequests = localStorage.getItem(`exporter-requests-${exporterName}`);
+    if (savedRequests) {
+      try {
+        const parsed = JSON.parse(savedRequests);
+        setPersistentRequests(parsed);
+        setAllRequests(parsed);
+      } catch (e) {
+        console.warn('Failed to parse saved requests:', e);
+      }
+    }
+    
     fetchDashboardData();
     fetchRequests();
 
@@ -236,12 +259,35 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
             documentCount: 4
           })
         });
+        
+        // Immediately add to persistent storage
+        const newRequest: ExporterRequest = {
+          exportId: exportId || `AUTO-${Date.now()}`,
+          referenceNumber: exportId || `AUTO-${Date.now()}`,
+          submissionDate: new Date().toISOString(),
+          status: 'PENDING',
+          currentApprover: 'National Bank',
+          lastUpdated: new Date().toISOString(),
+          documentCount: 4,
+          progressPercent: 25,
+          exporterName: exporterName,
+          urgencyLevel: 'HIGH',
+          destinationCountry: 'N/A',
+          totalValue: 0
+        };
+        
+        const updatedRequests = [newRequest, ...persistentRequests];
+        setPersistentRequests(updatedRequests);
+        setAllRequests(updatedRequests);
+        localStorage.setItem(`exporter-requests-${exporterName}`, JSON.stringify(updatedRequests));
       } catch (e) {
         console.warn('Failed to notify test API of submission:', e);
       } finally {
-        // Refresh UI regardless
-        fetchDashboardData();
-        fetchRequests();
+        // Refresh UI regardless with a slight delay to ensure backend is updated
+        setTimeout(() => {
+          fetchDashboardData();
+          fetchRequests();
+        }, 500);
       }
     };
 
@@ -260,29 +306,56 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
     fetchRequests();
   }, [statusFilter, searchTerm]);
 
-  // Get status badge variant
+  // Get status badge variant (handle both upper and lower case)
   const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
+    const normalizedStatus = status.toUpperCase();
+    switch (normalizedStatus) {
       case 'APPROVED': return 'default';
       case 'REJECTED': return 'destructive';
       case 'PENDING': return 'secondary';
+      case 'IN_PROGRESS': return 'secondary';
       default: return 'outline';
     }
   };
 
-  // Get status icon
+  // Get status icon (handle both upper and lower case)
   const getStatusIcon = (status: string) => {
-    switch (status) {
+    const normalizedStatus = status.toUpperCase();
+    switch (normalizedStatus) {
       case 'APPROVED': return <CheckCircle className="w-4 h-4" />;
       case 'REJECTED': return <XCircle className="w-4 h-4" />;
       case 'PENDING': return <Clock className="w-4 h-4" />;
+      case 'IN_PROGRESS': return <Clock className="w-4 h-4" />;
       default: return <FileText className="w-4 h-4" />;
     }
   };
 
+  // Format status for display (consistent with approver channels)
+  const formatStatusForDisplay = (status: string) => {
+    return status.toUpperCase();
+  };
+
+  // Merge requests function to combine persistent and new data
+  const mergeRequests = (persistent: ExporterRequest[], newData: ExporterRequest[]) => {
+    const merged = [...persistent];
+    
+    newData.forEach(newReq => {
+      const existingIndex = merged.findIndex(req => req.exportId === newReq.exportId);
+      if (existingIndex >= 0) {
+        // Update existing request with latest data
+        merged[existingIndex] = { ...merged[existingIndex], ...newReq };
+      } else {
+        // Add new request
+        merged.push(newReq);
+      }
+    });
+    
+    return merged.sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime());
+  };
+
   // Filter requests
   const filteredRequests = allRequests.filter(request => {
-    const matchesStatus = statusFilter === 'all' || statusFilter === null || request.status.toLowerCase() === statusFilter.toLowerCase();
+    const matchesStatus = statusFilter === 'all' || request.status.toLowerCase() === statusFilter.toLowerCase();
     const matchesSearch = !searchTerm || 
       request.exportId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.referenceNumber.toLowerCase().includes(searchTerm.toLowerCase());
@@ -302,15 +375,138 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Export Dashboard</h1>
-          <p className="text-gray-600 mt-2">
-            Welcome back, {exporterName} • Track and manage your export requests
-          </p>
+      {/* Header - Approver Channel Style */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {exporterName} - Export Dashboard
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Exporter Portal • Track and manage your export requests and approvals
+            </p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-yellow-400 text-yellow-700 hover:bg-yellow-50"
+              onClick={() => {
+                // Could add notifications functionality here
+              }}
+            >
+              <Bell className="w-4 h-4 mr-2" />
+              Notifications
+            </Button>
+            <Badge variant="outline" className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black border-none shadow-md font-semibold">
+              Exporter
+            </Badge>
+          </div>
         </div>
-        <div className="flex items-center space-x-4">
+      </div>
+
+      {/* Metrics Row - Approver Channel Style */}
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {(() => {
+          // Calculate counts from actual request data like approver channel
+          const requestPendingCount = allRequests.filter(req => req.status.toLowerCase() === 'pending').length;
+          const requestApprovedCount = allRequests.filter(req => req.status.toLowerCase() === 'approved').length;
+          const requestRejectedCount = allRequests.filter(req => req.status.toLowerCase() === 'rejected').length;
+          
+          // Always use request data (persistent + API), with dashboard data as final fallback
+          const totalRequests = allRequests.length;
+          const pendingCount = totalRequests > 0 ? requestPendingCount : (dashboardData?.pendingApproval || 0);
+          const approvedCount = totalRequests > 0 ? requestApprovedCount : (dashboardData?.approved || 0);
+          const rejectedCount = totalRequests > 0 ? requestRejectedCount : (dashboardData?.rejected || 0);
+          
+          return (
+            <>
+              <Card 
+                className={`border-l-4 border-l-yellow-500 hover:shadow-lg transition-all duration-200 cursor-pointer transform hover:scale-105 ${
+                  statusFilter === 'pending' ? 'ring-2 ring-yellow-400 shadow-lg' : ''
+                }`}
+                onClick={() => setStatusFilter('pending')}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Pending</p>
+                      <p className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
+                        {pendingCount}
+                      </p>
+                    </div>
+                    <Clock className="w-6 h-6 text-yellow-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card 
+                className={`border-l-4 border-l-purple-500 hover:shadow-lg transition-all duration-200 cursor-pointer transform hover:scale-105 ${
+                  statusFilter === 'approved' ? 'ring-2 ring-purple-400 shadow-lg' : ''
+                }`}
+                onClick={() => setStatusFilter('approved')}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Approved</p>
+                      <p className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 bg-clip-text text-transparent">
+                        {approvedCount}
+                      </p>
+                    </div>
+                    <CheckCircle className="w-6 h-6 text-purple-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card 
+                className={`border-l-4 border-l-gray-800 hover:shadow-lg transition-all duration-200 cursor-pointer transform hover:scale-105 ${
+                  statusFilter === 'rejected' ? 'ring-2 ring-gray-600 shadow-lg' : ''
+                }`}
+                onClick={() => setStatusFilter('rejected')}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Rejected</p>
+                      <p className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-black bg-clip-text text-transparent">
+                        {rejectedCount}
+                      </p>
+                    </div>
+                    <XCircle className="w-6 h-6 text-gray-700" />
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          );
+        })()}
+      </div>
+
+      {/* Filters and Search - Approver Channel Style */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              placeholder="Search by export ID or reference number..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 border-yellow-300 focus:border-yellow-500 focus:ring-yellow-400"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40 border-yellow-300 focus:border-yellow-500">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
           <Button 
             variant="outline" 
             size="sm"
@@ -319,82 +515,12 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
               fetchRequests();
             }}
             disabled={refreshing}
+            className="border-yellow-400 text-yellow-700 hover:bg-yellow-50"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            New Export
-          </Button>
         </div>
-      </div>
-
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Requests</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  {dashboardData?.totalRequests || 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                <FileText className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending Approval</p>
-                <p className="text-3xl font-bold text-yellow-600">
-                  {dashboardData?.pendingApproval || 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
-                <Clock className="w-6 h-6 text-amber-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Approved</p>
-                <p className="text-3xl font-bold text-green-600">
-                  {dashboardData?.approved || 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Requires Action</p>
-                <p className="text-3xl font-bold text-red-600">
-                  {dashboardData?.rejected || 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Main Content Tabs */}
@@ -467,7 +593,7 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                         <td className="px-6 py-4">
                           <Badge variant={getStatusBadgeVariant(request.status)} className="flex items-center gap-1 w-fit">
                             {getStatusIcon(request.status)}
-                            {request.status}
+                            {formatStatusForDisplay(request.status)}
                           </Badge>
                         </td>
                         <td className="px-6 py-4">
@@ -602,12 +728,18 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
 // Request Detail View Component
 const RequestDetailView: React.FC<{ request: RequestDetail }> = ({ request }) => {
   const getDocumentStatusIcon = (status: string) => {
-    switch (status) {
+    const normalizedStatus = status.toUpperCase();
+    switch (normalizedStatus) {
       case 'APPROVED': return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'REJECTED': return <XCircle className="w-4 h-4 text-red-600" />;
       case 'PENDING': return <Clock className="w-4 h-4 text-yellow-600" />;
+      case 'IN_PROGRESS': return <Clock className="w-4 h-4 text-yellow-600" />;
       default: return <FileText className="w-4 h-4 text-gray-600" />;
     }
+  };
+
+  const formatStatusForDisplay = (status: string) => {
+    return status.toUpperCase();
   };
 
   const getActionIcon = (action: string) => {
@@ -630,9 +762,9 @@ const RequestDetailView: React.FC<{ request: RequestDetail }> = ({ request }) =>
         </div>
         <div>
           <p className="text-sm text-gray-600">Status</p>
-          <Badge variant={request.status === 'APPROVED' ? 'default' : 
-                         request.status === 'REJECTED' ? 'destructive' : 'secondary'}>
-            {request.status}
+          <Badge variant={request.status.toUpperCase() === 'APPROVED' ? 'default' : 
+                         request.status.toUpperCase() === 'REJECTED' ? 'destructive' : 'secondary'}>
+            {formatStatusForDisplay(request.status)}
           </Badge>
         </div>
         <div>

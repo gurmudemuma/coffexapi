@@ -63,20 +63,22 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:8000/api/exporter/dashboard?exporter=all`
+        `http://localhost:8000/api/exporter/dashboard?exporter=${encodeURIComponent(exporterName)}`
       );
       
       if (response.ok) {
         const data: any = await response.json();
         console.log('Dashboard API Response:', data); // Log the actual response
         
-        // Handle different possible API response formats with more robust mapping
+        // Use the standard API response format
         const metrics: DashboardMetrics = {
-          totalRequests: data.totalRequests ?? data.total_requests ?? data.total ?? 0,
-          pendingApproval: data.pendingApproval ?? data.pending_approval ?? data.pending ?? 0,
-          approved: data.approved ?? data.approved_count ?? 0,
-          rejected: data.rejected ?? data.requires_action ?? data.rejected_count ?? 0
+          totalRequests: data.totalRequests ?? 0,
+          pendingApproval: data.pendingApproval ?? 0,
+          approved: data.approved ?? 0,
+          rejected: data.rejected ?? 0
         };
+        
+        console.log('Parsed metrics:', metrics);
         
         // Ensure all values are numbers
         metrics.totalRequests = Number(metrics.totalRequests) || 0;
@@ -94,7 +96,7 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
         if (looksEmpty) {
           try {
             const listRes = await fetch(
-              `http://localhost:8000/api/exporter/requests?exporter=all&status=all`
+              `http://localhost:8000/api/exporter/requests?exporter=${encodeURIComponent(exporterName)}&status=all`
             );
             if (listRes.ok) {
               const listData: any = await listRes.json();
@@ -318,8 +320,8 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
                           {loading ? '...' : dashboardMetrics.pendingApproval}
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
-                        <Clock className="w-6 h-6 text-amber-600" />
+                      <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <Clock className="w-6 h-6 text-yellow-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -333,7 +335,7 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Approved</p>
-                        <p className="text-3xl font-bold text-green-600">
+                        <p className="text-3xl font-bold text-purple-600">
                           {loading ? '...' : dashboardMetrics.approved}
                         </p>
                       </div>
@@ -352,12 +354,12 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Requires Action</p>
-                        <p className="text-3xl font-bold text-purple-700">
+                        <p className="text-3xl font-bold text-gray-800">
                           {loading ? '...' : dashboardMetrics.rejected}
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                        <XCircle className="w-6 h-6 text-purple-700" />
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <XCircle className="w-6 h-6 text-gray-700" />
                       </div>
                     </div>
                   </CardContent>
