@@ -13,9 +13,7 @@ node_modules
 .pnp.*
 
 # Environment variables
-.env
-.env.*
-!.env.example
+
 
 # Build output
 dist

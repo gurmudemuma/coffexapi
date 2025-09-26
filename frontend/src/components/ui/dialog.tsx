@@ -64,7 +64,7 @@ export const DialogContent: React.FC<DialogContentProps> = ({ children, classNam
       <div className="fixed inset-0 bg-black/50" onClick={() => setIsOpen(false)} />
       <div className={`relative bg-white rounded-lg shadow-lg p-6 mx-4 ${className}`}>
         <button
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          className="absolute top-4 right-4 text-dark-400 hover:text-dark-600"
           onClick={() => setIsOpen(false)}
         >
           <X className="w-4 h-4" />
@@ -80,5 +80,5 @@ export const DialogHeader: React.FC<DialogHeaderProps> = ({ children }) => {
 };
 
 export const DialogTitle: React.FC<DialogTitleProps> = ({ children }) => {
-  return <h3 className="text-lg font-semibold text-gray-900">{children}</h3>;
+  return <h3 className="text-lg font-semibold text-dark-900">{children}</h3>;
 };

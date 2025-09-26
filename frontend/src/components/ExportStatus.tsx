@@ -52,13 +52,13 @@ export const ExportStatus: React.FC<ExportStatusProps> = ({
   const getStatusColor = (status: ApprovalStatus): string => {
     switch (status) {
       case 'APPROVED':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+        return 'bg-gold-100 text-dark-800 dark:bg-gold-900/30 dark:text-gold-300';
       case 'REJECTED':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+        return 'bg-purple-100 text-dark-800 dark:bg-purple-900/30 dark:text-purple-300';
       case 'VERIFIED':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+        return 'bg-gold-200 text-dark-800 dark:bg-gold-800/30 dark:text-gold-200';
       default:
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+        return 'bg-dark-100 text-dark-800 dark:bg-dark-800/30 dark:text-dark-300';
     }
   };
 

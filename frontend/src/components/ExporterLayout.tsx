@@ -379,7 +379,10 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                       <Button 
                         className="h-auto py-4 flex flex-col items-center justify-center"
-                        onClick={() => setActiveView('submit')}
+                        onClick={() => {
+                          console.log('New Export button clicked');
+                          setActiveView('submit');
+                        }}
                       >
                         <Plus className="w-6 h-6 mb-2" />
                         <span>New Export</span>
@@ -387,7 +390,10 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
                       <Button 
                         variant="outline" 
                         className="h-auto py-4 flex flex-col items-center justify-center"
-                        onClick={() => setActiveView('requests')}
+                        onClick={() => {
+                          console.log('View Requests button clicked');
+                          setActiveView('requests');
+                        }}
                       >
                         <FileText className="w-6 h-6 mb-2" />
                         <span>View Requests</span>
@@ -417,6 +423,10 @@ export const ExporterLayout: React.FC<ExporterLayoutProps> = ({
             <ExporterDashboard 
               exporterName={exporterName} 
               initialStatusFilter={filterStatus}
+              onCreateNew={() => {
+                console.log('Create New Export from ExporterDashboard clicked');
+                setActiveView('submit');
+              }}
             />
           )}
 

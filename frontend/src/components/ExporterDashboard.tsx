@@ -99,11 +99,13 @@ interface DashboardNotification {
 interface ExporterDashboardProps {
   exporterName?: string;
   initialStatusFilter?: string | null;
+  onCreateNew?: () => void;
 }
 
 export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({ 
   exporterName = "Coffee Exporter Co.",
-  initialStatusFilter = null
+  initialStatusFilter = null,
+  onCreateNew
 }) => {
   const [dashboardData, setDashboardData] = useState<DashboardMetrics | null>(null);
   const [allRequests, setAllRequests] = useState<ExporterRequest[]>([]);
@@ -390,7 +392,7 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
             <Button 
               variant="outline" 
               size="sm" 
-              className="border-yellow-400 text-yellow-700 hover:bg-yellow-50"
+              className="border-gold-400 text-gold-700 hover:bg-gold-50"
               onClick={() => {
                 // Could add notifications functionality here
               }}
@@ -398,7 +400,7 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
               <Bell className="w-4 h-4 mr-2" />
               Notifications
             </Button>
-            <Badge variant="outline" className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black border-none shadow-md font-semibold">
+            <Badge variant="outline" className="bg-gradient-to-r from-purple-600 to-gold-500 text-white border-none shadow-md font-semibold">
               Exporter
             </Badge>
           </div>
@@ -422,8 +424,8 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
           return (
             <>
               <Card 
-                className={`border-l-4 border-l-yellow-500 hover:shadow-lg transition-all duration-200 cursor-pointer transform hover:scale-105 ${
-                  statusFilter === 'pending' ? 'ring-2 ring-yellow-400 shadow-lg' : ''
+                className={`border-l-4 border-l-gold-500 hover:shadow-lg transition-all duration-200 cursor-pointer transform hover:scale-105 ${
+                  statusFilter === 'pending' ? 'ring-2 ring-gold-400 shadow-lg' : ''
                 }`}
                 onClick={() => setStatusFilter('pending')}
               >
@@ -431,11 +433,11 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600">Pending</p>
-                      <p className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
+                      <p className="text-2xl font-bold bg-gradient-to-r from-gold-400 to-gold-500 bg-clip-text text-transparent">
                         {pendingCount}
                       </p>
                     </div>
-                    <Clock className="w-6 h-6 text-yellow-600" />
+                    <Clock className="w-6 h-6 text-gold-600" />
                   </div>
                 </CardContent>
               </Card>
@@ -491,13 +493,13 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
               placeholder="Search by export ID or reference number..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 border-yellow-300 focus:border-yellow-500 focus:ring-yellow-400"
+              className="pl-9 border-gold-300 focus:border-gold-500 focus:ring-gold-400"
             />
           </div>
         </div>
         <div className="flex gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40 border-yellow-300 focus:border-yellow-500">
+            <SelectTrigger className="w-40 border-gold-300 focus:border-gold-500">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -659,7 +661,7 @@ export const ExporterDashboard: React.FC<ExporterDashboardProps> = ({
                     }
                   </p>
                   {!searchTerm && statusFilter === 'all' && (
-                    <Button>
+                    <Button onClick={onCreateNew}>
                       <Plus className="w-4 h-4 mr-2" />
                       Create New Export
                     </Button>

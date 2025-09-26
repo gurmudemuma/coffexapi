@@ -456,13 +456,13 @@ const ExportForm: React.FC<ExportFormProps> = ({ onSubmitted }) => {
   if (submittedExport) {
     return (
       <div className="max-w-3xl mx-auto p-6">
-        <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-lg border border-green-200 dark:border-green-800">
+        <div className="mb-6 p-4 bg-gold-50 dark:bg-gold-900/30 text-dark-800 dark:text-gold-200 rounded-lg border border-gold-200 dark:border-gold-800">
           <p className="font-medium">Export submitted successfully!</p>
           <p className="text-sm mt-1">Transaction: {submittedExport.txHash}</p>
           {submittedExport?.txHash && (
-            <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+            <div className="mt-4 text-sm text-dark-500 dark:text-dark-400">
               Transaction:{' '}
-              <span className="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+              <span className="font-mono text-xs bg-dark-100 dark:bg-dark-800 px-2 py-1 rounded">
                 {submittedExport.txHash}
               </span>
               <button

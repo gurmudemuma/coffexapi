@@ -37,7 +37,7 @@ const ExporterDetailsTab: React.FC<ExporterDetailsTabProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <label htmlFor="companyName" className="block text-sm font-medium">
-            Company Name <span className="text-red-500">*</span>
+            Company Name <span className="text-purple-600">*</span>
           </label>
           <input
             type="text"
@@ -55,7 +55,7 @@ const ExporterDetailsTab: React.FC<ExporterDetailsTabProps> = ({
             htmlFor="registrationNumber"
             className="block text-sm font-medium"
           >
-            Registration Number <span className="text-red-500">*</span>
+            Registration Number <span className="text-purple-600">*</span>
           </label>
           <input
             type="text"
@@ -70,7 +70,7 @@ const ExporterDetailsTab: React.FC<ExporterDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="taxId" className="block text-sm font-medium">
-            Tax ID <span className="text-red-500">*</span>
+            Tax ID <span className="text-purple-600">*</span>
           </label>
           <input
             type="text"
@@ -85,7 +85,7 @@ const ExporterDetailsTab: React.FC<ExporterDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="contactPerson" className="block text-sm font-medium">
-            Contact Person <span className="text-red-500">*</span>
+            Contact Person <span className="text-purple-600">*</span>
           </label>
           <input
             type="text"
@@ -100,7 +100,7 @@ const ExporterDetailsTab: React.FC<ExporterDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="email" className="block text-sm font-medium">
-            Email <span className="text-red-500">*</span>
+            Email <span className="text-purple-600">*</span>
           </label>
           <input
             type="email"
@@ -115,7 +115,7 @@ const ExporterDetailsTab: React.FC<ExporterDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="phone" className="block text-sm font-medium">
-            Phone <span className="text-red-500">*</span>
+            Phone <span className="text-purple-600">*</span>
           </label>
           <input
             type="tel"
@@ -130,7 +130,7 @@ const ExporterDetailsTab: React.FC<ExporterDetailsTabProps> = ({
 
         <div className="space-y-2 md:col-span-2">
           <label htmlFor="address" className="block text-sm font-medium">
-            Street Address <span className="text-red-500">*</span>
+            Street Address <span className="text-purple-600">*</span>
           </label>
           <input
             type="text"
@@ -145,7 +145,7 @@ const ExporterDetailsTab: React.FC<ExporterDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="city" className="block text-sm font-medium">
-            City <span className="text-red-500">*</span>
+            City <span className="text-purple-600">*</span>
           </label>
           <input
             type="text"
@@ -160,7 +160,7 @@ const ExporterDetailsTab: React.FC<ExporterDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="country" className="block text-sm font-medium">
-            Country <span className="text-red-500">*</span>
+            Country <span className="text-purple-600">*</span>
           </label>
           <input
             type="text"
@@ -175,7 +175,7 @@ const ExporterDetailsTab: React.FC<ExporterDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="postalCode" className="block text-sm font-medium">
-            Postal Code <span className="text-red-500">*</span>
+            Postal Code <span className="text-purple-600">*</span>
           </label>
           <input
             type="text"

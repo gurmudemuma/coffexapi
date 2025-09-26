@@ -723,11 +723,11 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
           >
             {approval.urgencyLevel}
           </Badge>
-          <span className="text-sm text-gray-500">{approval.documentType}</span>
+          <span className="text-sm text-dark-500">{approval.documentType}</span>
         </div>
         <div className="flex items-center space-x-2">
-          <Clock className="w-4 h-4 text-gray-400" />
-          <span className="text-sm text-gray-500">
+          <Clock className="w-4 h-4 text-dark-400" />
+          <span className="text-sm text-dark-500">
             {new Date(approval.createdAt).toLocaleDateString()}
           </span>
         </div>
@@ -735,9 +735,9 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <p className="font-semibold text-gray-900">{approval.exporterName}</p>
-            <p className="text-sm text-gray-600">Export ID: {approval.exportId}</p>
-            <p className="text-sm text-gray-600">Stage: {approval.stageOrder}</p>
+            <p className="font-semibold text-dark-900">{approval.exporterName}</p>
+            <p className="text-sm text-dark-600">Export ID: {approval.exportId}</p>
+            <p className="text-sm text-dark-600">Stage: {approval.stageOrder}</p>
           </div>
           <div className="flex flex-col space-y-2">
             <div className="flex items-center space-x-2">
@@ -835,11 +835,11 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
           >
             {view.overallStatus.toUpperCase()}
           </Badge>
-          <span className="text-sm text-gray-500">{view.exportId}</span>
+          <span className="text-sm text-dark-500">{view.exportId}</span>
         </div>
         <div className="flex items-center space-x-2">
-          <Users className="w-4 h-4 text-gray-400" />
-          <span className="text-sm text-gray-500">
+          <Users className="w-4 h-4 text-dark-400" />
+          <span className="text-sm text-dark-500">
             {view.completedStages}/{view.totalStages}
           </span>
         </div>
@@ -847,18 +847,18 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <p className="font-semibold text-gray-900">{view.exporterName}</p>
-            <p className="text-sm text-gray-600">Documents: {view.documents.length}</p>
-            <p className="text-sm text-gray-600">
+            <p className="font-semibold text-dark-900">{view.exporterName}</p>
+            <p className="text-sm text-dark-600">Documents: {view.documents.length}</p>
+            <p className="text-sm text-dark-600">
               Progress: {Math.round((view.completedStages / view.totalStages) * 100)}%
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-dark-600">
               Last Activity: {new Date(view.lastActivity).toLocaleDateString()}
             </p>
             {view.currentStage && (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-dark-600">
                 Current: {view.currentStage.organization}
               </p>
             )}
@@ -873,7 +873,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading approval data...</p>
+          <p className="text-dark-600">Loading approval data...</p>
         </div>
       </div>
     );
@@ -885,10 +885,10 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-dark-900">
               {config.name} - {isSupervisor ? 'Supervisor Dashboard' : 'Approval Channel'}
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-dark-600 mt-2">
               {isSupervisor ? 'Global oversight and approval monitoring' : `${config.role} • Manage ${config.documentTypes.join(', ').toLowerCase()} validations`}
             </p>
           </div>
@@ -926,7 +926,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600">Pending</p>
+                      <p className="text-sm text-dark-600">Pending</p>
                       <p className="text-2xl font-bold bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent">{pendingCount}</p>
                     </div>
                     <Clock className="w-6 h-6 text-yellow-600" />
@@ -942,7 +942,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600">Approved</p>
+                      <p className="text-sm text-dark-600">Approved</p>
                       <p className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 bg-clip-text text-transparent">{approvedCount}</p>
                     </div>
                     <CheckCircle className="w-6 h-6 text-purple-600" />
@@ -958,7 +958,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600">Rejected</p>
+                      <p className="text-sm text-dark-600">Rejected</p>
                       <p className="text-2xl font-bold bg-gradient-to-r from-gray-700 to-black bg-clip-text text-transparent">{rejectedCount}</p>
                     </div>
                     <XCircle className="w-6 h-6 text-gray-700" />
@@ -984,7 +984,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
               {/* PENDING Documents Line Chart */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600">PENDING Documents</span>
+                  <span className="text-sm font-medium text-dark-600">PENDING Documents</span>
                   <span className="text-sm text-yellow-600 font-semibold">
                     {(() => {
                       const pendingCount = metrics?.pending ?? pendingApprovals.length;
@@ -1061,7 +1061,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
                                 </div>
                               ))}
                               {pendingTransactions.length > 2 && (
-                                <div className="text-gray-400 text-center">...and {pendingTransactions.length - 2} more</div>
+                                <div className="text-dark-400 text-center">...and {pendingTransactions.length - 2} more</div>
                               )}
                             </div>
                           </div>
@@ -1075,7 +1075,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
               {/* APPROVED Documents Line Chart */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600">APPROVED Documents</span>
+                  <span className="text-sm font-medium text-dark-600">APPROVED Documents</span>
                   <span className="text-sm text-purple-600 font-semibold">
                     {metrics?.approved ?? 0}
                   </span>
@@ -1145,13 +1145,13 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
                                   <div>🏢 <span className="text-gray-300">{txn.exporterName}</span></div>
                                   <div>📋 <span className="text-gray-300">{txn.documentType}</span></div>
                                   <div>👤 Created by: <span className="text-gray-300">{txn.createdBy}</span></div>
-                                  <div>✅ Approved by: <span className="text-green-400">{txn.reviewedBy}</span></div>
+                                  <div>✅ Approved by: <span className="text-gold-400">{txn.reviewedBy}</span></div>
                                   <div>📅 Approved: <span className="text-gray-300">{txn.reviewedAt ? new Date(txn.reviewedAt).toLocaleDateString() : 'N/A'}</span></div>
                                   {txn.comments && <div>💬 <span className="text-gray-300 italic">"{txn.comments}"</span></div>}
                                 </div>
                               ))}
                               {approvedTransactions.length > 2 && (
-                                <div className="text-gray-400 text-center">...and {approvedTransactions.length - 2} more</div>
+                                <div className="text-dark-400 text-center">...and {approvedTransactions.length - 2} more</div>
                               )}
                             </div>
                           </div>
@@ -1165,8 +1165,8 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
               {/* REJECTED Documents Line Chart */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600">REJECTED Documents</span>
-                  <span className="text-sm text-red-600 font-semibold">
+                  <span className="text-sm font-medium text-dark-600">REJECTED Documents</span>
+                  <span className="text-sm text-purple-600 font-semibold">
                     {metrics?.rejected ?? 0}
                   </span>
                 </div>
@@ -1226,7 +1226,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
                             className="fixed z-50 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg border border-gray-700 pointer-events-none max-w-xs"
                             style={{ display: 'none' }}
                           >
-                            <div className="font-semibold text-red-400 mb-2">REJECTED Documents ({rejectedTransactions.length})</div>
+                            <div className="font-semibold text-purple-400 mb-2">REJECTED Documents ({rejectedTransactions.length})</div>
                             <div className="space-y-1 text-xs">
                               <div>⏰ Time: <span className="font-medium">{timeLabel}</span></div>
                               {rejectedTransactions.slice(0, 2).map((txn, idx) => (
@@ -1235,13 +1235,13 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
                                   <div>🏢 <span className="text-gray-300">{txn.exporterName}</span></div>
                                   <div>📋 <span className="text-gray-300">{txn.documentType}</span></div>
                                   <div>👤 Created by: <span className="text-gray-300">{txn.createdBy}</span></div>
-                                  <div>❌ Rejected by: <span className="text-red-400">{txn.reviewedBy}</span></div>
+                                  <div>❌ Rejected by: <span className="text-purple-400">{txn.reviewedBy}</span></div>
                                   <div>📅 Rejected: <span className="text-gray-300">{txn.reviewedAt ? new Date(txn.reviewedAt).toLocaleDateString() : 'N/A'}</span></div>
-                                  {txn.comments && <div>⚠️ Reason: <span className="text-red-300 italic">"{txn.comments}"</span></div>}
+                                  {txn.comments && <div>⚠️ Reason: <span className="text-purple-300 italic">"{txn.comments}"</span></div>}
                                 </div>
                               ))}
                               {rejectedTransactions.length > 2 && (
-                                <div className="text-gray-400 text-center">...and {rejectedTransactions.length - 2} more</div>
+                                <div className="text-dark-400 text-center">...and {rejectedTransactions.length - 2} more</div>
                               )}
                             </div>
                           </div>
@@ -1254,7 +1254,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
             </div>
             
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-dark-500">
                 {(() => {
                   const isSupervisor = userRole === 'BANK_SUPERVISOR' || userRole === 'BANK';
                   if (isSupervisor) {
@@ -1280,7 +1280,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-400 w-4 h-4" />
             <Input
               id="document-search"
               placeholder="Search by exporter name or export ID..."
@@ -1291,7 +1291,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Filter className="w-4 h-4 text-gray-400" />
+          <Filter className="w-4 h-4 text-dark-400" />
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -1324,7 +1324,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
               </CardHeader>
               <CardContent className="max-h-96 overflow-y-auto">
                 {filteredSupervisorViews.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">No exports found</p>
+                  <p className="text-center text-dark-500 py-8">No exports found</p>
                 ) : (
                   filteredSupervisorViews.map(renderSupervisorCard)
                 )}
@@ -1343,25 +1343,25 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
                   <div className="space-y-4">
                     <div>
                       <h3 className="font-semibold">{selectedExport.exporterName}</h3>
-                      <p className="text-sm text-gray-600">{selectedExport.exportId}</p>
+                      <p className="text-sm text-dark-600">{selectedExport.exportId}</p>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-gray-600">Total Stages</p>
+                        <p className="text-dark-600">Total Stages</p>
                         <p className="font-semibold">{selectedExport.totalStages}</p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Completed</p>
+                        <p className="text-dark-600">Completed</p>
                         <p className="font-semibold">{selectedExport.completedStages}</p>
                       </div>
                     </div>
                     
                     <div>
-                      <p className="text-gray-600 text-sm mb-2">Progress</p>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <p className="text-dark-600 text-sm mb-2">Progress</p>
+                      <div className="w-full bg-dark-200 rounded-full h-2">
                         <div 
-                          className="bg-blue-600 h-2 rounded-full" 
+                          className="bg-purple-600 h-2 rounded-full" 
                           style={{ width: `${(selectedExport.completedStages / selectedExport.totalStages) * 100}%` }}
                         ></div>
                       </div>
@@ -1369,12 +1369,12 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
                     
                     {selectedExport.timeline.length > 0 && (
                       <div>
-                        <p className="text-gray-600 text-sm mb-2">Recent Activity</p>
+                        <p className="text-dark-600 text-sm mb-2">Recent Activity</p>
                         <div className="space-y-2 max-h-32 overflow-y-auto">
                           {selectedExport.timeline.slice(0, 3).map((activity, index) => (
-                            <div key={index} className="text-xs bg-gray-50 p-2 rounded">
+                            <div key={index} className="text-xs bg-dark-50 p-2 rounded">
                               <p className="font-medium">{activity.organization}</p>
-                              <p className="text-gray-600">{activity.type} - {activity.documentType}</p>
+                              <p className="text-dark-600">{activity.type} - {activity.documentType}</p>
                             </div>
                           ))}
                         </div>
@@ -1382,7 +1382,7 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
                     )}
                   </div>
                 ) : (
-                  <p className="text-center text-gray-500 py-8">Select an export to view details</p>
+                  <p className="text-center text-dark-500 py-8">Select an export to view details</p>
                 )}
               </CardContent>
             </Card>
@@ -1402,16 +1402,16 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
           
           <TabsContent value="pending" className="space-y-4" id="pending-section">
             {/* Debug info */}
-            <div className="text-xs text-gray-500 mb-2">
+            <div className="text-xs text-dark-500 mb-2">
               [DEBUG] Org: {organizationType}, Role: {userRole}, Pending: {pendingApprovals.length}, Filtered: {filteredApprovals.length}
             </div>
             
             {filteredApprovals.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <CheckCircle className="w-12 h-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Pending Approvals</h3>
-                  <p className="text-gray-500 text-center max-w-md">
+                  <CheckCircle className="w-12 h-12 text-dark-400 mb-4" />
+                  <h3 className="text-lg font-semibold text-dark-900 mb-2">No Pending Approvals</h3>
+                  <p className="text-dark-500 text-center max-w-md">
                     Great! You're all caught up. No documents are currently waiting for your review.
                   </p>
                 </CardContent>
@@ -1424,9 +1424,9 @@ export const MultiChannelApproversPanel: React.FC<MultiChannelApproversPanelProp
           <TabsContent value="completed" className="space-y-4">
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <Activity className="w-12 h-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Completed Reviews</h3>
-                <p className="text-gray-500 text-center max-w-md">
+                <Activity className="w-12 h-12 text-dark-400 mb-4" />
+                <h3 className="text-lg font-semibold text-dark-900 mb-2">Completed Reviews</h3>
+                <p className="text-dark-500 text-center max-w-md">
                   Your completed document reviews will appear here.
                 </p>
               </CardContent>

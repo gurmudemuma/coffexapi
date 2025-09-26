@@ -54,7 +54,7 @@ export const SelectTrigger: React.FC<SelectTriggerProps> = ({ children, classNam
 
   return (
     <button
-      className={`flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`flex h-10 w-full items-center justify-between rounded-md border border-dark-300 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       onClick={() => setIsOpen(!isOpen)}
     >
       {children}
@@ -76,7 +76,7 @@ export const SelectContent: React.FC<SelectContentProps> = ({ children }) => {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-      <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+      <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border border-dark-200 bg-white py-1 shadow-lg">
         {children}
       </div>
     </>
@@ -88,7 +88,7 @@ export const SelectItem: React.FC<SelectItemProps> = ({ value, children }) => {
 
   return (
     <div
-      className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-gray-100 focus:bg-gray-100 cursor-pointer"
+      className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-dark-100 focus:bg-dark-100 cursor-pointer"
       onClick={() => {
         onValueChange(value);
         setIsOpen(false);

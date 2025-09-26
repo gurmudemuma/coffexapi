@@ -42,7 +42,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <label htmlFor="productName" className="block text-sm font-medium">
-            Product Name <span className="text-red-500">*</span>
+            Product Name <span className="text-purple-600">*</span>
           </label>
           <input
             type="text"
@@ -74,7 +74,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="quantity" className="block text-sm font-medium">
-            Quantity <span className="text-red-500">*</span>
+            Quantity <span className="text-purple-600">*</span>
           </label>
           <div className="flex">
             <input
@@ -109,7 +109,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="unitPrice" className="block text-sm font-medium">
-            Unit Price <span className="text-red-500">*</span>
+            Unit Price <span className="text-purple-600">*</span>
           </label>
           <div className="relative">
             <span className="absolute left-3 top-2.5 text-gray-500">$</span>
@@ -136,7 +136,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="currency" className="block text-sm font-medium">
-            Currency <span className="text-red-500">*</span>
+            Currency <span className="text-purple-600">*</span>
           </label>
           <select
             id="currency"
@@ -162,7 +162,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             htmlFor="countryOfOrigin"
             className="block text-sm font-medium"
           >
-            Country of Origin <span className="text-red-500">*</span>
+            Country of Origin <span className="text-purple-600">*</span>
           </label>
           <input
             type="text"
@@ -180,7 +180,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             htmlFor="destinationCountry"
             className="block text-sm font-medium"
           >
-            Destination Country <span className="text-red-500">*</span>
+            Destination Country <span className="text-purple-600">*</span>
           </label>
           <input
             type="text"
@@ -195,7 +195,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="incoterms" className="block text-sm font-medium">
-            Incoterms <span className="text-red-500">*</span>
+            Incoterms <span className="text-purple-600">*</span>
           </label>
           <select
             id="incoterms"
@@ -217,7 +217,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="shippingDate" className="block text-sm font-medium">
-            Shipping Date <span className="text-red-500">*</span>
+            Shipping Date <span className="text-purple-600">*</span>
           </label>
           <input
             type="date"
@@ -236,7 +236,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
             htmlFor="expectedDeliveryDate"
             className="block text-sm font-medium"
           >
-            Expected Delivery Date <span className="text-red-500">*</span>
+            Expected Delivery Date <span className="text-purple-600">*</span>
           </label>
           <input
             type="date"
@@ -252,7 +252,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="paymentTerms" className="block text-sm font-medium">
-            Payment Terms <span className="text-red-500">*</span>
+            Payment Terms <span className="text-purple-600">*</span>
           </label>
           <select
             id="paymentTerms"
@@ -273,7 +273,7 @@ const TradeDetailsTab: React.FC<TradeDetailsTabProps> = ({
 
         <div className="space-y-2">
           <label htmlFor="paymentMethod" className="block text-sm font-medium">
-            Payment Method <span className="text-red-500">*</span>
+            Payment Method <span className="text-purple-600">*</span>
           </label>
           <select
             id="paymentMethod"
